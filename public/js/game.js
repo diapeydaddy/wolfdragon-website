@@ -100,40 +100,50 @@
   ];
 
   // ─── sprite sizes ─────────────────────────────────────────────────────────
-  // Sized to showcase the high-res sprite art while fitting within row height
+  // WolfDragon is the hero reference size. Brute is visibly larger.
+  // Bosses are HUGE — they span multiple rows to feel truly threatening.
   const WD_W    = 88,  WD_H    = 88;
-  const GRUNT_W = 80,  GRUNT_H = 88;
+  const GRUNT_W = 72,  GRUNT_H = 80;
   const ARCH_W  = 72,  ARCH_H  = 80;
-  const BRUTE_W = 100, BRUTE_H = 100;
-  const SPIDER_W= 140, SPIDER_H= 100;
-  const LICH_W  = 96,  LICH_H  = 120;
-  const APOC_W  = 180, APOC_H  = 150;
+  const BRUTE_W = 120, BRUTE_H = 130;  // clearly bigger than WolfDragon
+  const SPIDER_W= 210, SPIDER_H= 170;  // spans ~2 rows
+  const LICH_W  = 150, LICH_H  = 210;  // tall ghost, spans ~2.5 rows
+  const APOC_W  = 230, APOC_H  = 260;  // massive, fills the arena
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
   const SP_W    = SPR_SPELL[0].length * SC2;
   const SP_H    = SPR_SPELL.length    * SC2;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  SPRITE SHEET SYSTEM
-  //  Sheet R (ref):   1na7pu — 4-up reference art, GREY bg (~150,150,150)
-  //                   WolfDragon front+side, Demon front+side — clean, no labels
-  //  Sheet B (boss):  oajbktoajb — Brute + 3 bosses, DARK bg (~38,35,54)
-  //  Background pixels are flood-filled from corners to preserve character
-  //  dark-interior pixels (shadow, black outlines etc.).
+  //  SPRITE SHEET SYSTEM  (new transparent-bg images)
+  //  Sheet WD = "new image 4.png"  — WolfDragon side profile, white bg (source faces LEFT)
+  //  Sheet SM = "new image 6.png"  — Small demon front+side, white bg
+  //  Sheet GR = "new image 7.png"  — Grunt / red devil front, white bg
+  //  Sheet BR = "new image 5.png"  — Brute front, white bg
+  //  Sheet SP = "new image 3.png"  — Spider/Insectoid boss, front+profile, dark header + white bg
+  //  Sheet LI = "new image 2.png"  — Lich/Ghost boss, front+profile, dark header + white bg
+  //  Sheet AP = "new image 1.png"  — Apoc boss, front+profile, dark header + white bg
   // ═══════════════════════════════════════════════════════════════════════════
 
   // ── Source rectangles ────────────────────────────────────────────────────
-  // Sheet R = 1na7pu1na7pu1na7.png  (reference 4-up, grey bg)
-  // Sheet B = oajbktoajbktoajb.png  (boss sheet, dark bg)
   const SRECTS = {
-    WD_FRONT:  { sh:'R', sx:19,  sy:512, sw:493, sh_:494 }, // wolfdragon front  (bottom-left)
-    WD_SIDE:   { sh:'R', sx:512, sy:512, sw:493, sh_:494 }, // wolfdragon side   (bottom-right)
-    DEM_FRONT: { sh:'R', sx:19,  sy:18,  sw:493, sh_:494 }, // demon front       (top-left)
-    DEM_SIDE:  { sh:'R', sx:512, sy:18,  sw:493, sh_:494 }, // demon side        (top-right)
-    BRUTE:     { sh:'B', sx:16,  sy:51,  sw:489, sh_:423 }, // brute demon
-    SPIDER:    { sh:'B', sx:16,  sy:560, sw:313, sh_:326 }, // spider boss
-    LICH:      { sh:'B', sx:342, sy:561, sw:340, sh_:341 }, // lich boss
-    APOC:      { sh:'B', sx:682, sy:561, sw:332, sh_:341 }, // apocalyptic boss
+    // WolfDragon — side profile only (new image 4, white bg, source faces LEFT)
+    WD_SIDE:      { sh:'WD', sx:82,  sy:144, sw:858, sh_:722 },
+    // Archer/small demon — side view right sprite (new image 6, white bg, source faces LEFT)
+    DEM_SIDE:     { sh:'SM', sx:855, sy:46,  sw:351, sh_:712 },
+    // Grunt / red devil — front view (new image 7, white bg)
+    GRUNT:        { sh:'GR', sx:86,  sy:15,  sw:843, sh_:896 },
+    // Brute — front view (new image 5, white bg)
+    BRUTE:        { sh:'BR', sx:164, sy:144, sw:742, sh_:694 },
+    // Spider boss — front + profile (new image 3)
+    SPIDER_FRONT: { sh:'SP', sx:0,   sy:0,   sw:509, sh_:797 },
+    SPIDER_SIDE:  { sh:'SP', sx:584, sy:0,   sw:386, sh_:790 },
+    // Lich boss — front + profile (new image 2)
+    LICH_FRONT:   { sh:'LI', sx:61,  sy:0,   sw:430, sh_:679 },
+    LICH_SIDE:    { sh:'LI', sx:575, sy:0,   sw:410, sh_:679 },
+    // Apoc boss — front + profile (new image 1)
+    APOC_FRONT:   { sh:'AP', sx:0,   sy:0,   sw:514, sh_:612 },
+    APOC_SIDE:    { sh:'AP', sx:575, sy:0,   sw:428, sh_:615 },
   };
 
   // ── Background-removal helpers ────────────────────────────────────────────
@@ -219,22 +229,108 @@
     return oc;
   }
 
+  // checkerboard flood: handles backgrounds with TWO alternating colours
+  // (dark ~[38,36,47] and light grey ~[107-158]).  Removes a pixel if it:
+  //   • is already transparent, OR
+  //   • is close to the dark corner colour (tolDark), OR
+  //   • is a desaturated grey in the medium luminance band (the light checker tiles), OR
+  //   • is near-white (border/label text)
+  // All removals are gate-kept by a corner flood-fill so interior dark
+  // pixels of the character that happen to match bg colours are protected.
+  function removeBgCheckerboard(img, tolDark) {
+    const oc = document.createElement('canvas');
+    oc.width = img.naturalWidth; oc.height = img.naturalHeight;
+    const ox = oc.getContext('2d');
+    ox.drawImage(img, 0, 0);
+    const W2 = oc.width, H2 = oc.height;
+    const id = ox.getImageData(0, 0, W2, H2);
+    const d  = id.data;
+    // Sample dark bg colour from top-left corner area
+    let br=0,bg2=0,bb2=0;
+    for(let cy=0;cy<4;cy++) for(let cx=0;cx<4;cx++){
+      const i=(cy*W2+cx)*4; br+=d[i]; bg2+=d[i+1]; bb2+=d[i+2];
+    }
+    br=Math.round(br/16); bg2=Math.round(bg2/16); bb2=Math.round(bb2/16);
+
+    const visited = new Uint8Array(W2*H2);
+    const queue = new Int32Array(W2*H2);
+    let head=0, tail=0;
+    function enq(x,y){
+      if(x<0||x>=W2||y<0||y>=H2) return;
+      const idx=y*W2+x; if(visited[idx]) return;
+      visited[idx]=1; queue[tail++]=idx;
+    }
+    enq(0,0); enq(W2-1,0); enq(0,H2-1); enq(W2-1,H2-1);
+    while(head<tail){
+      const idx=queue[head++];
+      const pi=idx*4;
+      const r=d[pi], g=d[pi+1], b=d[pi+2];
+      const lum = r*0.3 + g*0.59 + b*0.11;
+      const nearDark  = Math.max(Math.abs(r-br),Math.abs(g-bg2),Math.abs(b-bb2)) <= tolDark;
+      // Light checker squares are desaturated grey: medium luminance, R≈G≈B
+      const greyTile  = lum > 60 && lum < 190
+                        && Math.abs(r-g) < 22 && Math.abs(r-b) < 28 && Math.abs(g-b) < 22;
+      const nearWhite = r>200 && g>200 && b>200;
+      if(nearDark || greyTile || nearWhite || d[pi+3]===0){
+        d[pi+3]=0;
+        const x=idx%W2, y=(idx/W2)|0;
+        enq(x-1,y); enq(x+1,y); enq(x,y-1); enq(x,y+1);
+      }
+    }
+    ox.putImageData(id, 0, 0);
+    return oc;
+  }
+
   // ── Sheet canvases (populated by loadSprites) ─────────────────────────────
-  const SHEETS = { R: null, B: null };
+  const SHEETS = { WD: null, SM: null, GR: null, BR: null, SP: null, LI: null, AP: null };
   let spritesReady = false;
 
   function loadSprites(cb) {
     let n = 0;
-    const total = 2;
+    const total = 7;
     function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
-    const imgR = new Image();
-    imgR.onload = () => { SHEETS.R = removeBgGlobal(imgR, 42); done(); };
-    imgR.onerror = done;
-    imgR.src = '/images/Gemini_Generated_Image_1na7pu1na7pu1na7.png';
-    const imgB = new Image();
-    imgB.onload = () => { SHEETS.B = removeBgFlood(imgB, 55); done(); };
-    imgB.onerror = done;
-    imgB.src = '/images/Gemini_Generated_Image_oajbktoajbktoajb.png';
+
+    // Sheet WD — WolfDragon side profile, white bg
+    const imgWD = new Image();
+    imgWD.onload = () => { SHEETS.WD = removeBgGlobal(imgWD, 60); done(); };
+    imgWD.onerror = done;
+    imgWD.src = '/images/new image 4.png';
+
+    // Sheet SM — Small demon front+side, white bg
+    const imgSM = new Image();
+    imgSM.onload = () => { SHEETS.SM = removeBgGlobal(imgSM, 60); done(); };
+    imgSM.onerror = done;
+    imgSM.src = '/images/new image 6.png';
+
+    // Sheet GR — Grunt / red devil, white bg
+    const imgGR = new Image();
+    imgGR.onload = () => { SHEETS.GR = removeBgGlobal(imgGR, 60); done(); };
+    imgGR.onerror = done;
+    imgGR.src = '/images/new image 7.png';
+
+    // Sheet BR — Brute, white bg
+    const imgBR = new Image();
+    imgBR.onload = () => { SHEETS.BR = removeBgGlobal(imgBR, 60); done(); };
+    imgBR.onerror = done;
+    imgBR.src = '/images/new image 5.png';
+
+    // Sheet SP — Spider/Insectoid boss (dark corners + white sprite area)
+    const imgSP = new Image();
+    imgSP.onload = () => { SHEETS.SP = removeBgCheckerboard(imgSP, 15); done(); };
+    imgSP.onerror = done;
+    imgSP.src = '/images/new image 3.png';
+
+    // Sheet LI — Lich/Ghost boss (dark corners + white sprite area)
+    const imgLI = new Image();
+    imgLI.onload = () => { SHEETS.LI = removeBgCheckerboard(imgLI, 15); done(); };
+    imgLI.onerror = done;
+    imgLI.src = '/images/new image 2.png';
+
+    // Sheet AP — Apoc boss (dark corners + white sprite area)
+    const imgAP = new Image();
+    imgAP.onload = () => { SHEETS.AP = removeBgCheckerboard(imgAP, 15); done(); };
+    imgAP.onerror = done;
+    imgAP.src = '/images/new image 1.png';
   }
 
   // ── Core draw helper ──────────────────────────────────────────────────────
@@ -254,37 +350,38 @@
   }
 
   // ── Character draw functions ──────────────────────────────────────────────
-  // WolfDragon: side profile faces LEFT in the source image, so we invert
-  // flipX so he faces RIGHT by default (matching PL.facing=1 = right).
-  // Front view (attack) is a symmetric pose — no extra inversion needed.
-  function drawWDSprite(ox, oy, flipX, atk) {
-    const r = atk ? SRECTS.WD_FRONT : SRECTS.WD_SIDE;
-    drawSpr(r, ox, oy, WD_W, WD_H, atk ? flipX : !flipX);
+  // WolfDragon: side profile only (new image 4). Source faces LEFT, so invert
+  // flipX so he faces RIGHT by default (PL.facing=1 = right).
+  function drawWDSprite(ox, oy, flipX /*, atk unused — only side view exists */) {
+    drawSpr(SRECTS.WD_SIDE, ox, oy, WD_W, WD_H, !flipX);
   }
 
+  // Grunt uses new red-devil front sprite (new image 7)
   function drawGruntSprite(ox, oy, flipX) {
-    drawSpr(SRECTS.DEM_FRONT, ox, oy, GRUNT_W, GRUNT_H, flipX);
+    drawSpr(SRECTS.GRUNT, ox, oy, GRUNT_W, GRUNT_H, flipX);
   }
 
-  // Archer uses the side-profile demon (distinct look from grunt)
+  // Archer uses new small-demon side profile (new image 6, right sprite).
+  // Source faces LEFT, so invert flipX so enemies face the correct direction.
   function drawArcherSprite(ox, oy, flipX) {
-    drawSpr(SRECTS.DEM_SIDE, ox, oy, ARCH_W, ARCH_H, flipX);
+    drawSpr(SRECTS.DEM_SIDE, ox, oy, ARCH_W, ARCH_H, !flipX);
   }
 
   function drawBruteSprite(ox, oy, flipX) {
     drawSpr(SRECTS.BRUTE, ox, oy, BRUTE_W, BRUTE_H, flipX);
   }
 
-  function drawSpiderSprite(ox, oy, flipX) {
-    drawSpr(SRECTS.SPIDER, ox, oy, SPIDER_W, SPIDER_H, flipX);
+  // Bosses switch to their profile/side view when attacking (atk=true)
+  function drawSpiderSprite(ox, oy, flipX, atk) {
+    drawSpr(atk ? SRECTS.SPIDER_SIDE : SRECTS.SPIDER_FRONT, ox, oy, SPIDER_W, SPIDER_H, flipX);
   }
 
-  function drawLichSprite(ox, oy, flipX) {
-    drawSpr(SRECTS.LICH, ox, oy, LICH_W, LICH_H, flipX);
+  function drawLichSprite(ox, oy, flipX, atk) {
+    drawSpr(atk ? SRECTS.LICH_SIDE : SRECTS.LICH_FRONT, ox, oy, LICH_W, LICH_H, flipX);
   }
 
-  function drawApocSprite(ox, oy, flipX) {
-    drawSpr(SRECTS.APOC, ox, oy, APOC_W, APOC_H, flipX);
+  function drawApocSprite(ox, oy, flipX, atk) {
+    drawSpr(atk ? SRECTS.APOC_SIDE : SRECTS.APOC_FRONT, ox, oy, APOC_W, APOC_H, flipX);
   }
 
   const ENEMY_TYPES = {
@@ -328,6 +425,7 @@
     score: 0, level: 1, wave: 1,
     hp: 140, maxHp: 140,
     spellUses: 3, maxSpell: 3,
+    rewardChoice: 0,
   };
 
   // ─── player ───────────────────────────────────────────────────────────────
@@ -363,7 +461,7 @@
   function eat(c){ if(J[c]){J[c]=false;return true;} return false; }
 
   // ─── entity lists ─────────────────────────────────────────────────────────
-  let enemies=[], projs=[], parts=[], drops=[];
+  let enemies=[], projs=[], parts=[], drops=[], obstacles=[];
 
   // ─── particles ────────────────────────────────────────────────────────────
   function burst(x,y,col,n,spd){
@@ -410,6 +508,7 @@
     buildWaveQueue();
     spawnRate = isBossWave() ? 0 : Math.max(50, 130 - gs.level*7);
     spawnT=0; cleared=false;
+    generateObstacles();
     if (isBossWave()) {
       const name = bossTypeForWave().toUpperCase();
       msg = `⚠ BOSS: ${name} ⚠`; msgT = 200;
@@ -450,6 +549,7 @@
         moveTimer: 0,
         teleTimer: 0,                  // lich teleport cooldown
         enrageT: 0,                    // apoc beam charge timer
+        atkAnim: 0,                    // frames to show attack/profile pose
       });
     } else {
       const row  = Math.floor(Math.random()*ROWS);
@@ -541,15 +641,50 @@
     if(gs.hp<=0) gs.screen='gameover';
   }
 
+  // ─── reward screen input ──────────────────────────────────────────────────
+  function getRewards(){
+    return [
+      { icon:'⚔', label:'WEAPON UP',  desc:'+8 dmg  +25% range',
+        fn(){ PL.weapon.dmg+=8; PL.atkRange=Math.round(PL.atkRange*1.25); } },
+      { icon:'✦', label:'+SPELL',     desc:'+1 spell charge\n(max 6)',
+        fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { icon:'🛡', label:'FORTIFY',    desc:'+35 max HP\nFull heal',
+        fn(){ gs.maxHp+=35; gs.hp=gs.maxHp; } },
+    ];
+  }
+  function applyReward(i){
+    getRewards()[i].fn();
+    gs.screen='playing';
+    gs.wave++;
+    startWave();
+  }
+
   // ─── update ───────────────────────────────────────────────────────────────
   function update() {
+    if(gs.screen==='reward'){
+      if(eat('ArrowLeft')&&gs.rewardChoice>0) gs.rewardChoice--;
+      if(eat('ArrowRight')&&gs.rewardChoice<2) gs.rewardChoice++;
+      if(eat('Digit1')) applyReward(0);
+      if(eat('Digit2')) applyReward(1);
+      if(eat('Digit3')) applyReward(2);
+      if(eat('Enter')||eat('KeyZ')) applyReward(gs.rewardChoice);
+      return;
+    }
     if(gs.screen!=='playing') return;
 
     // movement
     if(eat('ArrowUp')   && PL.row<ROWS-1) PL.row++;
     if(eat('ArrowDown') && PL.row>0)      PL.row--;
-    if(K['ArrowLeft'])  { PL.x-=PL.speed; PL.facing=-1; }
-    if(K['ArrowRight']) { PL.x+=PL.speed; PL.facing= 1; }
+    if(K['ArrowLeft'])  {
+      PL.facing=-1;
+      const nx=PL.x-PL.speed;
+      if(!obstacles.some(o=>o.row===PL.row&&nx<o.x+o.w&&nx+PL.w>o.x)) PL.x=nx;
+    }
+    if(K['ArrowRight']) {
+      PL.facing=1;
+      const nx=PL.x+PL.speed;
+      if(!obstacles.some(o=>o.row===PL.row&&nx<o.x+o.w&&nx+PL.w>o.x)) PL.x=nx;
+    }
     PL.x = Math.max(0, Math.min(W-WD_W, PL.x));
 
     if(eat('KeyZ')||eat('Space')) doAttack();
@@ -566,6 +701,7 @@
     // enemy AI
     enemies.forEach(e=>{
       if(e.flashT>0) e.flashT--;
+      if(e.atkAnim>0) e.atkAnim--;
       const def = ENEMY_TYPES[e.type];
 
       if(e.phase==='drop'){
@@ -600,6 +736,7 @@
           e.shootT--;
           if(e.shootT <= 0){
             e.shootT = Math.max(25, def.shootCd - e.bossPhase * 15);
+            e.atkAnim = 28;            // show profile/attack pose briefly
             const numShots = 3 + e.bossPhase * 2;
             for(let i=0;i<numShots;i++){
               const vy = (i - (numShots-1)/2) * 0.7;
@@ -631,6 +768,7 @@
           e.shootT--;
           if(e.shootT <= 0){
             e.shootT = Math.max(30, def.shootCd - e.bossPhase * 10);
+            e.atkAnim = 28;            // show profile/attack pose briefly
             const shots = e.bossPhase + 1;
             for(let i=0;i<shots;i++){
               const targetVY = (ROW_Y[PL.row] - (e.y+def.h/2)) * 0.015;
@@ -650,6 +788,7 @@
           const chargeTime = Math.max(50, 110 - e.bossPhase * 25);
           if(e.enrageT >= chargeTime){
             e.enrageT = 0;
+            e.atkAnim = 28;            // show profile/attack pose briefly
             // Beam: fire projectiles across ALL rows
             for(let r=0;r<ROWS;r++){
               projs.push({x:e.x, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
@@ -752,7 +891,15 @@
         }
       }
     });
-    projs=projs.filter(p=>p.life>0&&p.x>-40&&p.x<W+40);
+    // Obstacle collision for projectiles
+    projs=projs.filter(p=>{
+      if(p.life<=0||p.x<=-40||p.x>=W+40) return false;
+      if(obstacles.some(o=>o.row===p.row&&p.x<o.x+o.w&&p.x+p.w>o.x&&
+          p.y<o.y+o.h&&p.y+p.h>o.y)){
+        burst(p.x,p.y,'#887766',6,3); return false;
+      }
+      return true;
+    });
 
     // drops
     drops.forEach(d=>{
@@ -793,14 +940,14 @@
       }
       if(isBossWave()){
         // Boss cleared — advance level, big fanfare + loot drops
-        msg = '★ BOSS DEFEATED ★'; msgT = 260;
+        msg = '★ BOSS DEFEATED ★'; msgT = 220;
         burst(W/2, H/2, '#ffcc00', 40, 10);
         gs.level++;
-        // Big health orb (50% HP) — drops on row 0 (player's default row)
-        drops.push({x: W/2 - 20, y: ROW_Y[0], row: 0, type:'bighealth', life:600});
-        // Full spell refill orb — drops slightly to the right
-        drops.push({x: W/2 + 40, y: ROW_Y[0], row: 0, type:'fullspell', life:600});
-        setTimeout(()=>{ gs.wave++; startWave(); },3200);
+        // Instant loot drops (collect while reward screen shows)
+        drops.push({x: W/2 - 40, y: ROW_Y[0], row: 0, type:'bighealth', life:900});
+        drops.push({x: W/2 + 20, y: ROW_Y[0], row: 0, type:'fullspell', life:900});
+        // After brief fanfare, show the upgrade choice screen
+        setTimeout(()=>{ gs.screen='reward'; gs.rewardChoice=0; }, 2800);
       } else {
         setTimeout(()=>{ gs.wave++; startWave(); },2200);
       }
@@ -808,17 +955,44 @@
     if(msgT>0) msgT--;
   }
 
-  // ─── BG ───────────────────────────────────────────────────────────────────
+  // ─── BG themes (one per level, cycling) ──────────────────────────────────
+  const BG_THEMES = [
+    // 1 — Hellfire
+    { sky0:'#08000f', sky1:'#180020', sky2:'#280010',
+      mtn:'#120008', glowRgb:'180,20,0', ember:'#ff6600',
+      ground:'#180404', crack:'#bb2200', line:'#cc2200',
+      vignRgb:'200,0,30', rowA:'rgba(110,0,0,0.08)', rowB:'rgba(70,0,50,0.07)' },
+    // 2 — Void Ruins
+    { sky0:'#06001a', sky1:'#0a0030', sky2:'#100025',
+      mtn:'#08001a', glowRgb:'90,0,200', ember:'#9933ff',
+      ground:'#0a0018', crack:'#550099', line:'#8800ff',
+      vignRgb:'120,0,220', rowA:'rgba(60,0,130,0.09)', rowB:'rgba(40,0,80,0.07)' },
+    // 3 — Lava Cavern
+    { sky0:'#0f0400', sky1:'#1e0800', sky2:'#2e0a00',
+      mtn:'#1a0400', glowRgb:'220,70,0', ember:'#ff9900',
+      ground:'#200500', crack:'#ff4400', line:'#ff6600',
+      vignRgb:'220,60,0', rowA:'rgba(160,40,0,0.09)', rowB:'rgba(100,20,0,0.07)' },
+    // 4 — Frozen Tomb
+    { sky0:'#000a12', sky1:'#001525', sky2:'#002035',
+      mtn:'#001020', glowRgb:'0,100,200', ember:'#00ccff',
+      ground:'#001525', crack:'#0066bb', line:'#00aaff',
+      vignRgb:'0,100,200', rowA:'rgba(0,80,160,0.08)', rowB:'rgba(0,50,100,0.06)' },
+    // 5 — Cosmic Abyss
+    { sky0:'#020008', sky1:'#050010', sky2:'#080008',
+      mtn:'#030008', glowRgb:'180,0,180', ember:'#ff00ff',
+      ground:'#060008', crack:'#880088', line:'#cc00cc',
+      vignRgb:'160,0,160', rowA:'rgba(100,0,100,0.08)', rowB:'rgba(60,0,80,0.07)' },
+  ];
+
   let bgOff=0;
   function drawBG(){
     bgOff=(bgOff+0.4)%W;
+    const th = BG_THEMES[(gs.level-1) % BG_THEMES.length];
     const sky=ctx.createLinearGradient(0,0,0,GROUND_Y);
-    sky.addColorStop(0,'#08000f');
-    sky.addColorStop(0.5,'#180020');
-    sky.addColorStop(1,'#280010');
+    sky.addColorStop(0,th.sky0); sky.addColorStop(0.5,th.sky1); sky.addColorStop(1,th.sky2);
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,GROUND_Y);
 
-    ctx.fillStyle='#120008';
+    ctx.fillStyle=th.mtn;
     for(let i=0;i<7;i++){
       const mx=((i*130-bgOff*0.2)%(W+40))-20;
       const mh=55+(i%3)*35;
@@ -827,11 +1001,11 @@
     }
 
     const hg=ctx.createLinearGradient(0,GROUND_Y-35,0,GROUND_Y);
-    hg.addColorStop(0,'rgba(180,20,0,0)'); hg.addColorStop(1,'rgba(180,20,0,0.4)');
+    hg.addColorStop(0,`rgba(${th.glowRgb},0)`); hg.addColorStop(1,`rgba(${th.glowRgb},0.42)`);
     ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-35,W,35);
 
     ROW_Y.forEach((ry,i)=>{
-      ctx.fillStyle=i%2===0?'rgba(110,0,0,0.08)':'rgba(70,0,50,0.07)';
+      ctx.fillStyle=i%2===0?th.rowA:th.rowB;
       ctx.fillRect(0,ry,W,BRUTE_H+10);
     });
 
@@ -841,12 +1015,12 @@
       const ey=GROUND_Y-20-((t*(15+i%5)+i*37)%200);
       if(ey<0||ey>GROUND_Y) continue;
       ctx.globalAlpha=0.25+(i%3)*0.12;
-      ctx.fillStyle='#ff6600'; ctx.fillRect(ex,ey,2,2);
+      ctx.fillStyle=th.ember; ctx.fillRect(ex,ey,2,2);
     }
     ctx.globalAlpha=1;
 
-    ctx.fillStyle='#180404'; ctx.fillRect(0,GROUND_Y,W,H-GROUND_Y);
-    ctx.strokeStyle='#bb2200'; ctx.lineWidth=1;
+    ctx.fillStyle=th.ground; ctx.fillRect(0,GROUND_Y,W,H-GROUND_Y);
+    ctx.strokeStyle=th.crack; ctx.lineWidth=1;
     for(let i=0;i<10;i++){
       const gx=((i*87-bgOff*0.6)%(W+40))-20;
       ctx.globalAlpha=0.65;
@@ -854,11 +1028,117 @@
       ctx.lineTo(gx+9,GROUND_Y+9); ctx.lineTo(gx+14,H); ctx.stroke();
     }
     ctx.globalAlpha=1;
-    ctx.fillStyle='#cc2200'; ctx.fillRect(0,GROUND_Y,W,3);
+    ctx.fillStyle=th.line; ctx.fillRect(0,GROUND_Y,W,3);
 
     const tg=ctx.createLinearGradient(0,0,0,50);
-    tg.addColorStop(0,'rgba(200,0,30,0.55)'); tg.addColorStop(1,'rgba(200,0,30,0)');
+    tg.addColorStop(0,`rgba(${th.vignRgb},0.55)`); tg.addColorStop(1,`rgba(${th.vignRgb},0)`);
     ctx.fillStyle=tg; ctx.fillRect(0,0,W,50);
+  }
+
+  // ─── obstacles ────────────────────────────────────────────────────────────
+  function generateObstacles(){
+    obstacles=[];
+    if(gs.wave<=1 && gs.level===1) return; // gentle intro
+    const count=Math.min(4, 1+Math.floor((gs.wave-1)/2));
+    for(let attempt=0; attempt<count*5; attempt++){
+      if(obstacles.length>=count) break;
+      const row  = Math.floor(Math.random()*ROWS);
+      const type = Math.random()<0.55 ? 'boulder' : 'ruin';
+      const w    = type==='boulder' ? 52 : 46;
+      const h    = type==='boulder' ? 42 : 55;
+      const x    = 180 + Math.random()*380;
+      // Avoid overlap with existing obstacles in same row
+      if(obstacles.some(o=>o.row===row&&Math.abs(o.x-x)<90)) continue;
+      obstacles.push({ x, y:ROW_Y[row]+WD_H-h, w, h, row, type });
+    }
+  }
+
+  function drawObstacles(){
+    const th = BG_THEMES[(gs.level-1) % BG_THEMES.length];
+    obstacles.forEach(o=>{
+      ctx.save();
+      if(o.type==='boulder'){
+        const cx=o.x+o.w/2, cy=o.y+o.h*0.58;
+        const g=ctx.createRadialGradient(cx-o.w*0.12,cy-o.h*0.15,2,cx,cy,o.w*0.6);
+        g.addColorStop(0,'#706868'); g.addColorStop(0.55,'#383030'); g.addColorStop(1,'#1a1515');
+        ctx.fillStyle=g;
+        ctx.beginPath(); ctx.ellipse(cx,cy,o.w*0.5,o.h*0.48,0,0,Math.PI*2); ctx.fill();
+        // crack
+        ctx.strokeStyle='#111'; ctx.lineWidth=1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx-o.w*0.08,cy-o.h*0.22); ctx.lineTo(cx+o.w*0.06,cy+o.h*0.08);
+        ctx.lineTo(cx+o.w*0.18,cy+o.h*0.22); ctx.stroke();
+        // highlight
+        ctx.strokeStyle='rgba(255,255,255,0.13)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(cx-o.w*0.1,cy-o.h*0.14,o.w*0.26,Math.PI*1.1,Math.PI*1.85); ctx.stroke();
+        // Colour tint from theme (subtle)
+        ctx.globalAlpha=0.18;
+        ctx.fillStyle=th.line;
+        ctx.beginPath(); ctx.ellipse(cx,cy,o.w*0.5,o.h*0.48,0,0,Math.PI*2); ctx.fill();
+      } else {
+        // Stone ruin pillar
+        const g2=ctx.createLinearGradient(o.x,o.y,o.x+o.w,o.y);
+        g2.addColorStop(0,'#444'); g2.addColorStop(0.35,'#565656'); g2.addColorStop(1,'#222');
+        ctx.fillStyle=g2; ctx.fillRect(o.x,o.y,o.w,o.h);
+        // horizontal mortar lines
+        ctx.strokeStyle='#1e1e1e'; ctx.lineWidth=1;
+        for(let by=o.y+10;by<o.y+o.h;by+=13){
+          ctx.beginPath(); ctx.moveTo(o.x,by); ctx.lineTo(o.x+o.w,by); ctx.stroke();
+        }
+        // vertical mortar (offset each row)
+        for(let row2=0,by=o.y;by<o.y+o.h;by+=13,row2++){
+          const off=row2%2===0?0:10;
+          for(let bx=o.x+off;bx<o.x+o.w;bx+=20){
+            ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx,by+13); ctx.stroke();
+          }
+        }
+        // broken top cap
+        ctx.fillStyle='#666'; ctx.fillRect(o.x,o.y,o.w,5);
+        ctx.fillStyle='#333';
+        ctx.fillRect(o.x+6,o.y-5,9,5); ctx.fillRect(o.x+o.w-17,o.y-5,11,5);
+        // Colour tint
+        ctx.globalAlpha=0.15; ctx.fillStyle=th.line;
+        ctx.fillRect(o.x,o.y,o.w,o.h);
+      }
+      ctx.restore();
+    });
+  }
+
+  // ─── reward screen ────────────────────────────────────────────────────────
+  function drawReward(){
+    ctx.fillStyle='rgba(0,0,0,0.88)'; ctx.fillRect(0,0,W,H);
+    // title
+    ctx.fillStyle='#ffcc00'; ctx.font='bold 26px monospace'; ctx.textAlign='center';
+    ctx.fillText('★  BOSS DEFEATED — CHOOSE YOUR REWARD  ★',W/2,70);
+    ctx.fillStyle='#888'; ctx.font='13px monospace';
+    ctx.fillText('← → navigate   Z / ENTER confirm   or press 1 / 2 / 3',W/2,98);
+    const rewards=getRewards();
+    const cardW=200, cardH=180, gap=20;
+    const totalW=cardW*3+gap*2;
+    const startX=(W-totalW)/2;
+    rewards.forEach((r,i)=>{
+      const cx=startX+i*(cardW+gap), cy=140;
+      const sel=gs.rewardChoice===i;
+      // Card bg
+      ctx.fillStyle=sel?'rgba(255,200,0,0.18)':'rgba(255,255,255,0.06)';
+      ctx.fillRect(cx,cy,cardW,cardH);
+      ctx.strokeStyle=sel?'#ffcc00':'#555'; ctx.lineWidth=sel?2.5:1;
+      ctx.strokeRect(cx,cy,cardW,cardH);
+      // Number
+      ctx.fillStyle=sel?'#ffcc00':'#777'; ctx.font=`bold 12px monospace`; ctx.textAlign='center';
+      ctx.fillText(`[${i+1}]`,cx+cardW/2,cy+18);
+      // Icon
+      ctx.font=`38px sans-serif`;
+      ctx.fillText(r.icon,cx+cardW/2,cy+70);
+      // Label
+      ctx.fillStyle=sel?'#ffffff':'#cccccc'; ctx.font=`bold 15px monospace`;
+      ctx.fillText(r.label,cx+cardW/2,cy+102);
+      // Desc (two lines)
+      ctx.fillStyle='#999'; ctx.font=`11px monospace`;
+      const lines=r.desc.split('\n');
+      lines.forEach((ln,li)=>ctx.fillText(ln,cx+cardW/2,cy+122+li*16));
+    });
+    ctx.textAlign='left';
   }
 
   // ─── HUD ──────────────────────────────────────────────────────────────────
@@ -986,7 +1266,7 @@
       const def=ENEMY_TYPES[e.type];
       ctx.globalAlpha=(e.flashT>0&&Math.floor(e.flashT/2)%2===0)?0.2:1;
       // flipX=true when enemy faces LEFT (toward player who is on left)
-      def.drawFn(e.x, e.y, e.facing < 0);
+      def.drawFn(e.x, e.y, e.facing < 0, e.atkAnim > 0);
       ctx.globalAlpha=1;
       if(e.hp<e.maxHp){
         ctx.fillStyle='#2a0000'; ctx.fillRect(e.x,e.y-6,def.w,3);
@@ -1117,10 +1397,11 @@
   // ─── reset ────────────────────────────────────────────────────────────────
   function reset(){
     Object.assign(gs,{screen:'playing',score:0,level:1,wave:1,
-      hp:140,maxHp:140,spellUses:3,maxSpell:3});
+      hp:140,maxHp:140,spellUses:3,maxSpell:3,rewardChoice:0});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
-    enemies=[]; projs=[]; parts=[]; drops=[]; bgOff=0;
+    PL.weapon.dmg=25; PL.atkRange=72; // reset upgrades
+    enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; bgOff=0;
     startWave();
   }
 
@@ -1131,12 +1412,16 @@
       drawTitle();
       if(eat('Enter')||eat('Space')) reset();
     } else if(gs.screen==='gameover'){
-      drawBG(); drawDrops(); drawEnemies(); drawProjs();
+      drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();
       drawPlayer(); drawParts(); drawHUD(); drawGameOver();
       if(eat('Enter')||eat('Space')) reset();
+    } else if(gs.screen==='reward'){
+      update();
+      drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();
+      drawPlayer(); drawParts(); drawHUD(); drawReward();
     } else {
       update();
-      drawBG(); drawDrops(); drawEnemies(); drawProjs();
+      drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();
       drawPlayer(); drawParts(); drawWaveMsg(); drawHUD();
     }
     requestAnimationFrame(frame);
