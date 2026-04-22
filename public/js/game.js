@@ -206,7 +206,10 @@
     while(head<tail){
       const idx=queue[head++];
       const pi=idx*4;
-      if(Math.max(Math.abs(d[pi]-br),Math.abs(d[pi+1]-bg2),Math.abs(d[pi+2]-bb2))<=tolerance){
+      // Remove: close to bg colour OR already transparent OR near-white border line
+      const nearBg  = Math.max(Math.abs(d[pi]-br),Math.abs(d[pi+1]-bg2),Math.abs(d[pi+2]-bb2))<=tolerance;
+      const nearWhite = d[pi]>200 && d[pi+1]>200 && d[pi+2]>200;
+      if(nearBg || d[pi+3]===0 || nearWhite){
         d[pi+3]=0;
         const x=idx%W2, y=(idx/W2)|0;
         enq(x-1,y); enq(x+1,y); enq(x,y-1); enq(x,y+1);
@@ -225,11 +228,11 @@
     const total = 2;
     function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
     const imgR = new Image();
-    imgR.onload = () => { SHEETS.R = removeBgGlobal(imgR, 35); done(); };
+    imgR.onload = () => { SHEETS.R = removeBgGlobal(imgR, 42); done(); };
     imgR.onerror = done;
     imgR.src = '/images/Gemini_Generated_Image_1na7pu1na7pu1na7.png';
     const imgB = new Image();
-    imgB.onload = () => { SHEETS.B = removeBgFlood(imgB, 48); done(); };
+    imgB.onload = () => { SHEETS.B = removeBgFlood(imgB, 55); done(); };
     imgB.onerror = done;
     imgB.src = '/images/Gemini_Generated_Image_oajbktoajbktoajb.png';
   }
@@ -251,11 +254,12 @@
   }
 
   // ── Character draw functions ──────────────────────────────────────────────
-  // WolfDragon: use profile (side view) — natural for a side-scroller.
-  // Front view used during attack for dramatic look.
+  // WolfDragon: side profile faces LEFT in the source image, so we invert
+  // flipX so he faces RIGHT by default (matching PL.facing=1 = right).
+  // Front view (attack) is a symmetric pose — no extra inversion needed.
   function drawWDSprite(ox, oy, flipX, atk) {
     const r = atk ? SRECTS.WD_FRONT : SRECTS.WD_SIDE;
-    drawSpr(r, ox, oy, WD_W, WD_H, atk ? !flipX : flipX);
+    drawSpr(r, ox, oy, WD_W, WD_H, atk ? flipX : !flipX);
   }
 
   function drawGruntSprite(ox, oy, flipX) {
@@ -286,12 +290,12 @@
   const ENEMY_TYPES = {
     grunt: {
       drawFn: drawGruntSprite, w: GRUNT_W, h: GRUNT_H,
-      hp: 40, speed: 0.9, shootCd: 180, dmg: 10, score: 100,
+      hp: 40, speed: 0.9, shootCd: 240, dmg: 10, score: 100,
       dropRate: 0.15, spellDrop: 0.04,
     },
     archer: {
       drawFn: drawArcherSprite, w: ARCH_W, h: ARCH_H,
-      hp: 25, speed: 0.55, shootCd: 90, dmg: 8, score: 150,
+      hp: 25, speed: 0.55, shootCd: 150, dmg: 8, score: 150,
       dropRate: 0.12, spellDrop: 0.10,  // archers drop spell refills more often
       minX: 420,
     },
@@ -687,7 +691,7 @@
       // shooting — fires at ANY row gap (spread shot covers adjacent rows)
       e.shootT--;
       if(e.shootT<=0){
-        e.shootT = Math.max(40, def.shootCd - gs.level*8);
+        e.shootT = Math.max(70, def.shootCd - gs.wave*5);
         const rowDist = Math.abs(e.row - PL.row);
         const shootRange = (e.type==='archer') ? 2 : 1;
         if(rowDist <= shootRange) {
@@ -753,13 +757,20 @@
     // drops
     drops.forEach(d=>{
       d.life--;
-      if(d.row===PL.row&&ov({x:d.x,y:ROW_Y[d.row],w:22,h:22},PL.hb)){
+      const dSize = (d.type==='bighealth'||d.type==='fullspell') ? 36 : 22;
+      if(d.row===PL.row&&ov({x:d.x,y:ROW_Y[d.row],w:dSize,h:dSize},PL.hb)){
         if(d.type==='health'){
           gs.hp=Math.min(gs.maxHp,gs.hp+35);
           burst(d.x,ROW_Y[d.row],HG,12);
+        } else if(d.type==='bighealth'){
+          gs.hp=Math.min(gs.maxHp, gs.hp + Math.ceil(gs.maxHp*0.5));
+          burst(d.x,ROW_Y[d.row],'#00ffaa',24,9);
         } else if(d.type==='spell' && gs.spellUses < gs.maxSpell){
           gs.spellUses=Math.min(gs.maxSpell, gs.spellUses+1);
           burst(d.x,ROW_Y[d.row],'#aa44ff',14,6);
+        } else if(d.type==='fullspell'){
+          gs.spellUses = gs.maxSpell;
+          burst(d.x,ROW_Y[d.row],'#ff44ff',20,8);
         }
         d.life=0;
       }
@@ -781,12 +792,14 @@
           row, type:'spell', life:500});
       }
       if(isBossWave()){
-        // Boss cleared — advance level, big fanfare
+        // Boss cleared — advance level, big fanfare + loot drops
         msg = '★ BOSS DEFEATED ★'; msgT = 260;
         burst(W/2, H/2, '#ffcc00', 40, 10);
         gs.level++;
-        // Also restore all spells as a reward
-        gs.spellUses = gs.maxSpell;
+        // Big health orb (50% HP) — drops on row 0 (player's default row)
+        drops.push({x: W/2 - 20, y: ROW_Y[0], row: 0, type:'bighealth', life:600});
+        // Full spell refill orb — drops slightly to the right
+        drops.push({x: W/2 + 40, y: ROW_Y[0], row: 0, type:'fullspell', life:600});
         setTimeout(()=>{ gs.wave++; startWave(); },3200);
       } else {
         setTimeout(()=>{ gs.wave++; startWave(); },2200);
@@ -1003,7 +1016,7 @@
       if(d.type==='health'){
         spr(SPR_HEALTH, d.x, ROW_Y[d.row]-4, SC2);
       } else if(d.type==='spell'){
-        // Glowing purple spell orb
+        // Small glowing purple orb
         const cx = d.x + 11, cy = ROW_Y[d.row] + 8;
         const glow = ctx.createRadialGradient(cx,cy,1,cx,cy,11);
         glow.addColorStop(0,'rgba(200,100,255,0.9)');
@@ -1011,16 +1024,40 @@
         glow.addColorStop(1,'rgba(80,0,160,0)');
         ctx.fillStyle = glow;
         ctx.beginPath(); ctx.arc(cx,cy,11,0,Math.PI*2); ctx.fill();
-        // Inner bright core
         const core = ctx.createRadialGradient(cx,cy,0,cx,cy,5);
         core.addColorStop(0,'#ffffff'); core.addColorStop(0.4,'#dd88ff'); core.addColorStop(1,'#8800cc');
         ctx.fillStyle = core;
         ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill();
-        // Small sparkles
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle='#ffffff';
         [[cx-7,cy-3],[cx+6,cy-5],[cx+2,cy+7]].forEach(([sx,sy])=>{
           ctx.beginPath(); ctx.arc(sx+Math.sin(t+sx)*1.5,sy,1.2,0,Math.PI*2); ctx.fill();
         });
+      } else if(d.type==='bighealth'){
+        // Large golden-green boss health orb
+        const cx = d.x + 18, cy = ROW_Y[d.row] + 10;
+        const g1 = ctx.createRadialGradient(cx,cy,2,cx,cy,18);
+        g1.addColorStop(0,'rgba(180,255,160,1)');
+        g1.addColorStop(0.4,'rgba(0,220,120,0.85)');
+        g1.addColorStop(1,'rgba(0,80,40,0)');
+        ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2); ctx.fill();
+        const g2 = ctx.createRadialGradient(cx-4,cy-4,0,cx,cy,9);
+        g2.addColorStop(0,'#ffffff'); g2.addColorStop(0.5,'#88ffcc'); g2.addColorStop(1,'#00aa66');
+        ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx,cy,9,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#ccffdd'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+        ctx.fillText('+HP',cx,cy+4); ctx.textAlign='left';
+      } else if(d.type==='fullspell'){
+        // Large bright magenta full-spell orb
+        const cx = d.x + 18, cy = ROW_Y[d.row] + 10;
+        const g1 = ctx.createRadialGradient(cx,cy,2,cx,cy,18);
+        g1.addColorStop(0,'rgba(255,180,255,1)');
+        g1.addColorStop(0.4,'rgba(220,0,220,0.85)');
+        g1.addColorStop(1,'rgba(80,0,80,0)');
+        ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2); ctx.fill();
+        const g2 = ctx.createRadialGradient(cx-4,cy-4,0,cx,cy,9);
+        g2.addColorStop(0,'#ffffff'); g2.addColorStop(0.5,'#ff88ff'); g2.addColorStop(1,'#cc00cc');
+        ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx,cy,9,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#ffccff'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+        ctx.fillText('SP',cx,cy+4); ctx.textAlign='left';
       }
       ctx.globalAlpha=1;
     });
