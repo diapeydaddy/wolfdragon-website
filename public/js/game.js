@@ -21,7 +21,10 @@
 
   const ROWS     = 3;
   const GROUND_Y = H - 22;
-  const SC2      = 3;   // sprite scale — 3px per pixel for bigger, more detailed sprites
+  const SC2      = 3;   // WD sprite scale — 3px per pixel
+  const GRUNT_SC = 4;   // grunt scale  — 14×20 sprite → 56×80 screen px ≈ WD size
+  const ARCH_SC  = 4;   // archer scale — 12×20 sprite → 48×80 screen px ≈ WD size
+  const BRUTE_SC = 4;   // brute scale  — 18×24 sprite → 72×96 screen px (~33% bigger)
   // Row Y positions spaced for SC2=3 sprite heights (~84px per sprite)
   const ROW_Y    = [GROUND_Y - 88, GROUND_Y - 178, GROUND_Y - 268];
 
@@ -287,36 +290,36 @@
   ];
 
   // ─── sprite sizes (auto-calculated) ───────────────────────────────────────
-  const WD_W    = WD_IDLE[0].length   * DS2;
+  const WD_W    = WD_IDLE[0].length   * SC2;
   const WD_H    = WD_IDLE.length      * SC2;
-  const GRUNT_W = SPR_GRUNT[0].length * DS2;
-  const GRUNT_H = SPR_GRUNT.length    * SC2;
-  const ARCH_W  = SPR_ARCHER[0].length* DS2;
-  const ARCH_H  = SPR_ARCHER.length   * SC2;
-  const BRUTE_W = SPR_BRUTE[0].length * DS2;
-  const BRUTE_H = SPR_BRUTE.length    * SC2;
-  const FB_W    = SPR_FB[0].length    * DS2;
+  const GRUNT_W = SPR_GRUNT[0].length  * GRUNT_SC;
+  const GRUNT_H = SPR_GRUNT.length     * GRUNT_SC;
+  const ARCH_W  = SPR_ARCHER[0].length * ARCH_SC;
+  const ARCH_H  = SPR_ARCHER.length    * ARCH_SC;
+  const BRUTE_W = SPR_BRUTE[0].length  * BRUTE_SC;
+  const BRUTE_H = SPR_BRUTE.length     * BRUTE_SC;
+  const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
-  const SP_W    = SPR_SPELL[0].length * DS2;
+  const SP_W    = SPR_SPELL[0].length * SC2;
   const SP_H    = SPR_SPELL.length    * SC2;
 
 
   // ─── enemy type definitions ───────────────────────────────────────────────
   const ENEMY_TYPES = {
     grunt: {
-      sprite: SPR_GRUNT, w: GRUNT_W, h: GRUNT_H,
+      sprite: SPR_GRUNT, w: GRUNT_W, h: GRUNT_H, scale: GRUNT_SC,
       hp: 40, speed: 0.9, shootCd: 180, dmg: 10, score: 100,
       dropRate: 0.15,
     },
     archer: {
-      sprite: SPR_ARCHER, w: ARCH_W, h: ARCH_H,
+      sprite: SPR_ARCHER, w: ARCH_W, h: ARCH_H, scale: ARCH_SC,
       hp: 25, speed: 0.55, shootCd: 90, dmg: 8, score: 150,
       dropRate: 0.12,
       // archers hang back and shoot triple
       minX: 420,
     },
     brute: {
-      sprite: SPR_BRUTE, w: BRUTE_W, h: BRUTE_H,
+      sprite: SPR_BRUTE, w: BRUTE_W, h: BRUTE_H, scale: BRUTE_SC,
       hp: 120, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
       dropRate: 0.4,
     },
@@ -744,7 +747,7 @@
       ctx.shadowBlur  = 0;
 
       // Shield sprite overlaid on front side
-      const shX = PL.facing > 0 ? PL.x + PL.w - 4 : PL.x - SPR_SHIELD[0].length*DS2 + 4;
+      const shX = PL.facing > 0 ? PL.x + PL.w - 4 : PL.x - SPR_SHIELD[0].length*SC2 + 4;
       spr(SPR_SHIELD, shX, wy + PL.h/2 - SPR_SHIELD.length*SC2/2, SC2);
     }
 
@@ -797,7 +800,7 @@
       const def=ENEMY_TYPES[e.type];
       ctx.globalAlpha=(e.flashT>0&&Math.floor(e.flashT/2)%2===0)?0.2:1;
       // flip=true when enemy faces RIGHT (chasing player who went behind)
-      spr(def.sprite, e.x, e.y, SC2, e.facing > 0);
+      spr(def.sprite, e.x, e.y, def.scale, e.facing > 0);
       ctx.globalAlpha=1;
       if(e.hp<e.maxHp){
         ctx.fillStyle='#2a0000'; ctx.fillRect(e.x,e.y-6,def.w,3);
@@ -824,7 +827,7 @@
     const t=Date.now()/200;
     drops.forEach(d=>{
       ctx.globalAlpha=0.55+Math.sin(t)*0.45;
-      spr(SPR_HEALTH,d.x,ROW_Y[d.row]-4,DS2);
+      spr(SPR_HEALTH,d.x,ROW_Y[d.row]-4,SC2);
       ctx.globalAlpha=1;
     });
   }
