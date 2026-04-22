@@ -539,17 +539,18 @@
       e.facing = dirToPlayer;   // enemy flips sprite to face player
 
       if(e.type === 'archer') {
-        // Archers keep a preferred distance — approach if too close, retreat if too far
+        // Archers maintain a preferred distance but NEVER leave the screen
         const dist = Math.abs(playerCX - eCX);
-        const ideal = 280;
-        if(dist < ideal - 40) {
-          // too close — back away from player
-          e.x -= dirToPlayer * e.speed;
-        } else if(dist > ideal + 40) {
-          // too far — close in
+        const ideal = 220;
+        if(dist < ideal - 50) {
+          // Too close — retreat at HALF speed so the player can always catch up
+          e.x -= dirToPlayer * e.speed * 0.5;
+        } else if(dist > ideal + 60) {
+          // Too far — advance at full speed
           e.x += dirToPlayer * e.speed;
         }
-        // else: sit in comfortable range
+        // Hard clamp: archers are ALWAYS kept on screen, no escaping off either edge
+        e.x = Math.max(10, Math.min(W - def.w - 10, e.x));
       } else {
         // Grunts and Brutes charge straight at the player
         e.x += dirToPlayer * e.speed;
@@ -585,7 +586,7 @@
       }
     });
 
-    enemies = enemies.filter(e=>e.hp>0 && e.x>-80);
+    enemies = enemies.filter(e=>e.hp>0 && e.x>-80 && e.x<W+120);
 
     // projectiles
     projs.forEach(p=>{
