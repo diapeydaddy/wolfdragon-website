@@ -958,7 +958,8 @@
         // Contact damage with cooldown — prevents instant-kill on overlap
         if (e.meleeCd > 0) e.meleeCd--;
         const plHb = {x:PL.x+12, y:ROW_Y[PL.row]+10, w:PL.w-24, h:PL.h-16};
-        if (e.meleeCd === 0 && ov({x:e.x,y:e.y,w:def.w,h:def.h}, plHb)) {
+        const bossCx = {x:e.x+def.w*0.3, y:e.y+def.h*0.25, w:def.w*0.4, h:def.h*0.5};
+        if (e.meleeCd === 0 && ov(bossCx, plHb)) {
           hurtPlayer(def.dmg * 0.5);
           e.meleeCd = 60;
         }
