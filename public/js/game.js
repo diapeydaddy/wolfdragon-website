@@ -406,7 +406,7 @@
     },
     brute: {
       drawFn: drawBruteSprite, w: BRUTE_W, h: BRUTE_H,
-      hp: 120, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
+      hp: 240, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
       dropRate: 0.4, spellDrop: 0.20,
     },
     // ── BOSSES ──
@@ -1462,6 +1462,42 @@
       if(e.type==='brute'&&e.phase==='charge'&&e.hp===e.maxHp){
         ctx.fillStyle='#ff8800'; ctx.font='bold 9px monospace'; ctx.textAlign='center';
         ctx.fillText('BRUTE',e.x+def.w/2,e.y-9); ctx.textAlign='left';
+      }
+      // Brute wind-up warning
+      if(e.type==='brute' && e.windupT > 0){
+        const pulse = Math.floor(e.windupT / 4) % 2 === 0;
+        ctx.globalAlpha = pulse ? 0.9 : 0.4;
+        ctx.fillStyle = '#ff6600';
+        ctx.font = 'bold 18px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('!!', e.x + def.w/2, e.y - 14);
+        ctx.textAlign = 'left';
+        ctx.globalAlpha = 1;
+      }
+      // Brute swing arc
+      if(e.type==='brute' && e.swingT > 0){
+        const prog = 1 - e.swingT / 20;
+        const arcX = e.facing > 0 ? e.x + def.w - 10 : e.x + 10;
+        const arcDir = e.facing > 0 ? 1 : -1;
+        ctx.save();
+        ctx.globalAlpha = 0.75 * (1 - prog * 0.5);
+        ctx.strokeStyle = '#ff8800';
+        ctx.lineWidth = 14;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        const startAngle = arcDir > 0 ? -Math.PI*0.55 : -Math.PI*0.45;
+        const endAngle   = arcDir > 0 ? Math.PI*0.15  : Math.PI + Math.PI*0.55;
+        const radius = 80 + prog * 60;
+        ctx.arc(arcX, e.y + def.h * 0.4, radius,
+                arcDir > 0 ? startAngle : Math.PI - Math.PI*0.15,
+                arcDir > 0 ? endAngle   : Math.PI + Math.PI*0.55);
+        ctx.stroke();
+        // bright leading edge
+        ctx.globalAlpha = 1 - prog * 0.4;
+        ctx.strokeStyle = '#ffcc00';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.restore();
       }
     });
   }
