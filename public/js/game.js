@@ -1,11 +1,14 @@
 /**
- * WOLFDRAGON — Browser Game  v0.4
+ * WOLFDRAGON — Browser Game  v0.5
  *
- * v0.4:
- *   - Revised Wolfdragon sprite: wolf head + wings + scaled body, no cape
- *   - 3 enemy types: Grunt, Archer, Brute
- *   - Easier difficulty: bigger attack range, holdable shield, slower projectiles
- *   - Hybrid enemy entry: demons drop from top into rows then charge
+ * v0.5:
+ *   - Vector sprite drawing: all characters use Canvas 2D bezier curves + gradients
+ *   - WolfDragon: purple dragon-wolf, large bat wings, wolf head, red eye, sash, tail
+ *   - Grunt: lean red hunched demon, reaching claws
+ *   - Archer: slim robed demon caster, raised casting arm
+ *   - Brute: massive armored red demon, huge horns, thick arms
+ *   - Gameplay fixes: no shield+attack combo, melee collision harms only player,
+ *                     fireballs cross rows and fire regardless of row
  */
 
 (function () {
@@ -21,14 +24,10 @@
 
   const ROWS     = 3;
   const GROUND_Y = H - 22;
-  const SC2      = 3;   // WD sprite scale — 3px per pixel
-  const GRUNT_SC = 4;   // grunt scale  — 16×24 sprite → 64×96 screen px ≈ WD size
-  const ARCH_SC  = 4;   // archer scale — 14×22 sprite → 56×88 screen px ≈ WD size
-  const BRUTE_SC = 4;   // brute scale  — 20×28 sprite → 80×112 screen px (~30% bigger)
-  // Row Y positions spaced for SC2=3 sprite heights (~84px per sprite)
+  const SC2      = 3;   // scale for pixel-art projectile/shield/health sprites
   const ROW_Y    = [GROUND_Y - 88, GROUND_Y - 178, GROUND_Y - 268];
 
-  // ─── pixel renderer ──────────────────────────────────────────────────────
+  // ─── pixel renderer (projectiles, shield, health drops only) ─────────────
   function spr(grid, x, y, scale, flipX) {
     scale = scale || SC2;
     const R = grid.length, C = grid[0].length;
@@ -41,216 +40,7 @@
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SPRITES  —  side-profile pixel art, SC2=3 (each pixel = 3×3 screen px)
-  //  Wolfdragon faces RIGHT by default; flip when facing left.
-  //  Demons face LEFT by default; flip when e.facing > 0 (chasing player).
-  //  Dark outline (#080012) wraps every sprite for definition.
-  // ═══════════════════════════════════════════════════════════════════════════
   const _ = null;
-
-
-  // ── Wolfdragon palette ──────────────────────────────────────────────────
-  const XO = '#080012'; // hard outline
-  const WA = '#18083a'; // body darkest
-  const WB = '#2e1260'; // body dark
-  const WC = '#4a1e88'; // body mid
-  const WD = '#6830b0'; // body bright
-  const WE = '#8a48cc'; // body highlight
-  const WF = '#ac66e8'; // body brightest
-  const WR = '#ff1111'; // eye red
-  const WGL= '#ff8800'; // eye glow orange
-  const WT = '#f0f0f0'; // fang/tooth
-  const WMO= '#100008'; // mouth interior
-  const WHR= '#7720aa'; // horn purple-dark
-  const WH2= '#aa44dd'; // horn purple-light
-  const WN1= '#12082a'; // wing darkest membrane
-  const WN2= '#28104e'; // wing dark
-  const WN3= '#441a7a'; // wing mid
-  const WN4= '#6828a8'; // wing highlight
-  const WNR= '#8822cc'; // wing leading edge
-  const WTE= '#4a1030'; // tail dark
-  const WTM= '#7a1c50'; // tail mid
-  const SC1= '#180830'; // dragon scale dark
-  const DS2= '#2e1450'; // dragon scale mid
-  const SC3= '#4a2270'; // dragon scale light
-  const CL1= '#d0c4f0'; // claw light
-  const CL2= '#9080c8'; // claw mid
-  const WS1= '#aa1133'; // red sash dark
-  const WS2= '#ee3355'; // red sash light
-
-  // ── WOLFDRAGON — 22 wide × 30 tall, FACING RIGHT ────────────────────────
-  // Based on profile view: large bat wings (cols 0-6), wolf head snout→R (cols 12-21)
-  // Red sash at waist, dragon tail lower-left, scaled digitigrade legs
-  const WD_IDLE = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21
-  [ WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  0 wing apex
-  [ WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  1 wing leading finger
-  [ WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   WHR, _,   _,   _,   _,   _,   _,   _,   _ ],  //  2 wing + far horn tip
-  [ WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   WHR, WH2, WHR, _,   _,   _,   _,   _,   _,   _ ],  //  3 wing + horn
-  [ WNR, WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   WA,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  WA,  _,   _,   _ ],  //  4 wing + skull top
-  [ WN1, WNR, WN4, WN3, WN2, XO,  _,   _,   WB,  WC,  WD,  WE,  WF,  WGL, WR,  WF,  WE,  WD,  WC,  XO,  _,   _ ],  //  5 wing + EYE ROW
-  [ WN1, WN2, WNR, WN4, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  WA,  XO,  WT,  _,   _,   _,   _ ],  //  6 shoulder + snout top + fang
-  [ WN2, WN3, WN2, XO,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WMO, WMO, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  7 lower wing + jaw
-  [ WN3, WN2, XO,  WB,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  8 wing base + chin/neck
-  [ WN2, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  9 upper chest
-  [ XO,  WB,  WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 10 broad chest
-  [ WN2, WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  WC,  DS2, SC3, CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 11 chest + arm
-  [ WN3, WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  DS2, SC3, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _,   _ ],  // 12 mid body + forearm
-  [ WN4, WB,  WC,  WD,  WE,  WE,  WD,  WC,  SC1, DS2, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 13 lower body + claws
-  [ _,   WS1, WS2, WS1, WD,  WC,  WB,  XO,  _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 14 RED SASH + claw tips
-  [ WTE, WTM, WS1, WS2, WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 15 sash lower + tail base
-  [ WTE, WTM, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   SC1, DS2, SC3, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 16 tail + upper thigh
-  [ WTM, WTE, XO,  SC1, DS2, SC3, SC1, XO,  DS2, SC3, DS2, SC1, DS2, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 17 tail + thigh lower
-  [ XO,  WTE, SC1, DS2, SC3, DS2, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 18 tail + knee
-  [ _,   XO,  SC1, DS2, SC3, XO,  _,   XO,  SC1, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 19 tail tip + lower leg
-  [ _,   _,   XO,  DS2, XO,  WTE, _,   _,   XO,  SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20 tail curl + ankle
-  [ _,   _,   WTE, WTM, XO,  _,   _,   _,   CL2, DS2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21 tail end + foot
-  [ _,   _,   _,   WTE, _,   _,   _,   CL1, CL2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22 toe claws
-  [ _,   _,   _,   _,   _,   _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23 claw tips
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 26
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 27
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 28
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 29
-  ];
-
-  // ATTACK frame — jaw open wide, arm lunges further right
-  const WD_ATTACK = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21
-  [ WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  0
-  [ WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  1
-  [ WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   WHR, _,   _,   _,   _,   _,   _,   _,   _ ],  //  2
-  [ WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   WHR, WH2, WHR, _,   _,   _,   _,   _,   _,   _ ],  //  3
-  [ WNR, WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   WA,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  WA,  _,   _,   _ ],  //  4
-  [ WN1, WNR, WN4, WN3, WN2, XO,  _,   _,   WB,  WC,  WD,  WE,  WF,  WGL, WR,  WF,  WE,  WD,  WC,  XO,  _,   _ ],  //  5 eye
-  [ WN1, WN2, WNR, WN4, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  WA,  XO,  WT,  WT,  _,   _,   _ ],  //  6 snout + fangs showing
-  [ WN2, WN3, WN2, XO,  WC,  WD,  WE,  WF,  WE,  WD,  WMO, WMO, WMO, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  7 jaw open wide
-  [ WN3, WN2, XO,  WB,  WC,  WD,  WE,  WD,  WC,  XO,  WMO, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  8 lower jaw drops
-  [ WN2, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  9
-  [ XO,  WB,  WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 10
-  [ WN2, WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  DS2, SC3, CL1, CL2, CL1, CL2, CL1, XO,  _,   _,   _,   _,   _ ],  // 11 arm extended
-  [ WN3, WC,  WD,  WE,  WF,  WF,  WE,  WD,  DS2, SC3, CL1, CL2, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _ ],  // 12 forearm lunge
-  [ WN4, WB,  WC,  WD,  WE,  WE,  WD,  SC1, DS2, CL1, CL2, CL1, CL2, CL1, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 13 claws spread
-  [ _,   WS1, WS2, WS1, WD,  WC,  WB,  XO,  _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 14
-  [ WTE, WTM, WS1, WS2, WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 15
-  [ WTE, WTM, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   SC1, DS2, SC3, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 16
-  [ WTM, WTE, XO,  SC1, DS2, SC3, SC1, XO,  DS2, SC3, DS2, SC1, DS2, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 17
-  [ XO,  WTE, SC1, DS2, SC3, DS2, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 18
-  [ _,   XO,  SC1, DS2, SC3, XO,  _,   XO,  SC1, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 19
-  [ _,   _,   XO,  DS2, XO,  WTE, _,   _,   XO,  SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20
-  [ _,   _,   WTE, WTM, XO,  _,   _,   _,   CL2, DS2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21
-  [ _,   _,   _,   WTE, _,   _,   _,   CL1, CL2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
-  [ _,   _,   _,   _,   _,   _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 26
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 27
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 28
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 29
-  ];
-
-  // ── DEMON SPRITES — all face LEFT (col 0 = front/snout side) ─────────────
-  const DR = '#cc2200'; const DR2= '#aa1800'; const DR3= '#881000';
-  const DR4= '#ff4422'; const DH = '#cc9900'; const DH2= '#886600';
-  const DE = '#ffee44'; const DT = '#f0f0f0'; const DW = '#550000';
-  const DW2= '#330000'; const DCL= '#e8c8a0';
-
-  // ── GRUNT — 16 wide × 24 tall — lean red demon, profile view ─────────────
-  const SPR_GRUNT = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15
-  [ _,   DH,  DH,  _,   _,   _,   _,   _,   _,   _,   DH2, DH,  _,   _,   _,   _ ],  //  0 horns
-  [ DH,  DH2, DH,  DH,  _,   _,   _,   _,   _,   DH2, DH,  DH2, _,   _,   _,   _ ],  //  1 horn body
-  [ XO,  DR3, DR2, DR,  DR,  DR,  DR,  DR,  DR,  DR2, DR3, XO,  _,   _,   _,   _ ],  //  2 head
-  [ DR4, DE,  DR3, DR2, DR,  DR,  DR2, DE,  DR4, DR3, DR2, DR4, _,   _,   _,   _ ],  //  3 brow/eyes
-  [ DR3, DR4, DR4, DR3, DR2, DR3, DR3, DR4, DR4, DR3, DR2, DR3, _,   _,   _,   _ ],  //  4 snout
-  [ XO,  DR3, DT,  DR4, DR3, DR4, DT,  DR4, DR3, DR2, XO,  _,   _,   _,   _,   _ ],  //  5 teeth/fangs
-  [ _,   XO,  DR3, DW,  DR2, DW,  DR3, DR2, XO,  _,   _,   _,   _,   _,   _,   _ ],  //  6 lower jaw
-  [ DW2, DW,  DR3, DR2, DR3, DR2, DR3, DW,  DW2, _,   _,   _,   _,   _,   _,   _ ],  //  7 neck
-  [ DW,  DR3, DR4, DR4, DR3, DR4, DR4, DR3, DR2, DW,  _,   _,   _,   _,   _,   _ ],  //  8 shoulder
-  [ DR3, DR4, DR4, DR3, DR4, DR3, DR4, DR4, DR3, DR2, DW,  _,   _,   _,   _,   _ ],  //  9 chest
-  [ DR2, DR4, DR3, DR4, DR3, DR4, DR3, DR4, DR2, DR3, DW2, _,   _,   _,   _,   _ ],  // 10 upper belly
-  [ XO,  DR3, DR4, DR3, DR4, DR3, DR4, DR3, DR2, XO,  DCL, XO,  _,   _,   _,   _ ],  // 11 belly + arm
-  [ _,   XO,  DR3, DR2, DR3, DR2, DR3, DR2, XO,  DCL, DCL, DCL, XO,  _,   _,   _ ],  // 12 lower belly + claw
-  [ _,   _,   DR3, DR2, DR3, DR2, DR2, XO,  _,   DCL, DCL, XO,  _,   _,   _,   _ ],  // 13 hip + claw tips
-  [ _,   _,   _,   DR3, DR2, DR3, DR3, DR2, _,   _,   _,   _,   _,   _,   _,   _ ],  // 14 upper legs
-  [ _,   _,   _,   DR2, DR3, DR2, DR2, DR3, _,   _,   _,   _,   _,   _,   _,   _ ],  // 15
-  [ _,   _,   DR3, DR2, DR3, _,   _,   DR3, DR2, _,   _,   _,   _,   _,   _,   _ ],  // 16 knees bent
-  [ _,   _,   DR2, DR4, _,   _,   _,   _,   DR4, DR2, _,   _,   _,   _,   _,   _ ],  // 17 lower legs
-  [ _,   _,   DR4, DR3, _,   _,   _,   _,   DR3, DR4, _,   _,   _,   _,   _,   _ ],  // 18
-  [ _,   _,   DCL, DR3, _,   _,   _,   _,   DR3, DCL, _,   _,   _,   _,   _,   _ ],  // 19 feet
-  [ _,   DCL, DR2, _,   _,   _,   _,   _,   _,   DR2, DCL, _,   _,   _,   _,   _ ],  // 20 toe claws
-  [ DCL, DR3, _,   _,   _,   _,   _,   _,   _,   _,   DR3, DCL, _,   _,   _,   _ ],  // 21 claw tips
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
-  ];
-
-  // ── ARCHER — 14 wide × 22 tall — slim robed caster, arm raised to shoot ──
-  const AR = '#aa2800'; const AR2= '#882000'; const AR3= '#661500';
-  const AR4= '#cc3300'; const ABL= '#1a2a66'; const ABL2='#2a3a88';
-  const ABL3='#3a4aaa';
-  const SPR_ARCHER = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13
-  [ _,   DH,  DH2, _,   _,   _,   _,   _,   _,   DH2, DH,  _,   _,   _ ],  //  0 horns
-  [ DH2, DH,  DH2, DH,  _,   _,   _,   _,   DH,  DH2, DH,  _,   _,   _ ],  //  1
-  [ XO,  AR3, AR2, AR,  AR,  AR,  AR,  AR,  AR,  AR2, XO,  _,   _,   _ ],  //  2 head
-  [ AR3, AR4, DE,  AR3, AR2, AR3, DE,  AR4, AR3, AR2, AR3, _,   _,   _ ],  //  3 eyes
-  [ AR2, AR4, AR4, AR3, AR2, AR3, AR4, AR4, AR3, AR2, AR2, _,   _,   _ ],  //  4 snout
-  [ XO,  AR3, DT,  AR4, AR3, AR4, DT,  AR3, AR2, XO,  _,   _,   _,   _ ],  //  5 fangs
-  [ _,   XO,  AR3, DW,  AR2, DW,  AR3, AR2, XO,  _,   _,   _,   _,   _ ],  //  6 jaw
-  [ _,   ABL2,ABL3,ABL2,ABL, ABL2,ABL3,ABL2,ABL3,ABL2,_,   _,   _,   _ ],  //  7 robe collar
-  [ ABL2,ABL, ABL3,ABL2,ABL, ABL2,ABL, ABL3,ABL2,ABL, ABL2,_,   _,   _ ],  //  8 chest robe
-  [ ABL3,ABL2,ABL, ABL3,ABL2,ABL3,ABL2,ABL, ABL3,ABL2,ABL3,_,   _,   _ ],  //  9 body
-  [ ABL2,ABL3,ABL2,ABL, ABL2,ABL3,ABL2,ABL3,ABL2,ABL3,ABL2,_,   _,   _ ],  // 10 robe mid
-  [ _,   ABL3,ABL2,DCL, ABL2,ABL3,ABL2,DCL, ABL3,ABL2,_,   _,   _,   _ ],  // 11 arms + claw
-  [ _,   _,   ABL3,DCL, ABL2,ABL3,DCL, ABL2,ABL3,_,   _,   _,   _,   _ ],  // 12 raised arm shoot
-  [ _,   _,   AR3, AR2, ABL2,ABL3,AR2, AR3, _,   _,   _,   _,   _,   _ ],  // 13 robe lower
-  [ _,   _,   _,   AR3, AR2, AR3, AR2, AR3, _,   _,   _,   _,   _,   _ ],  // 14 legs
-  [ _,   _,   _,   AR2, AR3, AR2, AR3, AR2, _,   _,   _,   _,   _,   _ ],  // 15
-  [ _,   _,   AR3, AR2, AR3, _,   AR3, AR2, AR3, _,   _,   _,   _,   _ ],  // 16 knees
-  [ _,   _,   AR2, AR3, _,   _,   _,   AR3, AR2, _,   _,   _,   _,   _ ],  // 17 lower legs
-  [ _,   _,   DCL, AR3, _,   _,   _,   AR3, DCL, _,   _,   _,   _,   _ ],  // 18 feet
-  [ _,   DCL, AR3, _,   _,   _,   _,   _,   AR3, DCL, _,   _,   _,   _ ],  // 19 claws
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21
-  ];
-
-  // ── BRUTE — 20 wide × 28 tall — massive armored demon, profile view ───────
-  const BR = '#991800'; const BR2= '#cc2200'; const BR3= '#ff3311';
-  const BR4= '#770f00'; const BRA= '#4a4a4a'; const BRA2='#707070';
-  const BRA3='#2a2a2a'; const BRH= '#ccaa00';
-  const SPR_BRUTE = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19
-  [ _,   _,   BRH, BRH, _,   _,   _,   _,   _,   _,   _,   _,   _,   BRH, BRH, _,   _,   _,   _,   _ ],  //  0 horns
-  [ _,   BRH, BRH, BRH, BRH, _,   _,   _,   _,   _,   _,   BRH, BRH, BRH, BRH, _,   _,   _,   _,   _ ],  //  1 horn body
-  [ BRH, BRH, XO,  BR4, BR,  BR,  BR,  BR,  BR,  BR,  BR4, XO,  BRH, BRH, _,   _,   _,   _,   _,   _ ],  //  2 head
-  [ XO,  BR4, BR3, DE,  BR2, BR,  BR,  BR2, DE,  BR3, BR4, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  3 eyes
-  [ BRA3,BRA, BR4, BR3, BR2, BR,  BR,  BR2, BR3, BR4, BRA, BRA3,_,   _,   _,   _,   _,   _,   _,   _ ],  //  4 armored brow
-  [ XO,  BRA3,BRA2,DT,  BR3, BR2, BR3, DT,  BRA2,BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  5 fangs
-  [ _,   XO,  BRA3,BR4, DW,  DW2, DW,  BR4, BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  6 lower jaw
-  [ BRA3,BRA, BRA2,BR4, BR3, BR2, BR3, BR4, BRA2,BRA, BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  7 neck armored
-  [ BRA2,BRA2,BRA, BRA2,BR4, BR3, BR4, BRA2,BRA, BRA2,BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _ ],  //  8 huge shoulder
-  [ BRA, BRA2,BRA3,BRA, BRA2,BR4, BRA2,BRA, BRA3,BRA2,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _ ],  //  9 chest plate wide
-  [ BRA3,BRA, BRA2,BRA3,BRA, BRA2,BRA3,BRA2,BRA, BRA3,BRA, BRA2,BRA3,BRA, _,   _,   _,   _,   _,   _ ],  // 10 body armored
-  [ BRA2,BRA3,BRA, BRA2,BRA3,DCL, BRA2,BRA3,BRA, BRA2,BRA3,DCL, BRA2,BRA3,XO,  _,   _,   _,   _,   _ ],  // 11 arms + claw
-  [ XO,  BRA2,BRA3,BRA, DCL, DCL, BRA3,BRA, DCL, DCL, BRA3,BRA2,BRA3,XO,  _,   _,   _,   _,   _,   _ ],  // 12 claws spread
-  [ _,   XO,  BRA3,BR4, BR3, BR4, BRA3,BR4, BR3, BR4, BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 13 waist
-  [ _,   _,   BRA2,BR4, BR2, BR4, BRA2,BR4, BR2, BR4, BRA2,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 14 hip
-  [ _,   _,   _,   BRA3,BRA2,BRA, BRA3,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 15 upper legs
-  [ _,   _,   _,   BRA2,BRA3,BRA2,BRA3,BRA2,BRA3,BRA2,_,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 16
-  [ _,   _,   BRA3,BRA2,BRA, BRA3,BRA, BRA3,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 17 knees
-  [ _,   _,   BRA2,BRA3,BRA2,BRA3,_,   BRA3,BRA2,BRA3,BRA2,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 18 lower legs
-  [ _,   _,   BRA3,BRA2,BRA3,_,   _,   _,   BRA3,BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 19
-  [ _,   _,   DCL, BRA3,_,   _,   _,   _,   _,   BRA3,DCL, _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20 feet
-  [ _,   DCL, BRA3,_,   _,   _,   _,   _,   _,   _,   BRA3,DCL, _,   _,   _,   _,   _,   _,   _,   _ ],  // 21 toe claws
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 26
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 27
-  ];
 
   // ── Projectile sprites ─────────────────────────────────────────────────────
   const FY='#ffee44',FO='#ff8800',FR='#ff3300',FW2='#ffffff';
@@ -308,37 +98,447 @@
     [_,_,HG2,HG,HG,HG2,_,_],
   ];
 
-  // ─── sprite sizes (auto-calculated) ───────────────────────────────────────
-  const WD_W    = WD_IDLE[0].length   * SC2;
-  const WD_H    = WD_IDLE.length      * SC2;
-  const GRUNT_W = SPR_GRUNT[0].length  * GRUNT_SC;
-  const GRUNT_H = SPR_GRUNT.length     * GRUNT_SC;
-  const ARCH_W  = SPR_ARCHER[0].length * ARCH_SC;
-  const ARCH_H  = SPR_ARCHER.length    * ARCH_SC;
-  const BRUTE_W = SPR_BRUTE[0].length  * BRUTE_SC;
-  const BRUTE_H = SPR_BRUTE.length     * BRUTE_SC;
+  // ─── sprite sizes ─────────────────────────────────────────────────────────
+  const WD_W   = 66, WD_H   = 90;
+  const GRUNT_W = 64, GRUNT_H = 96;
+  const ARCH_W  = 56, ARCH_H  = 88;
+  const BRUTE_W = 80, BRUTE_H = 112;
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
   const SP_W    = SPR_SPELL[0].length * SC2;
   const SP_H    = SPR_SPELL.length    * SC2;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  VECTOR SPRITE DRAW FUNCTIONS
+  //  All characters drawn facing RIGHT by default.
+  //  Pass flipX=true to mirror (face left).
+  //  Coordinates are local to the sprite bounding box (0,0 = top-left).
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── WOLFDRAGON (66×90) ────────────────────────────────────────────────────
+  // Purple dragon-wolf: bat wings, wolf head with snout right, horns,
+  // glowing red eye, red sash, dragon tail, digitigrade legs.
+  function drawWDSprite(ox, oy, flipX, atk) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + WD_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // TAIL — curling from lower-left body
+    ctx.beginPath();
+    ctx.moveTo(15, 58);
+    ctx.bezierCurveTo(2, 68, -6, 80, 4, 87);
+    ctx.bezierCurveTo(10, 92, 18, 88, 12, 82);
+    ctx.strokeStyle = '#7a1c50'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(15, 58);
+    ctx.bezierCurveTo(3, 67, -4, 78, 5, 85);
+    ctx.strokeStyle = '#4a1030'; ctx.lineWidth = 5; ctx.stroke();
+
+    // BAT WINGS — large, behind body (3 angular fingers)
+    const wg = ctx.createLinearGradient(1, 3, 22, 58);
+    wg.addColorStop(0, '#1a0835'); wg.addColorStop(0.55, '#2e1260'); wg.addColorStop(1, '#441a7a');
+    ctx.beginPath();
+    ctx.moveTo(22, 30);   // wing root at shoulder
+    ctx.lineTo(1,  3);    // apex / finger 1 tip
+    ctx.lineTo(8,  24);   // notch
+    ctx.lineTo(0,  36);   // finger 2 tip
+    ctx.lineTo(5,  50);   // notch
+    ctx.lineTo(2,  60);   // finger 3 tip
+    ctx.lineTo(20, 55);   // wing base lower
+    ctx.closePath();
+    ctx.fillStyle = wg; ctx.fill();
+    ctx.strokeStyle = '#6828a8'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Leading-edge finger bones
+    ctx.strokeStyle = '#8822cc'; ctx.lineWidth = 1.5;
+    [[22,30, 1,3],[22,36, 0,36],[22,48, 2,60]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // BACK LEG (left, slightly faded)
+    ctx.save(); ctx.globalAlpha = 0.65;
+    ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(22,64); ctx.lineTo(16,76); ctx.lineTo(10,84); ctx.lineTo(8,90);
+    ctx.strokeStyle = '#2e1260'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#d0c4f0';
+    [[8,90,4,87],[8,90,6,91],[8,90,11,90]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    ctx.restore();
+
+    // BODY — muscular purple torso
+    const bg = ctx.createRadialGradient(33, 44, 4, 33, 44, 22);
+    bg.addColorStop(0, '#ac66e8'); bg.addColorStop(0.5, '#6830b0'); bg.addColorStop(1, '#2e1260');
+    ctx.beginPath();
+    ctx.moveTo(22, 30);
+    ctx.bezierCurveTo(14, 32, 12, 40, 14, 52);
+    ctx.bezierCurveTo(16, 62, 22, 67, 31, 67);
+    ctx.bezierCurveTo(41, 67, 48, 60, 48, 51);
+    ctx.bezierCurveTo(50, 40, 46, 30, 40, 27);
+    ctx.bezierCurveTo(34, 22, 27, 25, 22, 30);
+    ctx.closePath();
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // RED SASH at waist
+    ctx.beginPath(); ctx.ellipse(31, 63, 13, 5, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#aa1133'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(29, 61, 7, 2.5, -0.15, 0, Math.PI*2);
+    ctx.fillStyle = '#ee3355'; ctx.fill();
+
+    // FRONT LEG (right, digitigrade)
+    ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.moveTo(36,64); ctx.lineTo(40,76); ctx.lineTo(46,84); ctx.lineTo(50,90);
+    ctx.strokeStyle = '#4a1e88'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(36,64); ctx.lineTo(40,76); ctx.lineTo(46,84); ctx.lineTo(50,90);
+    ctx.strokeStyle = '#6830b0'; ctx.lineWidth = 6; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#d0c4f0';
+    [[50,90,46,87],[50,90,48,91],[50,90,53,89]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // ARM + CLAWS (reaches further when attacking)
+    const ax = atk ? 62 : 56;
+    const ay = atk ? 42 : 38;
+    ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(44,37); ctx.quadraticCurveTo(52,34,ax,ay);
+    ctx.strokeStyle = '#4a1e88'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(44,37); ctx.quadraticCurveTo(52,34,ax,ay);
+    ctx.strokeStyle = '#6830b0'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#d0c4f0';
+    [[-5,-3],[0,0],[5,3]].forEach(([dy,slant])=>{
+      ctx.beginPath(); ctx.moveTo(ax+slant, ay+dy); ctx.lineTo(ax+slant+8, ay+dy-3); ctx.stroke();
+    });
+
+    // NECK
+    ctx.lineWidth = 11;
+    ctx.beginPath(); ctx.moveTo(38,28); ctx.lineTo(44,16);
+    ctx.strokeStyle = '#4a1e88'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(38,28); ctx.lineTo(44,16);
+    ctx.strokeStyle = '#6830b0'; ctx.lineWidth = 7; ctx.stroke();
+
+    // HEAD — wolf skull
+    const hg = ctx.createRadialGradient(47,13,2,47,13,14);
+    hg.addColorStop(0, '#8a48cc'); hg.addColorStop(0.6, '#4a1e88'); hg.addColorStop(1, '#18083a');
+    ctx.beginPath(); ctx.ellipse(46,13,13,11,0.2,0,Math.PI*2);
+    ctx.fillStyle = hg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // HORNS (two curved, one behind one front)
+    ctx.beginPath(); ctx.moveTo(41,5); ctx.bezierCurveTo(36,-4,30,-2,34,7);
+    ctx.strokeStyle = '#7720aa'; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(41,5); ctx.bezierCurveTo(37,-2,32,0,35,6);
+    ctx.strokeStyle = '#aa44dd'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(53,3); ctx.bezierCurveTo(58,-4,63,-1,59,8);
+    ctx.strokeStyle = '#7720aa'; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(53,3); ctx.bezierCurveTo(57,-3,61,0,58,7);
+    ctx.strokeStyle = '#aa44dd'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // SNOUT (wolf muzzle pointing right)
+    if (atk) {
+      // Upper jaw open
+      ctx.beginPath(); ctx.moveTo(52,11);
+      ctx.bezierCurveTo(57,8,64,9,65,13);
+      ctx.bezierCurveTo(64,15,60,15,55,15); ctx.lineTo(52,15); ctx.closePath();
+      ctx.fillStyle = '#4a1e88'; ctx.fill();
+      ctx.strokeStyle = '#080012'; ctx.lineWidth = 1; ctx.stroke();
+      // Lower jaw
+      ctx.beginPath(); ctx.moveTo(52,16);
+      ctx.bezierCurveTo(57,18,63,19,65,17);
+      ctx.bezierCurveTo(64,20,58,22,53,21); ctx.lineTo(52,19); ctx.closePath();
+      ctx.fillStyle = '#4a1e88'; ctx.fill();
+      ctx.strokeStyle = '#080012'; ctx.lineWidth = 1; ctx.stroke();
+      // Mouth interior dark
+      ctx.beginPath(); ctx.moveTo(52,15); ctx.lineTo(65,14); ctx.lineTo(64,17); ctx.lineTo(52,16); ctx.closePath();
+      ctx.fillStyle = '#100008'; ctx.fill();
+      // Fangs
+      ctx.beginPath(); ctx.moveTo(57,15); ctx.lineTo(59,12); ctx.lineTo(61,15); ctx.fillStyle='#f0f0f0'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(57,16); ctx.lineTo(59,19); ctx.lineTo(61,16); ctx.fillStyle='#f0f0f0'; ctx.fill();
+    } else {
+      // Closed muzzle
+      ctx.beginPath(); ctx.moveTo(52,11);
+      ctx.bezierCurveTo(57,8,64,10,65,13);
+      ctx.bezierCurveTo(64,17,59,18,55,17);
+      ctx.bezierCurveTo(53,20,50,20,50,17); ctx.lineTo(52,11); ctx.closePath();
+      ctx.fillStyle = '#4a1e88'; ctx.fill();
+      ctx.strokeStyle = '#080012'; ctx.lineWidth = 1; ctx.stroke();
+      // Fang hint
+      ctx.beginPath(); ctx.moveTo(62,15); ctx.lineTo(64,12); ctx.lineTo(65,15); ctx.fillStyle='#f0f0f0'; ctx.fill();
+    }
+
+    // EYE — glowing red
+    ctx.beginPath(); ctx.arc(50,11,5,0,Math.PI*2);
+    ctx.fillStyle = 'rgba(255,136,0,0.25)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(50,11,3.5,0,Math.PI*2);
+    ctx.fillStyle = '#ff8800'; ctx.fill();
+    ctx.beginPath(); ctx.arc(50,11,2.5,0,Math.PI*2);
+    ctx.fillStyle = '#ff1111'; ctx.fill();
+    ctx.beginPath(); ctx.arc(51,10,1,0,Math.PI*2);
+    ctx.fillStyle = '#ffffc0'; ctx.fill();
+
+    ctx.restore();
+  }
+
+  // ── GRUNT DEMON (64×96) ───────────────────────────────────────────────────
+  // Lean red humanoid, hunched forward, long reaching arms with claws.
+  function drawGruntSprite(ox, oy, flipX) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + GRUNT_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // HORNS
+    ctx.beginPath(); ctx.moveTo(38,8); ctx.bezierCurveTo(33,0,27,2,30,10);
+    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(48,6); ctx.bezierCurveTo(53,-2,58,1,54,9);
+    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 3; ctx.stroke();
+
+    // HEAD
+    const hg = ctx.createRadialGradient(42,14,2,42,14,12);
+    hg.addColorStop(0, '#ff4422'); hg.addColorStop(0.6, '#cc2200'); hg.addColorStop(1, '#881000');
+    ctx.beginPath(); ctx.ellipse(42,14,12,10,0.15,0,Math.PI*2);
+    ctx.fillStyle = hg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Eyes
+    ctx.beginPath(); ctx.ellipse(47,11,3,2.5,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
+    ctx.beginPath(); ctx.arc(47,11,1.5,0,Math.PI*2); ctx.fillStyle='#220000'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(37,12,2.5,2,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
+    ctx.beginPath(); ctx.arc(37,12,1.2,0,Math.PI*2); ctx.fillStyle='#220000'; ctx.fill();
+    // Fangs
+    ctx.beginPath(); ctx.moveTo(50,18); ctx.lineTo(52,22); ctx.lineTo(54,18); ctx.fillStyle='#f0f0f0'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(44,19); ctx.lineTo(46,23); ctx.lineTo(48,19); ctx.fillStyle='#f0f0f0'; ctx.fill();
+
+    // BODY — hunched, leaning forward
+    const bg = ctx.createRadialGradient(36,45,4,36,45,20);
+    bg.addColorStop(0, '#ff4422'); bg.addColorStop(0.6, '#cc2200'); bg.addColorStop(1, '#661500');
+    ctx.beginPath();
+    ctx.moveTo(40,24);
+    ctx.bezierCurveTo(48,26,52,36,50,50);
+    ctx.bezierCurveTo(48,60,40,64,32,64);
+    ctx.bezierCurveTo(20,64,14,56,14,48);
+    ctx.bezierCurveTo(12,36,22,28,28,24);
+    ctx.closePath();
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // RIGHT ARM — reaching forward with claws
+    ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(46,36); ctx.quadraticCurveTo(56,40,62,52);
+    ctx.strokeStyle = '#881000'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(46,36); ctx.quadraticCurveTo(56,40,62,52);
+    ctx.strokeStyle = '#cc2200'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
+    [[62,52,64,47],[62,52,65,52],[62,52,63,57]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // LEFT ARM — back, partially visible
+    ctx.save(); ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(20,36); ctx.quadraticCurveTo(12,44,8,56);
+    ctx.strokeStyle = '#661500'; ctx.stroke();
+    ctx.restore();
+
+    // LEGS
+    ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.moveTo(40,60); ctx.lineTo(44,74); ctx.lineTo(48,84); ctx.lineTo(52,96);
+    ctx.strokeStyle = '#881000'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(40,60); ctx.lineTo(44,74); ctx.lineTo(48,84); ctx.lineTo(52,96);
+    ctx.strokeStyle = '#cc2200'; ctx.lineWidth = 6; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
+    [[52,96,48,93],[52,96,50,97],[52,96,54,95]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    ctx.save(); ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(28,60); ctx.lineTo(26,74); ctx.lineTo(22,84); ctx.lineTo(18,96);
+    ctx.strokeStyle = '#661500'; ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // ── ARCHER DEMON (56×88) ─────────────────────────────────────────────────
+  // Slim robed demon caster, raised arm glowing with energy ball.
+  function drawArcherSprite(ox, oy, flipX) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + ARCH_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // HORNS
+    ctx.beginPath(); ctx.moveTo(25,6); ctx.bezierCurveTo(21,0,16,2,19,8);
+    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(34,4); ctx.bezierCurveTo(38,-2,43,1,39,8);
+    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 2.5; ctx.stroke();
+
+    // HEAD
+    const hg = ctx.createRadialGradient(30,12,2,30,12,11);
+    hg.addColorStop(0, '#cc3300'); hg.addColorStop(0.6, '#aa2800'); hg.addColorStop(1, '#661500');
+    ctx.beginPath(); ctx.ellipse(29,12,11,9,0,0,Math.PI*2);
+    ctx.fillStyle = hg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(35,10,2.5,2,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
+    ctx.beginPath(); ctx.arc(35,10,1.2,0,Math.PI*2); ctx.fillStyle='#1a0000'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(36,16); ctx.lineTo(38,20); ctx.lineTo(40,16); ctx.fillStyle='#f0f0f0'; ctx.fill();
+
+    // ROBED BODY
+    const rg = ctx.createLinearGradient(12,20,42,66);
+    rg.addColorStop(0, '#2a3a88'); rg.addColorStop(0.5, '#1a2a66'); rg.addColorStop(1, '#0e1844');
+    ctx.beginPath();
+    ctx.moveTo(26,20);
+    ctx.bezierCurveTo(18,22,12,32,12,46);
+    ctx.bezierCurveTo(12,58,18,66,26,66);
+    ctx.bezierCurveTo(34,66,42,60,42,48);
+    ctx.bezierCurveTo(44,36,38,24,32,20);
+    ctx.closePath();
+    ctx.fillStyle = rg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = '#3a4aaa'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(27,22); ctx.lineTo(25,64); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(31,22); ctx.lineTo(33,64); ctx.stroke();
+
+    // RAISED CASTING ARM
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(38,32); ctx.quadraticCurveTo(48,22,52,14);
+    ctx.strokeStyle = '#661500'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(38,32); ctx.quadraticCurveTo(48,22,52,14);
+    ctx.strokeStyle = '#aa2800'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
+    [[52,14,49,10],[52,14,53,10],[52,14,55,14]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    // Glowing energy orb
+    const eg = ctx.createRadialGradient(52,14,1,52,14,5);
+    eg.addColorStop(0,'rgba(255,200,0,0.9)'); eg.addColorStop(1,'rgba(255,80,0,0)');
+    ctx.beginPath(); ctx.arc(52,14,5,0,Math.PI*2); ctx.fillStyle=eg; ctx.fill();
+
+    // LEGS
+    ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(30,64); ctx.lineTo(34,76); ctx.lineTo(38,84); ctx.lineTo(42,88);
+    ctx.strokeStyle = '#661500'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(30,64); ctx.lineTo(34,76); ctx.lineTo(38,84); ctx.lineTo(42,88);
+    ctx.strokeStyle = '#aa2800'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
+    [[42,88,38,85],[42,88,40,89],[42,88,44,87]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    ctx.save(); ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(20,64); ctx.lineTo(18,76); ctx.lineTo(14,84); ctx.lineTo(10,88);
+    ctx.strokeStyle = '#661500'; ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // ── BRUTE DEMON (80×112) ──────────────────────────────────────────────────
+  // Massive armored red demon — wide chest, huge golden horns, giant arms.
+  function drawBruteSprite(ox, oy, flipX) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + BRUTE_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // HUGE HORNS
+    ctx.beginPath(); ctx.moveTo(28,10); ctx.bezierCurveTo(18,-6,8,-4,12,12);
+    ctx.strokeStyle = '#ccaa00'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(28,10); ctx.bezierCurveTo(20,-4,11,-3,14,10);
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(52,10); ctx.bezierCurveTo(62,-6,72,-4,68,12);
+    ctx.strokeStyle = '#ccaa00'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(52,10); ctx.bezierCurveTo(60,-4,69,-3,66,10);
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2.5; ctx.stroke();
+
+    // HEAD
+    const hg = ctx.createRadialGradient(40,18,3,40,18,18);
+    hg.addColorStop(0, '#ff3311'); hg.addColorStop(0.6, '#991800'); hg.addColorStop(1, '#550d00');
+    ctx.beginPath(); ctx.ellipse(40,18,18,15,0,0,Math.PI*2);
+    ctx.fillStyle = hg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 2; ctx.stroke();
+    // Armored brow plate
+    ctx.beginPath();
+    ctx.moveTo(22,12); ctx.lineTo(58,12); ctx.lineTo(56,20); ctx.lineTo(24,20); ctx.closePath();
+    ctx.fillStyle = '#4a4a4a'; ctx.fill(); ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1; ctx.stroke();
+    // Eyes
+    ctx.beginPath(); ctx.ellipse(31,16,4,3,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
+    ctx.beginPath(); ctx.arc(31,16,2,0,Math.PI*2); ctx.fillStyle='#110000'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(49,16,4,3,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
+    ctx.beginPath(); ctx.arc(49,16,2,0,Math.PI*2); ctx.fillStyle='#110000'; ctx.fill();
+    // Fangs
+    ctx.beginPath(); ctx.moveTo(34,26); ctx.lineTo(32,32); ctx.lineTo(36,26); ctx.fillStyle='#f0f0f0'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(44,26); ctx.lineTo(42,32); ctx.lineTo(46,26); ctx.fillStyle='#f0f0f0'; ctx.fill();
+
+    // MASSIVE ARMORED CHEST + BODY
+    const cg = ctx.createLinearGradient(6,28,74,76);
+    cg.addColorStop(0, '#707070'); cg.addColorStop(0.4, '#4a4a4a'); cg.addColorStop(1, '#2a2a2a');
+    ctx.beginPath();
+    ctx.moveTo(10,32);
+    ctx.bezierCurveTo(4,36,2,48,6,60);
+    ctx.bezierCurveTo(10,70,18,76,28,76);
+    ctx.lineTo(52,76);
+    ctx.bezierCurveTo(62,76,70,70,74,60);
+    ctx.bezierCurveTo(78,48,76,36,70,32);
+    ctx.bezierCurveTo(62,24,56,22,40,22);
+    ctx.bezierCurveTo(24,22,18,24,10,32);
+    ctx.closePath();
+    ctx.fillStyle = cg; ctx.fill();
+    ctx.strokeStyle = '#080012'; ctx.lineWidth = 2; ctx.stroke();
+    // Armor plate lines
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(40,24); ctx.lineTo(40,74); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8,50); ctx.lineTo(72,50); ctx.stroke();
+
+    // GIANT ARMS
+    ctx.lineWidth = 15;
+    ctx.beginPath(); ctx.moveTo(66,38); ctx.quadraticCurveTo(76,54,76,72);
+    ctx.strokeStyle = '#4a4a4a'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(66,38); ctx.quadraticCurveTo(76,54,76,72);
+    ctx.strokeStyle = '#707070'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#e8c8a0';
+    [[76,72,72,68],[76,72,74,74],[76,72,79,70],[76,72,78,75]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    ctx.save(); ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 13;
+    ctx.beginPath(); ctx.moveTo(14,38); ctx.quadraticCurveTo(4,54,4,72);
+    ctx.strokeStyle = '#2a2a2a'; ctx.stroke();
+    ctx.restore();
+
+    // LEGS
+    ctx.lineWidth = 15;
+    ctx.beginPath(); ctx.moveTo(52,74); ctx.lineTo(56,90); ctx.lineTo(60,102); ctx.lineTo(62,112);
+    ctx.strokeStyle = '#3a3a3a'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(52,74); ctx.lineTo(56,90); ctx.lineTo(60,102); ctx.lineTo(62,112);
+    ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#e8c8a0';
+    [[62,112,58,108],[62,112,60,113],[62,112,65,110]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    ctx.save(); ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 14;
+    ctx.beginPath(); ctx.moveTo(28,74); ctx.lineTo(24,90); ctx.lineTo(20,102); ctx.lineTo(18,112);
+    ctx.strokeStyle = '#2a2a2a'; ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  }
 
   // ─── enemy type definitions ───────────────────────────────────────────────
   const ENEMY_TYPES = {
     grunt: {
-      sprite: SPR_GRUNT, w: GRUNT_W, h: GRUNT_H, scale: GRUNT_SC,
+      drawFn: drawGruntSprite, w: GRUNT_W, h: GRUNT_H,
       hp: 40, speed: 0.9, shootCd: 180, dmg: 10, score: 100,
       dropRate: 0.15,
     },
     archer: {
-      sprite: SPR_ARCHER, w: ARCH_W, h: ARCH_H, scale: ARCH_SC,
+      drawFn: drawArcherSprite, w: ARCH_W, h: ARCH_H,
       hp: 25, speed: 0.55, shootCd: 90, dmg: 8, score: 150,
       dropRate: 0.12,
-      // archers hang back and shoot triple
       minX: 420,
     },
     brute: {
-      sprite: SPR_BRUTE, w: BRUTE_W, h: BRUTE_H, scale: BRUTE_SC,
+      drawFn: drawBruteSprite, w: BRUTE_W, h: BRUTE_H,
       hp: 120, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
       dropRate: 0.4,
     },
@@ -357,9 +557,9 @@
     row: 0, x: 70,
     speed: 4, facing: 1,
     atkTimer: 0, atkDur: 14,
-    atkRange: 72,          // matches visual claw slash
-    slashTimer: 0,         // claw slash visual
-    shTimer: 0,  shDur: 999, // stays active while C held; stamina caps it
+    atkRange: 72,
+    slashTimer: 0,
+    shTimer: 0, shDur: 999,
     iframes: 0,
     weapon: { name:'Dragon Claws', dmg: 25 },
     spell:  { name:'Fire Breath',  dmg: 60 },
@@ -370,7 +570,8 @@
     get cy() { return ROW_Y[this.row] + this.h/2; },
     get hb() { return { x:this.x+12, y:ROW_Y[this.row]+10, w:this.w-24, h:this.h-16 }; },
     get atk(){ return this.atkTimer > 0; },
-    get sh() { return K['KeyC'] === true; },  // shield = actively holding C
+    // Shield only active if holding C AND not currently attacking
+    get sh() { return K['KeyC'] === true && this.atkTimer <= 0; },
   };
 
   // ─── input ────────────────────────────────────────────────────────────────
@@ -398,7 +599,7 @@
 
   // ─── waves ────────────────────────────────────────────────────────────────
   let spawnT=0, spawnRate=120, leftToSpawn=0, cleared=false, msgT=0, msg='';
-  let spawnQueue=[];  // pre-built list of types to spawn this wave
+  let spawnQueue=[];
 
   function buildWaveQueue() {
     const wi = ((gs.wave-1)%3)+1;
@@ -410,7 +611,6 @@
       else if(gs.level >= 1 && r < 0.45) spawnQueue.push('archer');
       else spawnQueue.push('grunt');
     }
-    // shuffle
     for(let i=spawnQueue.length-1;i>0;i--){
       const j=Math.floor(Math.random()*(i+1));
       [spawnQueue[i],spawnQueue[j]]=[spawnQueue[j],spawnQueue[i]];
@@ -447,7 +647,7 @@
       speed: def.speed + gs.level*0.1,
       shootT: def.shootCd * 0.5,
       flashT: 0,
-      facing: -1,           // start facing left (toward player)
+      facing: -1,
       score: def.score + gs.level*15,
       minX: def.minX || 0,
     });
@@ -464,7 +664,7 @@
   function doAttack() {
     if(PL.atk) return;
     PL.atkTimer  = PL.atkDur;
-    PL.slashTimer = PL.atkDur;  // drives slash visual
+    PL.slashTimer = PL.atkDur;
     const box = {
       x: PL.facing>0 ? PL.x+PL.w-10 : PL.x-PL.atkRange+10,
       y: ROW_Y[PL.row]-6,
@@ -472,7 +672,7 @@
     };
     enemies.forEach(e=>{
       if(e.phase!=='charge') return;
-      if(e.row !== PL.row) return;  // same row only — slash is horizontal
+      if(e.row !== PL.row) return;
       if(ov(box, ehb(e))) hitEnemy(e, PL.weapon.dmg);
     });
   }
@@ -489,25 +689,24 @@
 
   function hitEnemy(e,dmg) {
     e.hp-=dmg; e.flashT=9;
-    burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, DR4, 9);
+    burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#ff4422', 9);
     if(e.hp<=0) killEnemy(e);
   }
 
   function killEnemy(e) {
     e.hp=0; gs.score+=e.score;
-    burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, DR, 20, 7);
+    burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#cc2200', 20, 7);
     if(Math.random()<ENEMY_TYPES[e.type].dropRate)
       drops.push({x:e.x, y:e.y, row:e.row, type:'health', life:360});
   }
 
-  let blockMsg = 0;  // frames to show "BLOCKED!" text
+  let blockMsg = 0;
 
   function hurtPlayer(dmg) {
-    // Shield check FIRST — a successful block produces no iframes and no damage
     if(PL.sh) {
       burst(PL.cx, PL.cy, SB, 18, 6);
       blockMsg = 40;
-      return;  // fully blocked, no damage, no iframes
+      return;
     }
     if(PL.iframes>0) return;
     gs.hp=Math.max(0,gs.hp-dmg);
@@ -529,7 +728,6 @@
 
     if(eat('KeyZ')||eat('Space')) doAttack();
     if(eat('KeyX')) doSpell();
-    // Shield: just hold C — PL.sh getter checks K['KeyC'] directly
 
     if(PL.atkTimer  > 0) PL.atkTimer--;
     if(PL.slashTimer > 0) PL.slashTimer--;
@@ -546,40 +744,36 @@
 
       if(e.phase==='drop'){
         e.y+=e.dropSpd;
-        if(e.y>=e.targetY){ e.y=e.targetY; e.phase='charge'; burst(e.x+def.w/2,e.y,DR4,10,4); }
+        if(e.y>=e.targetY){ e.y=e.targetY; e.phase='charge'; burst(e.x+def.w/2,e.y,'#ff4422',10,4); }
         return;
       }
 
-      // ── Direction: always face and move toward player ──
-      // This means if player gets behind the enemy, it turns and chases
       const playerCX = PL.x + PL.w / 2;
       const eCX      = e.x  + def.w  / 2;
       const dirToPlayer = (playerCX < eCX) ? -1 : 1;
-      e.facing = dirToPlayer;   // enemy flips sprite to face player
+      e.facing = dirToPlayer;
 
       if(e.type === 'archer') {
-        // Archers maintain a preferred distance but NEVER leave the screen
         const dist = Math.abs(playerCX - eCX);
         const ideal = 220;
         if(dist < ideal - 50) {
-          // Too close — retreat at HALF speed so the player can always catch up
           e.x -= dirToPlayer * e.speed * 0.5;
         } else if(dist > ideal + 60) {
-          // Too far — advance at full speed
           e.x += dirToPlayer * e.speed;
         }
-        // Hard clamp: archers are ALWAYS kept on screen, no escaping off either edge
         e.x = Math.max(10, Math.min(W - def.w - 10, e.x));
       } else {
-        // Grunts and Brutes charge straight at the player
         e.x += dirToPlayer * e.speed;
       }
 
-      // shooting
+      // shooting — fires at ANY row gap (spread shot covers adjacent rows)
       e.shootT--;
       if(e.shootT<=0){
         e.shootT = Math.max(40, def.shootCd - gs.level*8);
-        if(e.row===PL.row){
+        const rowDist = Math.abs(e.row - PL.row);
+        // Archers and brutes fire if player is within 2 rows; grunts within 1
+        const shootRange = (e.type==='archer') ? 2 : 1;
+        if(rowDist <= shootRange) {
           const shotVX = dirToPlayer * (e.type==='brute' ? 2 : 3);
           if(e.type==='archer'){
             [-0.5,0,0.5].forEach((yo,i)=>{
@@ -598,10 +792,9 @@
         }
       }
 
-      // melee
+      // melee touch — ONLY hurts player, never damages enemy
       if(e.row===PL.row && ov(ehb(e), PL.hb)){
         hurtPlayer(def.dmg);
-        hitEnemy(e, 5);
       }
     });
 
@@ -620,8 +813,14 @@
           }
         });
       } else {
-        const rowDiff=Math.abs(p.row-PL.row);
-        if(rowDiff===0 && ov({x:p.x,y:p.y,w:p.w,h:p.h}, PL.hb)){
+        // Enemy projectiles can hit across rows (spread vy carries them between lanes)
+        // Check if projectile has drifted into a different row
+        let hitRow = p.row;
+        for(let r=0; r<ROWS; r++){
+          const ry = ROW_Y[r];
+          if(p.y + p.h/2 > ry && p.y + p.h/2 < ry + GRUNT_H) { hitRow = r; break; }
+        }
+        if(hitRow===PL.row && ov({x:p.x,y:p.y,w:p.w,h:p.h}, PL.hb)){
           hurtPlayer(p.dmg); p.life=0;
         }
       }
@@ -654,14 +853,12 @@
   let bgOff=0;
   function drawBG(){
     bgOff=(bgOff+0.4)%W;
-    // sky
     const sky=ctx.createLinearGradient(0,0,0,GROUND_Y);
     sky.addColorStop(0,'#08000f');
     sky.addColorStop(0.5,'#180020');
     sky.addColorStop(1,'#280010');
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,GROUND_Y);
 
-    // mountains
     ctx.fillStyle='#120008';
     for(let i=0;i<7;i++){
       const mx=((i*130-bgOff*0.2)%(W+40))-20;
@@ -670,18 +867,15 @@
       ctx.lineTo(mx+60,GROUND_Y-mh); ctx.lineTo(mx+120,GROUND_Y); ctx.fill();
     }
 
-    // horizon glow
     const hg=ctx.createLinearGradient(0,GROUND_Y-35,0,GROUND_Y);
     hg.addColorStop(0,'rgba(180,20,0,0)'); hg.addColorStop(1,'rgba(180,20,0,0.4)');
     ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-35,W,35);
 
-    // row lanes
     ROW_Y.forEach((ry,i)=>{
       ctx.fillStyle=i%2===0?'rgba(110,0,0,0.08)':'rgba(70,0,50,0.07)';
       ctx.fillRect(0,ry,W,BRUTE_H+10);
     });
 
-    // scrolling embers
     const t=Date.now()/1000;
     for(let i=0;i<18;i++){
       const ex=((i*53+t*30*(i%3===0?1:-0.5))%W+W)%W;
@@ -692,7 +886,6 @@
     }
     ctx.globalAlpha=1;
 
-    // ground
     ctx.fillStyle='#180404'; ctx.fillRect(0,GROUND_Y,W,H-GROUND_Y);
     ctx.strokeStyle='#bb2200'; ctx.lineWidth=1;
     for(let i=0;i<10;i++){
@@ -704,7 +897,6 @@
     ctx.globalAlpha=1;
     ctx.fillStyle='#cc2200'; ctx.fillRect(0,GROUND_Y,W,3);
 
-    // demon-entry red glow at top
     const tg=ctx.createLinearGradient(0,0,0,50);
     tg.addColorStop(0,'rgba(200,0,30,0.55)'); tg.addColorStop(1,'rgba(200,0,30,0)');
     ctx.fillStyle=tg; ctx.fillRect(0,0,W,50);
@@ -714,14 +906,12 @@
   function drawHUD(){
     ctx.fillStyle='rgba(6,0,10,0.93)'; ctx.fillRect(0,0,W,44);
     ctx.fillStyle='#550020'; ctx.fillRect(0,42,W,2);
-    // HP
     ctx.fillStyle='#1a1a1a'; ctx.fillRect(12,11,170,14);
     const hf=gs.hp/gs.maxHp;
     ctx.fillStyle=hf>0.6?'#22cc55':hf>0.3?'#ffaa00':'#ff2222';
     ctx.fillRect(12,11,Math.floor(170*hf),14);
     ctx.strokeStyle='#444'; ctx.lineWidth=1; ctx.strokeRect(12,11,170,14);
     ctx.fillStyle='#888'; ctx.font='9px monospace'; ctx.fillText('HP',188,22);
-    // spell pips
     for(let i=0;i<gs.maxSpell;i++){
       ctx.fillStyle=i<gs.spellUses?'#9933ff':'#220022';
       ctx.fillRect(12+i*17,29,12,8);
@@ -729,21 +919,17 @@
     }
     ctx.fillStyle='#773399'; ctx.font='9px monospace';
     ctx.fillText('SP',12+gs.maxSpell*17+3,37);
-    // shield indicator
     if(PL.sh){
       ctx.fillStyle='rgba(68,153,255,0.25)'; ctx.fillRect(12+gs.maxSpell*17+22,25,36,12);
       ctx.strokeStyle='#4499ff'; ctx.lineWidth=1; ctx.strokeRect(12+gs.maxSpell*17+22,25,36,12);
       ctx.fillStyle='#aaddff'; ctx.font='bold 9px monospace';
       ctx.fillText('🛡 ON',12+gs.maxSpell*17+24,34);
     }
-    // score
     ctx.fillStyle='#cc0000'; ctx.font='bold 13px monospace';
     ctx.textAlign='center'; ctx.fillText('SCORE '+String(gs.score).padStart(7,'0'),W/2,22);
     ctx.textAlign='left';
-    // level/wave
     ctx.fillStyle='#cc8800'; ctx.font='11px monospace';
     ctx.fillText(`LVL ${gs.level}   WAVE ${gs.wave}`,W-155,22);
-    // controls
     ctx.fillStyle='#2a2a2a'; ctx.font='9px monospace';
     ctx.fillText('ARROWS MOVE  Z ATK  X SPELL  HOLD C BLOCK',12,H-5);
   }
@@ -752,34 +938,31 @@
   function drawPlayer(){
     const wy = ROW_Y[PL.row];
 
-    // ── Shield aura (rendered behind player) ──
+    // Shield aura (behind player)
     if(PL.sh){
-      // Pulsing blue glow rim
       const pulse = 0.55 + Math.sin(Date.now()/80)*0.45;
       ctx.shadowColor = '#4499ff';
       ctx.shadowBlur  = 18;
       ctx.globalAlpha = pulse;
-      // Blue rim around player bounds
       ctx.strokeStyle = '#aaddff';
       ctx.lineWidth   = 3;
       ctx.strokeRect(PL.x-4, wy-4, PL.w+8, PL.h+8);
       ctx.globalAlpha = 1;
       ctx.shadowBlur  = 0;
 
-      // Shield sprite overlaid on front side
       const shX = PL.facing > 0 ? PL.x + PL.w - 4 : PL.x - SPR_SHIELD[0].length*SC2 + 4;
       spr(SPR_SHIELD, shX, wy + PL.h/2 - SPR_SHIELD.length*SC2/2, SC2);
     }
 
-    // ── Player sprite ──
+    // Player sprite
     if(PL.iframes>0 && Math.floor(PL.iframes/4)%2===0) return;
-    spr(PL.atk ? WD_ATTACK : WD_IDLE, PL.x, wy, SC2, PL.facing<0);
+    drawWDSprite(PL.x, wy, PL.facing < 0, PL.atk);
 
-    // ── Claw slash arc ──
+    // Claw slash arc
     if(PL.slashTimer > 0){
-      const prog = 1 - (PL.slashTimer / PL.atkDur); // 0→1 as slash plays out
+      const prog = 1 - (PL.slashTimer / PL.atkDur);
       const slashX  = PL.facing > 0 ? PL.x + PL.w - 6 : PL.x - PL.atkRange + 6;
-      const slashCX = slashX + (PL.facing > 0 ? PL.atkRange/2 : PL.atkRange/2);
+      const slashCX = slashX + PL.atkRange/2;
       const slashCY = wy + PL.h * 0.45;
       const radius  = PL.atkRange * 0.55 * (0.4 + prog*0.6);
 
@@ -787,13 +970,11 @@
       ctx.globalAlpha = Math.max(0, 1 - prog * 1.4);
       ctx.strokeStyle = '#c8b8e8';
       ctx.lineWidth   = 4;
-      // Arc sweeping in the facing direction
       const startAngle = PL.facing > 0 ? -Math.PI*0.65 : -Math.PI*0.35;
       const endAngle   = PL.facing > 0 ? Math.PI*0.25  : Math.PI + Math.PI*0.65;
       ctx.beginPath();
       ctx.arc(slashCX, slashCY, radius, startAngle, endAngle, PL.facing < 0);
       ctx.stroke();
-      // bright core line
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.globalAlpha *= 0.7;
@@ -801,7 +982,7 @@
       ctx.restore();
     }
 
-    // ── "BLOCKED!" feedback text ──
+    // "BLOCKED!" feedback
     if(blockMsg > 0){
       const a = Math.min(1, blockMsg / 12);
       ctx.globalAlpha = a;
@@ -819,8 +1000,8 @@
     enemies.forEach(e=>{
       const def=ENEMY_TYPES[e.type];
       ctx.globalAlpha=(e.flashT>0&&Math.floor(e.flashT/2)%2===0)?0.2:1;
-      // flip=true when enemy faces RIGHT (chasing player who went behind)
-      spr(def.sprite, e.x, e.y, def.scale, e.facing > 0);
+      // flipX=true when enemy faces LEFT (toward player who is on left)
+      def.drawFn(e.x, e.y, e.facing < 0);
       ctx.globalAlpha=1;
       if(e.hp<e.maxHp){
         ctx.fillStyle='#2a0000'; ctx.fillRect(e.x,e.y-6,def.w,3);
@@ -831,7 +1012,6 @@
         ctx.fillStyle='rgba(255,40,0,0.7)'; ctx.font='11px monospace'; ctx.textAlign='center';
         ctx.fillText('▼',e.x+def.w/2,e.y-9); ctx.textAlign='left';
       }
-      // brute: label so player knows it's tough
       if(e.type==='brute'&&e.phase==='charge'&&e.hp===e.maxHp){
         ctx.fillStyle='#ff8800'; ctx.font='bold 9px monospace'; ctx.textAlign='center';
         ctx.fillText('BRUTE',e.x+def.w/2,e.y-9); ctx.textAlign='left';
@@ -881,8 +1061,8 @@
     ctx.shadowBlur=0;
     ctx.fillStyle='#660000'; ctx.font='15px monospace';
     ctx.fillText('SLAY THE DEMON ARMY',W/2,170);
-    // show big wolfdragon on title
-    spr(WD_IDLE,W/2-WD_W*1.5/2,200,3,false);
+    // Show WolfDragon on title screen
+    drawWDSprite(W/2 - WD_W/2, 195, false, false);
     ctx.fillStyle='#333'; ctx.font='12px monospace';
     ctx.fillText('ARROW KEYS  MOVE',W/2,370);
     ctx.fillText('Z  ATTACK    X  SPELL    HOLD C  BLOCK',W/2,390);
