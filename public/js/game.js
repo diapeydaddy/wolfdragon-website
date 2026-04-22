@@ -20,9 +20,10 @@
   ctx.imageSmoothingEnabled = false;
 
   const ROWS     = 3;
-  const GROUND_Y = H - 28;
-  const ROW_Y    = [GROUND_Y - 58, GROUND_Y - 122, GROUND_Y - 186];
-  const SC2      = 2;   // sprite scale
+  const GROUND_Y = H - 22;
+  const SC2      = 3;   // sprite scale — 3px per pixel for bigger, more detailed sprites
+  // Row Y positions spaced for SC2=3 sprite heights (~84px per sprite)
+  const ROW_Y    = [GROUND_Y - 88, GROUND_Y - 178, GROUND_Y - 268];
 
   // ─── pixel renderer ──────────────────────────────────────────────────────
   function spr(grid, x, y, scale, flipX) {
@@ -321,8 +322,9 @@
     row: 0, x: 70,
     speed: 4, facing: 1,
     atkTimer: 0, atkDur: 14,
-    atkRange: 130,         // generous attack range
-    shTimer: 0,  shDur: 24,
+    atkRange: 72,          // matches visual claw slash
+    slashTimer: 0,         // claw slash visual
+    shTimer: 0,  shDur: 999, // stays active while C held; stamina caps it
     iframes: 0,
     weapon: { name:'Dragon Claws', dmg: 25 },
     spell:  { name:'Fire Breath',  dmg: 60 },
@@ -333,7 +335,7 @@
     get cy() { return ROW_Y[this.row] + this.h/2; },
     get hb() { return { x:this.x+12, y:ROW_Y[this.row]+10, w:this.w-24, h:this.h-16 }; },
     get atk(){ return this.atkTimer > 0; },
-    get sh() { return this.shTimer  > 0; },
+    get sh() { return K['KeyC'] === true; },  // shield = actively holding C
   };
 
   // ─── input ────────────────────────────────────────────────────────────────
@@ -410,6 +412,7 @@
       speed: def.speed + gs.level*0.1,
       shootT: def.shootCd * 0.5,
       flashT: 0,
+      facing: -1,           // start facing left (toward player)
       score: def.score + gs.level*15,
       minX: def.minX || 0,
     });
@@ -425,17 +428,16 @@
   // ─── combat ───────────────────────────────────────────────────────────────
   function doAttack() {
     if(PL.atk) return;
-    PL.atkTimer = PL.atkDur;
+    PL.atkTimer  = PL.atkDur;
+    PL.slashTimer = PL.atkDur;  // drives slash visual
     const box = {
-      x: PL.facing>0 ? PL.x+PL.w : PL.x-PL.atkRange,
-      y: ROW_Y[PL.row]-8,
-      w: PL.atkRange, h: PL.h+16,
+      x: PL.facing>0 ? PL.x+PL.w-10 : PL.x-PL.atkRange+10,
+      y: ROW_Y[PL.row]-6,
+      w: PL.atkRange, h: PL.h+12,
     };
     enemies.forEach(e=>{
       if(e.phase!=='charge') return;
-      // allow hitting enemies on adjacent rows too if very close
-      const rowDiff = Math.abs(e.row - PL.row);
-      if(rowDiff > 1) return;
+      if(e.row !== PL.row) return;  // same row only — slash is horizontal
       if(ov(box, ehb(e))) hitEnemy(e, PL.weapon.dmg);
     });
   }
@@ -463,9 +465,16 @@
       drops.push({x:e.x, y:e.y, row:e.row, type:'health', life:360});
   }
 
+  let blockMsg = 0;  // frames to show "BLOCKED!" text
+
   function hurtPlayer(dmg) {
+    // Shield check FIRST — a successful block produces no iframes and no damage
+    if(PL.sh) {
+      burst(PL.cx, PL.cy, SB, 18, 6);
+      blockMsg = 40;
+      return;  // fully blocked, no damage, no iframes
+    }
     if(PL.iframes>0) return;
-    if(PL.sh) { dmg=Math.max(0,dmg-PL.shield.block); burst(PL.cx,PL.cy,SB,14); }
     gs.hp=Math.max(0,gs.hp-dmg);
     PL.iframes=70;
     burst(PL.cx,PL.cy,'#ff3333',12);
@@ -485,12 +494,12 @@
 
     if(eat('KeyZ')||eat('Space')) doAttack();
     if(eat('KeyX')) doSpell();
-    // shield: hold C to block (not just tap)
-    if(K['KeyC']) { if(!PL.sh) PL.shTimer=PL.shDur; else PL.shTimer=Math.min(PL.shDur, PL.shTimer+1); }
+    // Shield: just hold C — PL.sh getter checks K['KeyC'] directly
 
-    if(PL.atkTimer>0) PL.atkTimer--;
-    if(PL.shTimer >0 && !K['KeyC']) PL.shTimer--;
-    if(PL.iframes >0) PL.iframes--;
+    if(PL.atkTimer  > 0) PL.atkTimer--;
+    if(PL.slashTimer > 0) PL.slashTimer--;
+    if(PL.iframes   > 0) PL.iframes--;
+    if(blockMsg     > 0) blockMsg--;
 
     // spawn
     if(spawnQueue.length>0){ spawnT++; if(spawnT>=spawnRate){spawnT=0;spawnEnemy();} }
@@ -506,32 +515,49 @@
         return;
       }
 
-      // archers: stay in back half, don't rush
-      if(e.type==='archer'){
-        if(e.x > e.minX) e.x -= e.speed;
+      // ── Direction: always face and move toward player ──
+      // This means if player gets behind the enemy, it turns and chases
+      const playerCX = PL.x + PL.w / 2;
+      const eCX      = e.x  + def.w  / 2;
+      const dirToPlayer = (playerCX < eCX) ? -1 : 1;
+      e.facing = dirToPlayer;   // enemy flips sprite to face player
+
+      if(e.type === 'archer') {
+        // Archers keep a preferred distance — approach if too close, retreat if too far
+        const dist = Math.abs(playerCX - eCX);
+        const ideal = 280;
+        if(dist < ideal - 40) {
+          // too close — back away from player
+          e.x -= dirToPlayer * e.speed;
+        } else if(dist > ideal + 40) {
+          // too far — close in
+          e.x += dirToPlayer * e.speed;
+        }
+        // else: sit in comfortable range
       } else {
-        e.x -= e.speed;
+        // Grunts and Brutes charge straight at the player
+        e.x += dirToPlayer * e.speed;
       }
 
       // shooting
       e.shootT--;
       if(e.shootT<=0){
-        e.shootT = def.shootCd - gs.level*8;
+        e.shootT = Math.max(40, def.shootCd - gs.level*8);
         if(e.row===PL.row){
+          const shotVX = dirToPlayer * (e.type==='brute' ? 2 : 3);
           if(e.type==='archer'){
-            // triple shot spread
-            [-2,0,2].forEach((yo,i)=>{
+            [-0.5,0,0.5].forEach((yo,i)=>{
               setTimeout(()=>{
-                projs.push({x:e.x, y:e.y+def.h/2-FB_H/2,
-                  vx:-3, vy:yo*0.4, row:e.row, dmg:def.dmg*0.7,
-                  owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:280});
-              }, i*120);
+                if(gs.screen!=='playing') return;
+                projs.push({x:e.x+(e.facing>0?def.w:0), y:e.y+def.h/2-FB_H/2,
+                  vx:shotVX, vy:yo, row:e.row, dmg:def.dmg*0.7,
+                  owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:260});
+              }, i*110);
             });
           } else {
-            projs.push({x:e.x, y:e.y+def.h/2-FB_H/2,
-              vx: e.type==='brute' ? -2 : -2.5,
-              vy:0, row:e.row, dmg:def.dmg,
-              owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:280});
+            projs.push({x:e.x+(e.facing>0?def.w:0), y:e.y+def.h/2-FB_H/2,
+              vx:shotVX, vy:0, row:e.row, dmg:def.dmg,
+              owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:260});
           }
         }
       }
@@ -667,6 +693,13 @@
     }
     ctx.fillStyle='#773399'; ctx.font='9px monospace';
     ctx.fillText('SP',12+gs.maxSpell*17+3,37);
+    // shield indicator
+    if(PL.sh){
+      ctx.fillStyle='rgba(68,153,255,0.25)'; ctx.fillRect(12+gs.maxSpell*17+22,25,36,12);
+      ctx.strokeStyle='#4499ff'; ctx.lineWidth=1; ctx.strokeRect(12+gs.maxSpell*17+22,25,36,12);
+      ctx.fillStyle='#aaddff'; ctx.font='bold 9px monospace';
+      ctx.fillText('🛡 ON',12+gs.maxSpell*17+24,34);
+    }
     // score
     ctx.fillStyle='#cc0000'; ctx.font='bold 13px monospace';
     ctx.textAlign='center'; ctx.fillText('SCORE '+String(gs.score).padStart(7,'0'),W/2,22);
@@ -681,12 +714,67 @@
 
   // ─── draw player ──────────────────────────────────────────────────────────
   function drawPlayer(){
-    if(PL.iframes>0&&Math.floor(PL.iframes/4)%2===0) return;
-    spr(PL.atk?WD_ATTACK:WD_IDLE, PL.x, ROW_Y[PL.row], SC2, PL.facing<0);
+    const wy = ROW_Y[PL.row];
+
+    // ── Shield aura (rendered behind player) ──
     if(PL.sh){
-      ctx.globalAlpha=(PL.shTimer/PL.shDur)*0.9;
-      spr(SPR_SHIELD, PL.x+PL.w/2-12, ROW_Y[PL.row]+PL.h/2-12, SC2);
-      ctx.globalAlpha=1;
+      // Pulsing blue glow rim
+      const pulse = 0.55 + Math.sin(Date.now()/80)*0.45;
+      ctx.shadowColor = '#4499ff';
+      ctx.shadowBlur  = 18;
+      ctx.globalAlpha = pulse;
+      // Blue rim around player bounds
+      ctx.strokeStyle = '#aaddff';
+      ctx.lineWidth   = 3;
+      ctx.strokeRect(PL.x-4, wy-4, PL.w+8, PL.h+8);
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur  = 0;
+
+      // Shield sprite overlaid on front side
+      const shX = PL.facing > 0 ? PL.x + PL.w - 4 : PL.x - SPR_SHIELD[0].length*SC2 + 4;
+      spr(SPR_SHIELD, shX, wy + PL.h/2 - SPR_SHIELD.length*SC2/2, SC2);
+    }
+
+    // ── Player sprite ──
+    if(PL.iframes>0 && Math.floor(PL.iframes/4)%2===0) return;
+    spr(PL.atk ? WD_ATTACK : WD_IDLE, PL.x, wy, SC2, PL.facing<0);
+
+    // ── Claw slash arc ──
+    if(PL.slashTimer > 0){
+      const prog = 1 - (PL.slashTimer / PL.atkDur); // 0→1 as slash plays out
+      const slashX  = PL.facing > 0 ? PL.x + PL.w - 6 : PL.x - PL.atkRange + 6;
+      const slashCX = slashX + (PL.facing > 0 ? PL.atkRange/2 : PL.atkRange/2);
+      const slashCY = wy + PL.h * 0.45;
+      const radius  = PL.atkRange * 0.55 * (0.4 + prog*0.6);
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - prog * 1.4);
+      ctx.strokeStyle = '#c8b8e8';
+      ctx.lineWidth   = 4;
+      // Arc sweeping in the facing direction
+      const startAngle = PL.facing > 0 ? -Math.PI*0.65 : -Math.PI*0.35;
+      const endAngle   = PL.facing > 0 ? Math.PI*0.25  : Math.PI + Math.PI*0.65;
+      ctx.beginPath();
+      ctx.arc(slashCX, slashCY, radius, startAngle, endAngle, PL.facing < 0);
+      ctx.stroke();
+      // bright core line
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.globalAlpha *= 0.7;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── "BLOCKED!" feedback text ──
+    if(blockMsg > 0){
+      const a = Math.min(1, blockMsg / 12);
+      ctx.globalAlpha = a;
+      ctx.fillStyle   = '#aaddff';
+      ctx.font        = 'bold 14px monospace';
+      ctx.textAlign   = 'center';
+      ctx.fillText('BLOCKED!', PL.cx, wy - 12);
+      ctx.textAlign   = 'left';
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -695,7 +783,8 @@
     enemies.forEach(e=>{
       const def=ENEMY_TYPES[e.type];
       ctx.globalAlpha=(e.flashT>0&&Math.floor(e.flashT/2)%2===0)?0.2:1;
-      spr(def.sprite, e.x, e.y, SC2, false);
+      // flip=true when enemy faces RIGHT (chasing player who went behind)
+      spr(def.sprite, e.x, e.y, SC2, e.facing > 0);
       ctx.globalAlpha=1;
       if(e.hp<e.maxHp){
         ctx.fillStyle='#2a0000'; ctx.fillRect(e.x,e.y-6,def.w,3);
