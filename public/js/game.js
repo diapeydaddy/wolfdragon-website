@@ -441,7 +441,7 @@
     row: 0, x: 70,
     speed: 4, facing: 1,
     atkTimer: 0, atkDur: 14,
-    atkRange: 72,
+    atkRange: 100,
     slashTimer: 0,
     shTimer: 0, shDur: 999,
     iframes: 0,
@@ -558,6 +558,9 @@
         teleTimer: 0,                  // lich teleport cooldown
         enrageT: 0,                    // apoc beam charge timer
         atkAnim: 0,                    // frames to show attack/profile pose
+        attackIdx: 0,                  // position in attack pattern cycle
+        meleeCd: 0,                    // cooldown between contact hits
+        lungeT: 0,                     // spider lunge timer
       });
     } else {
       const row  = Math.floor(Math.random()*ROWS);
@@ -579,6 +582,9 @@
         facing: -1,
         score: def.score + gs.level*15,
         minX: def.minX || 0,
+        swingCd: 80,                   // brute: frames until next swing can start
+        windupT: 0,                    // brute: wind-up animation frames
+        swingT: 0,                     // brute: active swing hitbox frames
       });
     }
   }
@@ -706,6 +712,161 @@
     // spawn
     if(spawnQueue.length>0){ spawnT++; if(spawnT>=spawnRate){spawnT=0;spawnEnemy();} }
 
+    // ── Boss attack patterns & firing helper ─────────────────────────────────
+    // Each boss cycles through a fixed pattern — players can memorise it.
+    const BOSS_PATTERNS = {
+      spider:      ['spread','spread','lunge','web','spread','burst','lunge','web'],
+      lich:        ['orbs','wave','orbs','curse','orbs','voidpull','orbs','wave'],
+      apocalyptic: ['beam','focused','beam','nova','slam','beam','summon','focused','nova','slam'],
+    };
+
+    function fireBossAttack(e, def, atkType) {
+      const dir = e.facing;          // –1 = toward player on left, +1 = toward player on right
+      const cx  = e.x + def.w/2;
+      const cy  = e.y + def.h/2;
+      e.atkAnim = 30;
+
+      switch (atkType) {
+        /* ── SPIDER ─────────────────────────────────────────── */
+        case 'spread': {
+          const n = 3 + e.bossPhase * 2;
+          for (let i=0;i<n;i++){
+            const vy = (i-(n-1)/2)*0.7;
+            projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
+              vx:dir*4, vy, row:1, dmg:def.dmg, owner:'enemy',
+              spr:SPR_FB, w:FB_W, h:FB_H, life:300});
+          }
+          burst(cx, cy, '#ff4400', 8);
+          break;
+        }
+        case 'lunge': {
+          e.lungeT = 45;
+          burst(cx, cy, '#ff2200', 14, 5);
+          break;
+        }
+        case 'web': {
+          for (let r=Math.max(0,PL.row-1); r<=Math.min(ROWS-1,PL.row+1); r++){
+            projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
+              vx:dir*2.2, vy:0, row:r, dmg:def.dmg*1.4, owner:'enemy',
+              spr:SPR_FB, w:FB_W*2, h:FB_H, life:420});
+          }
+          burst(cx, cy, '#884400', 10);
+          break;
+        }
+        case 'burst': {
+          for (let i=0;i<4;i++){
+            setTimeout(()=>{
+              if(gs.screen!=='playing') return;
+              projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
+                vx:dir*(4+i*0.5), vy:(Math.random()-0.5)*0.4, row:PL.row, dmg:def.dmg*0.7,
+                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:280});
+            }, i*80);
+          }
+          burst(cx, cy, '#ff6600', 12);
+          break;
+        }
+        /* ── LICH ───────────────────────────────────────────── */
+        case 'orbs': {
+          const shots = e.bossPhase + 1;
+          for (let i=0;i<shots;i++){
+            const targetVY = (ROW_Y[PL.row] - cy) * 0.015;
+            projs.push({x:dir<0?e.x:e.x+def.w, y:cy-SP_H/2,
+              vx:dir*(3.5+i*0.5), vy:targetVY+(i-Math.floor(shots/2))*0.4,
+              row:e.row, dmg:def.dmg, owner:'enemy',
+              spr:SPR_SPELL, w:SP_W, h:SP_H, life:320});
+          }
+          burst(cx, cy, '#8800cc', 10);
+          break;
+        }
+        case 'wave': {
+          for (let r=0;r<ROWS;r++){
+            projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-SP_H/2,
+              vx:dir*3.5, vy:0, row:r, dmg:def.dmg*0.8, owner:'enemy',
+              spr:SPR_SPELL, w:SP_W, h:SP_H, life:300});
+          }
+          burst(cx, cy, '#6600aa', 14);
+          break;
+        }
+        case 'curse': {
+          // Wide slow orbs on every row — hard to dodge all three
+          for (let r=0;r<ROWS;r++){
+            projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-SP_H/2,
+              vx:dir*1.8, vy:0, row:r, dmg:def.dmg*1.3,
+              owner:'enemy', spr:SPR_SPELL, w:Math.round(SP_W*1.4), h:Math.round(SP_H*1.4), life:400});
+          }
+          burst(cx, cy, '#4400ff', 16);
+          break;
+        }
+        case 'voidpull': {
+          // Rapid barrage — multiple orbs fired in quick succession at player
+          for (let i=0;i<(e.bossPhase+2);i++){
+            setTimeout(()=>{
+              if(gs.screen!=='playing') return;
+              const vY = (ROW_Y[PL.row] - cy) * 0.018;
+              projs.push({x:dir<0?e.x:e.x+def.w, y:cy-SP_H/2,
+                vx:dir*(4+i*0.3), vy:vY,
+                row:e.row, dmg:def.dmg, owner:'enemy',
+                spr:SPR_SPELL, w:SP_W, h:SP_H, life:300});
+            }, i*65);
+          }
+          burst(cx, cy, '#ff00ff', 20, 6);
+          break;
+        }
+        /* ── APOC ───────────────────────────────────────────── */
+        case 'beam': {
+          for (let r=0;r<ROWS;r++){
+            projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
+              vx:dir*5, vy:0, row:r, dmg:def.dmg, owner:'enemy',
+              spr:SPR_FB, w:FB_W, h:FB_H, life:300});
+          }
+          burst(cx, cy, '#cc0000', 20, 8);
+          break;
+        }
+        case 'focused': {
+          // 5 rapid shots locked to player's row
+          for (let i=0;i<5;i++){
+            setTimeout(()=>{
+              if(gs.screen!=='playing') return;
+              projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
+                vx:dir*(5.5+i*0.3), vy:0, row:PL.row, dmg:def.dmg*0.8,
+                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:280});
+            }, i*60);
+          }
+          burst(cx, cy, '#ff2200', 16, 5);
+          break;
+        }
+        case 'nova': {
+          // Radial burst in all directions
+          const count = 8 + e.bossPhase * 2;
+          for (let i=0;i<count;i++){
+            const angle = (i/count)*Math.PI*2;
+            projs.push({x:cx-FB_W/2, y:cy-FB_H/2,
+              vx:Math.cos(angle)*4, vy:Math.sin(angle)*3,
+              row:1, dmg:def.dmg*0.8, owner:'enemy',
+              spr:SPR_FB, w:FB_W, h:FB_H, life:250});
+          }
+          burst(cx, cy, '#ff8800', 30, 10);
+          break;
+        }
+        case 'summon': {
+          spawnQueue.push('grunt','grunt');
+          burst(cx, cy, '#660000', 25, 7);
+          break;
+        }
+        case 'slam': {
+          // V-shape: one shot per row angled to converge toward player
+          for (let r=0;r<ROWS;r++){
+            const vyTarget = (ROW_Y[r]+GRUNT_H/2 - cy) * 0.025;
+            projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
+              vx:dir*4.5, vy:vyTarget, row:r, dmg:def.dmg*1.1,
+              owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:300});
+          }
+          burst(cx, cy, '#aa0000', 18, 6);
+          break;
+        }
+      }
+    }
+
     // enemy AI
     enemies.forEach(e=>{
       if(e.flashT>0) e.flashT--;
@@ -725,102 +886,115 @@
 
       // ── BOSS AI ──────────────────────────────────────────────────────────
       if (def.isBoss) {
-        // Update boss phase based on HP fraction
         const hpFrac = e.hp / e.maxHp;
         e.bossPhase = hpFrac > 0.6 ? 1 : hpFrac > 0.3 ? 2 : 3;
         const spd = def.speed * (1 + (e.bossPhase - 1) * 0.4);
 
         if (e.type === 'spider') {
-          // Patrol left-right in right half of screen, occasionally lunge
-          e.moveTimer++;
-          if (e.moveTimer > 90 / e.bossPhase) {
-            e.moveDir *= -1;
-            e.moveTimer = 0;
+          // Lunge state: rush toward player at high speed
+          if (e.lungeT > 0) {
+            e.lungeT--;
+            e.x += e.facing * spd * 4.5;
+            e.x = Math.max(W*0.1, Math.min(W - def.w - 8, e.x));
+          } else {
+            // Normal patrol in right portion
+            e.moveTimer++;
+            if (e.moveTimer > 90 / e.bossPhase) { e.moveDir *= -1; e.moveTimer = 0; }
+            e.x += e.moveDir * spd * 1.2;
+            e.x = Math.max(W*0.35, Math.min(W - def.w - 8, e.x));
           }
-          e.x += e.moveDir * spd * 1.2;
-          e.x = Math.max(W*0.35, Math.min(W - def.w - 8, e.x));
-
-          // Spider fires spread shot across all rows
           e.shootT--;
-          if(e.shootT <= 0){
-            e.shootT = Math.max(25, def.shootCd - e.bossPhase * 15);
-            e.atkAnim = 28;            // show profile/attack pose briefly
-            const numShots = 3 + e.bossPhase * 2;
-            for(let i=0;i<numShots;i++){
-              const vy = (i - (numShots-1)/2) * 0.7;
-              projs.push({x:e.x, y:e.y+def.h/2-FB_H/2,
-                vx:-4, vy, row:1, dmg:def.dmg,
-                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:300});
-            }
-            burst(e.x, e.y+def.h/2, '#ff4400', 8);
+          if (e.shootT <= 0) {
+            const pat = BOSS_PATTERNS.spider;
+            const atk = pat[e.attackIdx % pat.length];
+            e.attackIdx++;
+            e.shootT = atk === 'lunge' ? 40 : Math.max(35, def.shootCd - e.bossPhase * 15);
+            fireBossAttack(e, def, atk);
           }
 
         } else if (e.type === 'lich') {
-          // Float in place, teleport between rows, fire homing orbs
           e.y += Math.sin(Date.now()/400) * 0.6; // gentle bob
-
+          // Teleport rows periodically
           e.teleTimer++;
-          if(e.teleTimer > 180 / e.bossPhase){
+          if (e.teleTimer > 180 / e.bossPhase) {
             e.teleTimer = 0;
             const newRow = Math.floor(Math.random()*ROWS);
             e.row = newRow;
             e.targetY = ROW_Y[newRow] + (GRUNT_H - def.h)/2;
             burst(eCX, e.y+def.h/2, '#aa44ff', 16, 5);
           }
-          // Drift toward target row Y
           const targY = e.targetY !== undefined ? e.targetY : ROW_Y[1];
           e.y += (targY - e.y) * 0.04;
-          // Slow drift leftward
-          e.x = Math.max(W*0.45, Math.min(W - def.w - 8, e.x - spd * 0.3));
-
+          // Chase player but maintain a safe melee distance
+          const playerDist = Math.abs(eCX - (PL.x + PL.w/2));
+          if (playerDist < 170) {
+            e.x -= dirToPlayer * spd * 1.2; // flee when player too close
+          } else {
+            e.x = Math.max(W*0.35, Math.min(W - def.w - 8, e.x + dirToPlayer * spd * 0.35));
+          }
           e.shootT--;
-          if(e.shootT <= 0){
-            e.shootT = Math.max(30, def.shootCd - e.bossPhase * 10);
-            e.atkAnim = 28;            // show profile/attack pose briefly
-            const shots = e.bossPhase + 1;
-            for(let i=0;i<shots;i++){
-              const targetVY = (ROW_Y[PL.row] - (e.y+def.h/2)) * 0.015;
-              projs.push({x:e.x, y:e.y+def.h/2-FB_H/2,
-                vx:-3.5 - i*0.5, vy: targetVY + (i-Math.floor(shots/2))*0.4,
-                row:e.row, dmg:def.dmg,
-                owner:'enemy', spr:SPR_SPELL, w:SP_W, h:SP_H, life:320});
-            }
-            burst(e.x, e.y+def.h/2, '#8800cc', 10);
+          if (e.shootT <= 0) {
+            const pat = BOSS_PATTERNS.lich;
+            const atk = pat[e.attackIdx % pat.length];
+            e.attackIdx++;
+            e.shootT = Math.max(40, def.shootCd - e.bossPhase * 10);
+            fireBossAttack(e, def, atk);
           }
 
         } else if (e.type === 'apocalyptic') {
-          // Slow menacing advance, fires sweeping beam + calls minions at phase 3
-          e.x = Math.max(W*0.38, Math.min(W - def.w - 5, e.x - spd));
-
+          // Slowly advance toward player from either side
+          e.x = Math.max(W*0.2, Math.min(W - def.w - 5, e.x + dirToPlayer * spd));
           e.enrageT++;
           const chargeTime = Math.max(50, 110 - e.bossPhase * 25);
-          if(e.enrageT >= chargeTime){
+          if (e.enrageT >= chargeTime) {
             e.enrageT = 0;
-            e.atkAnim = 28;            // show profile/attack pose briefly
-            // Beam: fire projectiles across ALL rows
-            for(let r=0;r<ROWS;r++){
-              projs.push({x:e.x, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
-                vx:-5, vy:0, row:r, dmg:def.dmg,
-                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:300});
-            }
-            burst(e.x+def.w/2, e.y+def.h/2, '#cc0000', 20, 8);
-            // Phase 3: also spawn a grunt minion
-            if(e.bossPhase === 3 && Math.random()<0.5){
-              spawnQueue.push('grunt');
-            }
+            const pat = BOSS_PATTERNS.apocalyptic;
+            const atk = pat[e.attackIdx % pat.length];
+            e.attackIdx++;
+            fireBossAttack(e, def, atk);
           }
         }
 
-        // Boss melee — if it reaches the player
-        for(let r=0;r<ROWS;r++){
-          const plHb = {x:PL.x+12, y:ROW_Y[r]+10, w:PL.w-24, h:PL.h-16};
-          if(r===PL.row && ov({x:e.x,y:e.y,w:def.w,h:def.h}, plHb)){
-            hurtPlayer(def.dmg * 0.5);
-          }
+        // Contact damage with cooldown — prevents instant-kill on overlap
+        if (e.meleeCd > 0) e.meleeCd--;
+        const plHb = {x:PL.x+12, y:ROW_Y[PL.row]+10, w:PL.w-24, h:PL.h-16};
+        if (e.meleeCd === 0 && ov({x:e.x,y:e.y,w:def.w,h:def.h}, plHb)) {
+          hurtPlayer(def.dmg * 0.5);
+          e.meleeCd = 60;
         }
         return;
       }
       // ── NORMAL ENEMY AI ───────────────────────────────────────────────────
+
+      // Brute: telegraphed swing attack ─────────────────────────────────────
+      if (e.type === 'brute') {
+        if (e.windupT > 0) {
+          // Wind-up phase: flash warning, no movement
+          e.windupT--;
+          if (e.windupT % 6 === 0) burst(e.x + def.w/2, e.y + def.h/2, '#ff8800', 5, 3);
+          if (e.windupT === 0) e.swingT = 20; // start active swing
+          // still count down shoot timer but skip movement
+          e.shootT--;
+          return;
+        }
+        if (e.swingT > 0) {
+          // Active swing: large hitbox in facing direction
+          e.swingT--;
+          const swX = e.facing > 0 ? e.x + def.w - 10 : e.x - 130;
+          if (e.row === PL.row && ov({x:swX,y:ROW_Y[e.row]-10,w:150,h:def.h+20}, PL.hb)) {
+            hurtPlayer(def.dmg * 1.6);
+          }
+          if (e.swingT === 0) { e.swingCd = 260; burst(e.x+def.w/2,e.y+def.h/2,'#cc4400',18,6); }
+          e.shootT--;
+          return;
+        }
+        if (e.swingCd > 0) e.swingCd--;
+        const distToPlayer = Math.abs((e.x+def.w/2) - (PL.x+PL.w/2));
+        if (e.swingCd === 0 && distToPlayer < 200 && e.row === PL.row) {
+          e.windupT = 38;
+          burst(e.x+def.w/2, e.y+def.h/2, '#ff6600', 16, 5);
+        }
+      }
 
       if(e.type === 'archer') {
         const dist = Math.abs(playerCX - eCX);
@@ -1405,7 +1579,7 @@
       hp:140,maxHp:140,spellUses:3,maxSpell:3,rewardChoice:0});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
-    PL.weapon.dmg=25; PL.atkRange=72; // reset upgrades
+    PL.weapon.dmg=25; PL.atkRange=100; // reset upgrades
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; bgOff=0;
     startWave();
   }
