@@ -529,18 +529,18 @@
     grunt: {
       drawFn: drawGruntSprite, w: GRUNT_W, h: GRUNT_H,
       hp: 40, speed: 0.9, shootCd: 180, dmg: 10, score: 100,
-      dropRate: 0.15,
+      dropRate: 0.15, spellDrop: 0.04,
     },
     archer: {
       drawFn: drawArcherSprite, w: ARCH_W, h: ARCH_H,
       hp: 25, speed: 0.55, shootCd: 90, dmg: 8, score: 150,
-      dropRate: 0.12,
+      dropRate: 0.12, spellDrop: 0.10,  // archers drop spell refills more often
       minX: 420,
     },
     brute: {
       drawFn: drawBruteSprite, w: BRUTE_W, h: BRUTE_H,
       hp: 120, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
-      dropRate: 0.4,
+      dropRate: 0.4, spellDrop: 0.20,
     },
   };
 
@@ -695,9 +695,13 @@
 
   function killEnemy(e) {
     e.hp=0; gs.score+=e.score;
-    burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#cc2200', 20, 7);
-    if(Math.random()<ENEMY_TYPES[e.type].dropRate)
+    const def = ENEMY_TYPES[e.type];
+    const cx = e.x + def.w/2, cy = e.y + def.h/2;
+    burst(cx, cy, '#cc2200', 20, 7);
+    if(Math.random() < def.dropRate)
       drops.push({x:e.x, y:e.y, row:e.row, type:'health', life:360});
+    if(Math.random() < def.spellDrop)
+      drops.push({x:e.x + def.w/2 - 10, y:e.y, row:e.row, type:'spell', life:360});
   }
 
   let blockMsg = 0;
@@ -830,8 +834,14 @@
     // drops
     drops.forEach(d=>{
       d.life--;
-      if(d.row===PL.row&&ov({x:d.x,y:ROW_Y[d.row],w:20,h:20},PL.hb)){
-        if(d.type==='health'){ gs.hp=Math.min(gs.maxHp,gs.hp+35); burst(d.x,ROW_Y[d.row],HG,12); }
+      if(d.row===PL.row&&ov({x:d.x,y:ROW_Y[d.row],w:22,h:22},PL.hb)){
+        if(d.type==='health'){
+          gs.hp=Math.min(gs.maxHp,gs.hp+35);
+          burst(d.x,ROW_Y[d.row],HG,12);
+        } else if(d.type==='spell' && gs.spellUses < gs.maxSpell){
+          gs.spellUses=Math.min(gs.maxSpell, gs.spellUses+1);
+          burst(d.x,ROW_Y[d.row],'#aa44ff',14,6);
+        }
         d.life=0;
       }
     });
@@ -844,6 +854,13 @@
     // wave complete
     if(!cleared&&spawnQueue.length===0&&enemies.length===0){
       cleared=true; msgT=0;
+      // Guarantee 1–2 spell refill orbs appear spread across rows
+      const spellCount = 1 + Math.floor(Math.random()*2);
+      for(let i=0;i<spellCount;i++){
+        const row = Math.floor(Math.random()*ROWS);
+        drops.push({x: 150 + Math.random()*(W-300), y: ROW_Y[row],
+          row, type:'spell', life:500});
+      }
       setTimeout(()=>{ gs.wave++; startWave(); },2200);
     }
     if(msgT>0) msgT--;
@@ -1026,8 +1043,30 @@
   function drawDrops(){
     const t=Date.now()/200;
     drops.forEach(d=>{
-      ctx.globalAlpha=0.55+Math.sin(t)*0.45;
-      spr(SPR_HEALTH,d.x,ROW_Y[d.row]-4,SC2);
+      const pulse = 0.55 + Math.sin(t + d.x*0.01)*0.45;
+      ctx.globalAlpha = pulse;
+      if(d.type==='health'){
+        spr(SPR_HEALTH, d.x, ROW_Y[d.row]-4, SC2);
+      } else if(d.type==='spell'){
+        // Glowing purple spell orb
+        const cx = d.x + 11, cy = ROW_Y[d.row] + 8;
+        const glow = ctx.createRadialGradient(cx,cy,1,cx,cy,11);
+        glow.addColorStop(0,'rgba(200,100,255,0.9)');
+        glow.addColorStop(0.4,'rgba(140,40,220,0.7)');
+        glow.addColorStop(1,'rgba(80,0,160,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(cx,cy,11,0,Math.PI*2); ctx.fill();
+        // Inner bright core
+        const core = ctx.createRadialGradient(cx,cy,0,cx,cy,5);
+        core.addColorStop(0,'#ffffff'); core.addColorStop(0.4,'#dd88ff'); core.addColorStop(1,'#8800cc');
+        ctx.fillStyle = core;
+        ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill();
+        // Small sparkles
+        ctx.fillStyle = '#ffffff';
+        [[cx-7,cy-3],[cx+6,cy-5],[cx+2,cy+7]].forEach(([sx,sy])=>{
+          ctx.beginPath(); ctx.arc(sx+Math.sin(t+sx)*1.5,sy,1.2,0,Math.PI*2); ctx.fill();
+        });
+      }
       ctx.globalAlpha=1;
     });
   }
