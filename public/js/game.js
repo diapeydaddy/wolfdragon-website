@@ -136,12 +136,15 @@
     // Brute — front view (new image 5, white bg)
     BRUTE:        { sh:'BR', sx:164, sy:144, sw:742, sh_:694 },
     // Spider boss — front + profile (new image 3)
-    SPIDER_FRONT: { sh:'SP', sx:0,   sy:0,   sw:509, sh_:797 },
-    SPIDER_SIDE:  { sh:'SP', sx:584, sy:0,   sw:386, sh_:790 },
+    // sy=177: skips title text band (row gap at y=124-176 confirms sprite starts at 177)
+    SPIDER_FRONT: { sh:'SP', sx:0,   sy:177, sw:509, sh_:620 },
+    SPIDER_SIDE:  { sh:'SP', sx:584, sy:177, sw:386, sh_:613 },
     // Lich boss — front + profile (new image 2)
-    LICH_FRONT:   { sh:'LI', sx:61,  sy:0,   sw:430, sh_:679 },
-    LICH_SIDE:    { sh:'LI', sx:575, sy:0,   sw:410, sh_:679 },
+    // sy=136: skips title text band (row gap at y=52-135 confirms sprite starts at 136)
+    LICH_FRONT:   { sh:'LI', sx:61,  sy:136, sw:430, sh_:543 },
+    LICH_SIDE:    { sh:'LI', sx:575, sy:136, sw:410, sh_:543 },
     // Apoc boss — front + profile (new image 1)
+    // sy=0: no clean row gap; nearBlack in removeBgCheckerboard handles the text pixels
     APOC_FRONT:   { sh:'AP', sx:0,   sy:0,   sw:514, sh_:612 },
     APOC_SIDE:    { sh:'AP', sx:575, sy:0,   sw:428, sh_:615 },
   };
@@ -271,7 +274,10 @@
       const greyTile  = lum > 60 && lum < 190
                         && Math.abs(r-g) < 22 && Math.abs(r-b) < 28 && Math.abs(g-b) < 22;
       const nearWhite = r>200 && g>200 && b>200;
-      if(nearDark || greyTile || nearWhite || d[pi+3]===0){
+      // Near-black: catches black title/label text (lum≈0) left by the flood fill.
+      // Character outline pixels are dark-coloured (~lum 30+) so they're safe.
+      const nearBlack = lum < 10;
+      if(nearDark || greyTile || nearWhite || nearBlack || d[pi+3]===0){
         d[pi+3]=0;
         const x=idx%W2, y=(idx/W2)|0;
         enq(x-1,y); enq(x+1,y); enq(x,y-1); enq(x,y+1);
@@ -371,17 +377,19 @@
     drawSpr(SRECTS.BRUTE, ox, oy, BRUTE_W, BRUTE_H, flipX);
   }
 
-  // Bosses switch to their profile/side view when attacking (atk=true)
+  // Bosses switch to their profile/side view when attacking (atk=true).
+  // Profile source faces LEFT, so invert flipX for the side pose so the boss
+  // faces the same direction whether idle (front) or attacking (profile).
   function drawSpiderSprite(ox, oy, flipX, atk) {
-    drawSpr(atk ? SRECTS.SPIDER_SIDE : SRECTS.SPIDER_FRONT, ox, oy, SPIDER_W, SPIDER_H, flipX);
+    drawSpr(atk ? SRECTS.SPIDER_SIDE : SRECTS.SPIDER_FRONT, ox, oy, SPIDER_W, SPIDER_H, atk ? !flipX : flipX);
   }
 
   function drawLichSprite(ox, oy, flipX, atk) {
-    drawSpr(atk ? SRECTS.LICH_SIDE : SRECTS.LICH_FRONT, ox, oy, LICH_W, LICH_H, flipX);
+    drawSpr(atk ? SRECTS.LICH_SIDE : SRECTS.LICH_FRONT, ox, oy, LICH_W, LICH_H, atk ? !flipX : flipX);
   }
 
   function drawApocSprite(ox, oy, flipX, atk) {
-    drawSpr(atk ? SRECTS.APOC_SIDE : SRECTS.APOC_FRONT, ox, oy, APOC_W, APOC_H, flipX);
+    drawSpr(atk ? SRECTS.APOC_SIDE : SRECTS.APOC_FRONT, ox, oy, APOC_W, APOC_H, atk ? !flipX : flipX);
   }
 
   const ENEMY_TYPES = {
@@ -1169,8 +1177,7 @@
     ctx.textAlign='left';
     ctx.fillStyle='#cc8800'; ctx.font='11px monospace';
     ctx.fillText(`LVL ${gs.level}   WAVE ${gs.wave}`,W-155,22);
-    ctx.fillStyle='#2a2a2a'; ctx.font='9px monospace';
-    ctx.fillText('ARROWS MOVE  Z ATK  X SPELL  HOLD C BLOCK',12,H-5);
+    // (controls shown above the canvas in HTML)
 
     // Boss health bar — shown below HUD when a boss is on screen
     const boss = enemies.find(e=>ENEMY_TYPES[e.type].isBoss);
@@ -1374,9 +1381,7 @@
     ctx.fillText('SLAY THE DEMON ARMY',W/2,170);
     // Show WolfDragon on title screen
     drawWDSprite(W/2 - WD_W/2, 195, false, false);
-    ctx.fillStyle='#333'; ctx.font='12px monospace';
-    ctx.fillText('ARROW KEYS  MOVE',W/2,370);
-    ctx.fillText('Z  ATTACK    X  SPELL    HOLD C  BLOCK',W/2,390);
+    // (controls shown above the canvas in HTML)
     const blink=Math.floor(t*2)%2===0;
     ctx.fillStyle=blink?'#cc0000':'#550000'; ctx.font='bold 15px monospace';
     ctx.fillText('PRESS  ENTER  TO  BEGIN',W/2,435);
