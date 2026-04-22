@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="3" fill="#0a0018"/>
+
+  <!-- Dragon horns (red, behind ears) -->
+  <polygon points="10,11 7,2 13,9" fill="#cc1100"/>
+  <polygon points="22,11 25,2 19,9" fill="#cc1100"/>
+  <polygon points="10,11 8,3 12,9" fill="#ff3300"/>
+  <polygon points="22,11 24,3 20,9" fill="#ff3300"/>
+
+  <!-- Wolf ears -->
+  <polygon points="7,14 5,5 13,12" fill="#1e0840"/>
+  <polygon points="25,14 27,5 19,12" fill="#1e0840"/>
+  <!-- Ear inner -->
+  <polygon points="8,13 7,7 12,12" fill="#6830a8"/>
+  <polygon points="24,13 25,7 20,12" fill="#6830a8"/>
+
+  <!-- Head base -->
+  <ellipse cx="16" cy="17" rx="11" ry="9" fill="#2e1258"/>
+  <!-- Head highlight -->
+  <ellipse cx="14" cy="14" rx="6" ry="5" fill="#4a2080"/>
+  <!-- Fur texture -->
+  <ellipse cx="16" cy="13" rx="8" ry="5" fill="#3a1868"/>
+
+  <!-- Eye sockets / glow -->
+  <ellipse cx="11.5" cy="15" rx="3" ry="2.2" fill="#880000"/>
+  <ellipse cx="20.5" cy="15" rx="3" ry="2.2" fill="#880000"/>
+  <!-- Eyes -->
+  <ellipse cx="11.5" cy="15" rx="2" ry="1.5" fill="#ff1111"/>
+  <ellipse cx="20.5" cy="15" rx="2" ry="1.5" fill="#ff1111"/>
+  <!-- Eye highlight -->
+  <ellipse cx="12" cy="14.3" rx="0.8" ry="0.6" fill="#ff6644"/>
+  <ellipse cx="21" cy="14.3" rx="0.8" ry="0.6" fill="#ff6644"/>
+
+  <!-- Snout -->
+  <ellipse cx="16" cy="21.5" rx="6" ry="4" fill="#3a1868"/>
+  <ellipse cx="16" cy="20" rx="5" ry="2.5" fill="#4a2080"/>
+  <!-- Nose -->
+  <ellipse cx="16" cy="19" rx="2.5" ry="1.8" fill="#080012"/>
+  <ellipse cx="15.2" cy="18.6" rx="0.7" ry="0.5" fill="#2a0850"/>
+  <ellipse cx="16.8" cy="18.6" rx="0.7" ry="0.5" fill="#2a0850"/>
+
+  <!-- Fangs -->
+  <polygon points="13,22 12,27 14.5,22" fill="#f0f0f0"/>
+  <polygon points="19,22 20,27 17.5,22" fill="#f0f0f0"/>
+  <!-- Fang shadow -->
+  <polygon points="14.5,22 13.5,26 14.5,26" fill="#cccccc" opacity="0.5"/>
+
+  <!-- Chin fur -->
+  <ellipse cx="16" cy="24" rx="4" ry="2" fill="#2e1258"/>
+
+  <!-- Outline rim -->
+  <ellipse cx="16" cy="17" rx="11" ry="9" fill="none" stroke="#080012" stroke-width="1"/>
+</svg>
