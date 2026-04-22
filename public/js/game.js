@@ -22,9 +22,9 @@
   const ROWS     = 3;
   const GROUND_Y = H - 22;
   const SC2      = 3;   // WD sprite scale — 3px per pixel
-  const GRUNT_SC = 4;   // grunt scale  — 14×20 sprite → 56×80 screen px ≈ WD size
-  const ARCH_SC  = 4;   // archer scale — 12×20 sprite → 48×80 screen px ≈ WD size
-  const BRUTE_SC = 4;   // brute scale  — 18×24 sprite → 72×96 screen px (~33% bigger)
+  const GRUNT_SC = 4;   // grunt scale  — 16×24 sprite → 64×96 screen px ≈ WD size
+  const ARCH_SC  = 4;   // archer scale — 14×22 sprite → 56×88 screen px ≈ WD size
+  const BRUTE_SC = 4;   // brute scale  — 20×28 sprite → 80×112 screen px (~30% bigger)
   // Row Y positions spaced for SC2=3 sprite heights (~84px per sprite)
   const ROW_Y    = [GROUND_Y - 88, GROUND_Y - 178, GROUND_Y - 268];
 
@@ -50,7 +50,7 @@
   const _ = null;
 
 
-  // ── Wolfdragon palette (side-profile) ──────────────────────────────────
+  // ── Wolfdragon palette ──────────────────────────────────────────────────
   const XO = '#080012'; // hard outline
   const WA = '#18083a'; // body darkest
   const WB = '#2e1260'; // body dark
@@ -58,179 +58,198 @@
   const WD = '#6830b0'; // body bright
   const WE = '#8a48cc'; // body highlight
   const WF = '#ac66e8'; // body brightest
-  const WR = '#ff0a0a'; // eye red
-  const WGL= '#ff6600'; // eye glow
-  const WT = '#f2f2f2'; // fang
-  const WMO= '#08000e'; // mouth interior
-  const WHR= '#cc1100'; // horn/ear red
-  const WH2= '#ff3300'; // horn tip
-  const WN1= '#2a0860'; // wing dark
-  const WN2= '#4a14a8'; // wing mid
-  const WN3= '#7228d8'; // wing light
-  const WNR= '#aa0044'; // wing red tip
-  const WTE= '#5a1435'; // tail dark
-  const WTM= '#8c2055'; // tail mid
+  const WR = '#ff1111'; // eye red
+  const WGL= '#ff8800'; // eye glow orange
+  const WT = '#f0f0f0'; // fang/tooth
+  const WMO= '#100008'; // mouth interior
+  const WHR= '#7720aa'; // horn purple-dark
+  const WH2= '#aa44dd'; // horn purple-light
+  const WN1= '#12082a'; // wing darkest membrane
+  const WN2= '#28104e'; // wing dark
+  const WN3= '#441a7a'; // wing mid
+  const WN4= '#6828a8'; // wing highlight
+  const WNR= '#8822cc'; // wing leading edge
+  const WTE= '#4a1030'; // tail dark
+  const WTM= '#7a1c50'; // tail mid
   const SC1= '#180830'; // dragon scale dark
   const DS2= '#2e1450'; // dragon scale mid
   const SC3= '#4a2270'; // dragon scale light
-  const CL1= '#c8bce8'; // claw light
-  const CL2= '#8870c0'; // claw mid
-  const CL3= '#5040a0'; // claw dark
+  const CL1= '#d0c4f0'; // claw light
+  const CL2= '#9080c8'; // claw mid
+  const WS1= '#aa1133'; // red sash dark
+  const WS2= '#ee3355'; // red sash light
 
-  // ── WOLFDRAGON — 18 wide × 26 tall, FACING RIGHT ────────────────────────
-  // Wing on left columns, wolf head (snout right) on right columns
-  // Dragon tail bottom-left, dragon claws bottom-right
+  // ── WOLFDRAGON — 22 wide × 30 tall, FACING RIGHT ────────────────────────
+  // Based on profile view: large bat wings (cols 0-6), wolf head snout→R (cols 12-21)
+  // Red sash at waist, dragon tail lower-left, scaled digitigrade legs
   const WD_IDLE = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17
-  [ _,   _,   WN1, WN2, _,   _,   _,   _,   _,   _,   _,   _,   WHR, _,   _,   _,   _,   _ ],  //  0 wing tip + far horn
-  [ _,   WN1, WN2, WN3, WN2, _,   _,   _,   _,   _,   _,   WHR, WH2, WHR, _,   _,   _,   _ ],  //  1 wing + horn
-  [ WN1, WN2, WN3, WN3, WN2, WN1, _,   _,   _,   WA,  WB,  WC,  WD,  WC,  WB,  WA,  _,   _ ],  //  2 wing + head top (skull)
-  [ WNR, WN2, WN3, WN3, WN2, XO,  XO,  WA,  WB,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WA,  _ ],  //  3 wing + upper head
-  [ WNR, WN1, WN2, WN3, WN2, WN1, XO,  WB,  WC,  WD,  WGL, WR,  WF,  WE,  WD,  WC,  WB,  XO],  //  4 EYE row
-  [ _,   WNR, WN1, WN2, WN3, XO,  WA,  WC,  WD,  WE,  WF,  WE,  WD,  WE,  WD,  WC,  WB,  XO],  //  5 muzzle top
-  [ _,   _,   WNR, WN2, XO,  WA,  WB,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WB,  XO,  WT,  _ ],  //  6 muzzle + fang
-  [ _,   _,   WN1, XO,  WA,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  WMO, WMO, XO,  _,   _,   _ ],  //  7 lower jaw / chin
-  [ _,   _,   XO,  WA,  WB,  WC,  WD,  WD,  WC,  WB,  WA,  XO,  _,   _,   _,   _,   _,   _ ],  //  8 chin tuck
-  [ _,   WN2, XO,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _ ],  //  9 neck
-  [ WN2, WN3, XO,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  XO,  _,   _,   _,   _,   _,   _,   _ ],  // 10 shoulder
-  [ WN3, WN3, WC,  WD,  WE,  WF,  WF,  WE,  WD,  SC3, DS2, XO,  _,   _,   _,   _,   _,   _ ],  // 11 chest + scale begins
-  [ WN2, WN3, WD,  WE,  WF,  WF,  WE,  WD,  DS2, SC3, DS2, CL1, CL2, XO,  _,   _,   _,   _ ],  // 12 body + forearm
-  [ WNR, WN2, WC,  WD,  WE,  WE,  WD,  SC1, DS2, SC3, DS2, CL2, CL1, CL2, XO,  _,   _,   _ ],  // 13 lower body + claw
-  [ _,   WNR, WB,  WC,  WD,  WD,  SC1, DS2, SC3, DS2, CL1, CL2, CL1, XO,  _,   _,   _,   _ ],  // 14 foreleg reaching
-  [ _,   XO,  WB,  WC,  WD,  SC1, DS2, SC3, DS2, CL1, CL2, CL1, XO,  _,   _,   _,   _,   _ ],  // 15 claw extended
-  [ XO,  WTE, WB,  WC,  SC1, DS2, SC3, DS2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 16 haunch + tail
-  [ WTE, WTM, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   WTE, WTM, XO,  _,   _,   _,   _,   _ ],  // 17 upper hind leg + tail
-  [ WTM, WTE, XO,  SC1, DS2, SC3, SC1, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _ ],  // 18 hind leg + tail
-  [ XO,  WTE, SC1, DS2, SC3, DS2, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 19 lower hind leg
-  [ _,   XO,  SC1, DS2, SC3, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 20 ankle + tail
-  [ _,   _,   CL2, DS2, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21 dragon foot + tail
-  [ _,   _,   CL1, CL2, XO,  WTE, WTM, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22 toe claws + tail end
-  [ _,   CL1, CL2, CL1, XO,  WTM, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23 claw tips
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
+//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21
+  [ WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  0 wing apex
+  [ WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  1 wing leading finger
+  [ WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   WHR, _,   _,   _,   _,   _,   _,   _,   _ ],  //  2 wing + far horn tip
+  [ WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   WHR, WH2, WHR, _,   _,   _,   _,   _,   _,   _ ],  //  3 wing + horn
+  [ WNR, WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   WA,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  WA,  _,   _,   _ ],  //  4 wing + skull top
+  [ WN1, WNR, WN4, WN3, WN2, XO,  _,   _,   WB,  WC,  WD,  WE,  WF,  WGL, WR,  WF,  WE,  WD,  WC,  XO,  _,   _ ],  //  5 wing + EYE ROW
+  [ WN1, WN2, WNR, WN4, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  WA,  XO,  WT,  _,   _,   _,   _ ],  //  6 shoulder + snout top + fang
+  [ WN2, WN3, WN2, XO,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WMO, WMO, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  7 lower wing + jaw
+  [ WN3, WN2, XO,  WB,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  8 wing base + chin/neck
+  [ WN2, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  9 upper chest
+  [ XO,  WB,  WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 10 broad chest
+  [ WN2, WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  WC,  DS2, SC3, CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 11 chest + arm
+  [ WN3, WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  DS2, SC3, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _,   _ ],  // 12 mid body + forearm
+  [ WN4, WB,  WC,  WD,  WE,  WE,  WD,  WC,  SC1, DS2, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 13 lower body + claws
+  [ _,   WS1, WS2, WS1, WD,  WC,  WB,  XO,  _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 14 RED SASH + claw tips
+  [ WTE, WTM, WS1, WS2, WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 15 sash lower + tail base
+  [ WTE, WTM, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   SC1, DS2, SC3, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 16 tail + upper thigh
+  [ WTM, WTE, XO,  SC1, DS2, SC3, SC1, XO,  DS2, SC3, DS2, SC1, DS2, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 17 tail + thigh lower
+  [ XO,  WTE, SC1, DS2, SC3, DS2, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 18 tail + knee
+  [ _,   XO,  SC1, DS2, SC3, XO,  _,   XO,  SC1, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 19 tail tip + lower leg
+  [ _,   _,   XO,  DS2, XO,  WTE, _,   _,   XO,  SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20 tail curl + ankle
+  [ _,   _,   WTE, WTM, XO,  _,   _,   _,   CL2, DS2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21 tail end + foot
+  [ _,   _,   _,   WTE, _,   _,   _,   CL1, CL2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22 toe claws
+  [ _,   _,   _,   _,   _,   _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23 claw tips
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 26
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 27
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 28
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 29
   ];
 
-  // ATTACK frame — claw lunges further right, mouth open
+  // ATTACK frame — jaw open wide, arm lunges further right
   const WD_ATTACK = [
-  [ _,   _,   WN1, WN2, _,   _,   _,   _,   _,   _,   _,   _,   WHR, _,   _,   _,   _,   _ ],
-  [ _,   WN1, WN2, WN3, WN2, _,   _,   _,   _,   _,   _,   WHR, WH2, WHR, _,   _,   _,   _ ],
-  [ WN1, WN2, WN3, WN3, WN2, WN1, _,   _,   _,   XO,  WB,  WC,  WD,  WC,  WB,  XO,  _,   _ ],
-  [ WNR, WN2, WN3, WN3, WN2, XO,  XO,  WA,  WB,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WA,  _ ],
-  [ WNR, WN1, WN2, WN3, WN2, WN1, XO,  WB,  WC,  WD,  WGL, WR,  WF,  WE,  WD,  WC,  WB,  XO],  // eye
-  [ _,   WNR, WN1, WN2, WN3, XO,  WA,  WC,  WD,  WE,  WF,  WE,  WD,  WE,  WD,  WC,  WB,  XO],
-  [ _,   _,   WNR, WN2, XO,  WA,  WB,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  WB,  XO,  WT,  _ ],
-  // mouth open wider on attack
-  [ _,   _,   WN1, XO,  WA,  WB,  WC,  WD,  WE,  WD,  WMO, WMO, WMO, XO,  _,   _,   _,   _ ],  // jaw open
-  [ _,   _,   XO,  WA,  WB,  WC,  WD,  WD,  WC,  XO,  WMO, XO,  _,   _,   _,   _,   _,   _ ],  // wide open
-  [ _,   WN2, XO,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _ ],
-  [ WN2, WN3, XO,  WC,  WD,  WE,  WF,  WE,  WD,  WC,  XO,  _,   _,   _,   _,   _,   _,   _ ],
-  [ WN3, WN3, WC,  WD,  WE,  WF,  WF,  WE,  WD,  SC3, DS2, XO,  _,   _,   _,   _,   _,   _ ],
-  [ WN2, WN3, WD,  WE,  WF,  WF,  WE,  WD,  DS2, SC3, DS2, CL1, CL2, XO,  _,   _,   _,   _ ],
-  // claw punches out further right
-  [ WNR, WN2, WC,  WD,  WE,  WE,  WD,  SC1, DS2, SC3, CL1, CL2, CL1, CL2, CL1, XO,  _,   _ ],  // arm extended
-  [ _,   WNR, WB,  WC,  WD,  WD,  SC1, DS2, SC3, CL1, CL2, CL1, CL2, CL1, XO,  _,   _,   _ ],  // foreleg lunge
-  [ _,   XO,  WB,  WC,  WD,  SC1, DS2, SC3, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _ ],  // claws wide
-  [ XO,  WTE, WB,  WC,  SC1, DS2, SC3, DS2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],
-  [ WTE, WTM, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   WTE, WTM, XO,  _,   _,   _,   _,   _ ],
-  [ WTM, WTE, XO,  SC1, DS2, SC3, SC1, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _ ],
-  [ XO,  WTE, SC1, DS2, SC3, DS2, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _,   _ ],
-  [ _,   XO,  SC1, DS2, SC3, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],
-  [ _,   _,   CL2, DS2, XO,  WTE, WTM, WTE, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],
-  [ _,   _,   CL1, CL2, XO,  WTE, WTM, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],
-  [ _,   CL1, CL2, CL1, XO,  WTM, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],
+//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21
+  [ WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  0
+  [ WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  1
+  [ WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   WHR, _,   _,   _,   _,   _,   _,   _,   _ ],  //  2
+  [ WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   _,   _,   _,   WHR, WH2, WHR, _,   _,   _,   _,   _,   _,   _ ],  //  3
+  [ WNR, WN4, WN3, WN2, WN1, _,   _,   _,   _,   _,   WA,  WB,  WC,  WD,  WE,  WD,  WC,  WB,  WA,  _,   _,   _ ],  //  4
+  [ WN1, WNR, WN4, WN3, WN2, XO,  _,   _,   WB,  WC,  WD,  WE,  WF,  WGL, WR,  WF,  WE,  WD,  WC,  XO,  _,   _ ],  //  5 eye
+  [ WN1, WN2, WNR, WN4, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  WA,  XO,  WT,  WT,  _,   _,   _ ],  //  6 snout + fangs showing
+  [ WN2, WN3, WN2, XO,  WC,  WD,  WE,  WF,  WE,  WD,  WMO, WMO, WMO, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  7 jaw open wide
+  [ WN3, WN2, XO,  WB,  WC,  WD,  WE,  WD,  WC,  XO,  WMO, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  8 lower jaw drops
+  [ WN2, XO,  WB,  WC,  WD,  WE,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  9
+  [ XO,  WB,  WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 10
+  [ WN2, WC,  WD,  WE,  WF,  WF,  WF,  WE,  WD,  DS2, SC3, CL1, CL2, CL1, CL2, CL1, XO,  _,   _,   _,   _,   _ ],  // 11 arm extended
+  [ WN3, WC,  WD,  WE,  WF,  WF,  WE,  WD,  DS2, SC3, CL1, CL2, CL1, CL2, CL1, CL2, XO,  _,   _,   _,   _,   _ ],  // 12 forearm lunge
+  [ WN4, WB,  WC,  WD,  WE,  WE,  WD,  SC1, DS2, CL1, CL2, CL1, CL2, CL1, XO,  _,   _,   _,   _,   _,   _,   _ ],  // 13 claws spread
+  [ _,   WS1, WS2, WS1, WD,  WC,  WB,  XO,  _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 14
+  [ WTE, WTM, WS1, WS2, WC,  WB,  XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 15
+  [ WTE, WTM, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   SC1, DS2, SC3, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 16
+  [ WTM, WTE, XO,  SC1, DS2, SC3, SC1, XO,  DS2, SC3, DS2, SC1, DS2, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 17
+  [ XO,  WTE, SC1, DS2, SC3, DS2, XO,  SC1, DS2, SC3, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 18
+  [ _,   XO,  SC1, DS2, SC3, XO,  _,   XO,  SC1, DS2, SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 19
+  [ _,   _,   XO,  DS2, XO,  WTE, _,   _,   XO,  SC1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20
+  [ _,   _,   WTE, WTM, XO,  _,   _,   _,   CL2, DS2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21
+  [ _,   _,   _,   WTE, _,   _,   _,   CL1, CL2, CL1, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
+  [ _,   _,   _,   _,   _,   _,   CL1, CL2, XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 26
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 27
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 28
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 29
   ];
 
-  // ── DEMON SPRITES (all designed facing LEFT = cols 0 is front/attacking side)
-  // ── GRUNT — 14 wide × 20 tall ───────────────────────────────────────────
+  // ── DEMON SPRITES — all face LEFT (col 0 = front/snout side) ─────────────
   const DR = '#cc2200'; const DR2= '#aa1800'; const DR3= '#881000';
-  const DR4= '#ff4422'; const DH = '#ffbb00'; const DH2= '#cc8800';
-  const DE = '#ffff55'; const DT = '#f0f0f0'; const DW = '#550000';
-  const DW2= '#330000'; const DCL= '#ffccaa';
+  const DR4= '#ff4422'; const DH = '#cc9900'; const DH2= '#886600';
+  const DE = '#ffee44'; const DT = '#f0f0f0'; const DW = '#550000';
+  const DW2= '#330000'; const DCL= '#e8c8a0';
 
+  // ── GRUNT — 16 wide × 24 tall — lean red demon, profile view ─────────────
   const SPR_GRUNT = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13
-  [ _,   DH,  DH,  _,   _,   _,   _,   _,   _,   DH,  _,   _,   _,   _ ],  //  0 horns
-  [ DH,  DH2, DH,  DH2, _,   _,   _,   _,   DH2, DH,  DH2, _,   _,   _ ],  //  1
-  [ XO,  DR3, DR2, DR,  DR,  DR,  DR,  DR,  DR,  DR2, DR3, XO,  _,   _ ],  //  2 head
-  [ DR3, DR4, DE,  DR3, DR,  DR,  DR,  DR3, DE,  DR4, DR2, DR3, _,   _ ],  //  3 eyes
-  [ DR2, DR4, DR4, DR4, DR3, DR,  DR3, DR4, DR4, DR4, DR3, DR2, _,   _ ],  //  4 snout/brow
-  [ XO,  DR3, DT,  DR4, DR4, DR4, DR4, DT,  DR4, DR3, DR2, XO,  _,   _ ],  //  5 fangs/teeth
-  [ _,   XO,  DR3, DR2, DW,  DR,  DW,  DR2, DR3, DR2, XO,  _,   _,   _ ],  //  6 lower jaw
-  [ DW2, DW,  DR3, DR2, DR3, DR2, DR3, DR2, DR3, DW,  DW2, _,   _,   _ ],  //  7 neck
-  [ DW,  DR3, DR2, DR4, DR4, DR3, DR4, DR4, DR2, DR3, DW,  DW2, _,   _ ],  //  8 shoulder
-  [ DR3, DR2, DR4, DR4, DR3, DR4, DR4, DR4, DR3, DR2, DR3, DW,  _,   _ ],  //  9 chest
-  [ DR2, DR4, DR4, DCL, DR3, DR4, DR4, DR3, DCL, DR4, DR2, DR3, XO,  _ ],  // 10 arms/claw
-  [ XO,  DR3, DR2, DCL, DR2, DR3, DR4, DR2, DCL, DR2, DR3, XO,  _,   _ ],  // 11 lower arm
-  [ _,   DR3, DR2, DR3, DR2, DR4, DR4, DR2, DR3, DR2, DR3, _,   _,   _ ],  // 12 belly
-  [ _,   _,   DR3, DR2, DR3, DR2, DR2, DR3, DR2, DR3, _,   _,   _,   _ ],  // 13 hip
-  [ _,   _,   _,   DR3, DR2, DR3, _,   DR3, DR2, DR3, _,   _,   _,   _ ],  // 14 upper legs
-  [ _,   _,   _,   DR2, DR3, DR2, _,   DR2, DR3, DR2, _,   _,   _,   _ ],  // 15
-  [ _,   _,   DR3, DR2, DR3, _,   _,   _,   DR3, DR2, DR3, _,   _,   _ ],  // 16 knees
-  [ _,   _,   DR2, DR3, _,   _,   _,   _,   _,   DR3, DR2, _,   _,   _ ],  // 17 lower legs
-  [ _,   _,   DCL, DR3, _,   _,   _,   _,   _,   DR3, DCL, _,   _,   _ ],  // 18 feet
-  [ _,   DCL, DR3, _,   _,   _,   _,   _,   _,   _,   DR3, DCL, _,   _ ],  // 19 claws
+//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15
+  [ _,   DH,  DH,  _,   _,   _,   _,   _,   _,   _,   DH2, DH,  _,   _,   _,   _ ],  //  0 horns
+  [ DH,  DH2, DH,  DH,  _,   _,   _,   _,   _,   DH2, DH,  DH2, _,   _,   _,   _ ],  //  1 horn body
+  [ XO,  DR3, DR2, DR,  DR,  DR,  DR,  DR,  DR,  DR2, DR3, XO,  _,   _,   _,   _ ],  //  2 head
+  [ DR4, DE,  DR3, DR2, DR,  DR,  DR2, DE,  DR4, DR3, DR2, DR4, _,   _,   _,   _ ],  //  3 brow/eyes
+  [ DR3, DR4, DR4, DR3, DR2, DR3, DR3, DR4, DR4, DR3, DR2, DR3, _,   _,   _,   _ ],  //  4 snout
+  [ XO,  DR3, DT,  DR4, DR3, DR4, DT,  DR4, DR3, DR2, XO,  _,   _,   _,   _,   _ ],  //  5 teeth/fangs
+  [ _,   XO,  DR3, DW,  DR2, DW,  DR3, DR2, XO,  _,   _,   _,   _,   _,   _,   _ ],  //  6 lower jaw
+  [ DW2, DW,  DR3, DR2, DR3, DR2, DR3, DW,  DW2, _,   _,   _,   _,   _,   _,   _ ],  //  7 neck
+  [ DW,  DR3, DR4, DR4, DR3, DR4, DR4, DR3, DR2, DW,  _,   _,   _,   _,   _,   _ ],  //  8 shoulder
+  [ DR3, DR4, DR4, DR3, DR4, DR3, DR4, DR4, DR3, DR2, DW,  _,   _,   _,   _,   _ ],  //  9 chest
+  [ DR2, DR4, DR3, DR4, DR3, DR4, DR3, DR4, DR2, DR3, DW2, _,   _,   _,   _,   _ ],  // 10 upper belly
+  [ XO,  DR3, DR4, DR3, DR4, DR3, DR4, DR3, DR2, XO,  DCL, XO,  _,   _,   _,   _ ],  // 11 belly + arm
+  [ _,   XO,  DR3, DR2, DR3, DR2, DR3, DR2, XO,  DCL, DCL, DCL, XO,  _,   _,   _ ],  // 12 lower belly + claw
+  [ _,   _,   DR3, DR2, DR3, DR2, DR2, XO,  _,   DCL, DCL, XO,  _,   _,   _,   _ ],  // 13 hip + claw tips
+  [ _,   _,   _,   DR3, DR2, DR3, DR3, DR2, _,   _,   _,   _,   _,   _,   _,   _ ],  // 14 upper legs
+  [ _,   _,   _,   DR2, DR3, DR2, DR2, DR3, _,   _,   _,   _,   _,   _,   _,   _ ],  // 15
+  [ _,   _,   DR3, DR2, DR3, _,   _,   DR3, DR2, _,   _,   _,   _,   _,   _,   _ ],  // 16 knees bent
+  [ _,   _,   DR2, DR4, _,   _,   _,   _,   DR4, DR2, _,   _,   _,   _,   _,   _ ],  // 17 lower legs
+  [ _,   _,   DR4, DR3, _,   _,   _,   _,   DR3, DR4, _,   _,   _,   _,   _,   _ ],  // 18
+  [ _,   _,   DCL, DR3, _,   _,   _,   _,   DR3, DCL, _,   _,   _,   _,   _,   _ ],  // 19 feet
+  [ _,   DCL, DR2, _,   _,   _,   _,   _,   _,   DR2, DCL, _,   _,   _,   _,   _ ],  // 20 toe claws
+  [ DCL, DR3, _,   _,   _,   _,   _,   _,   _,   _,   DR3, DCL, _,   _,   _,   _ ],  // 21 claw tips
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
   ];
 
-  // ── ARCHER — 12 wide × 20 tall (robed, thinner) ─────────────────────────
+  // ── ARCHER — 14 wide × 22 tall — slim robed caster, arm raised to shoot ──
   const AR = '#aa2800'; const AR2= '#882000'; const AR3= '#661500';
-  const AR4= '#cc3300'; const ABL= '#223388'; const ABL2='#334499';
-  const ABL3='#4455bb';
+  const AR4= '#cc3300'; const ABL= '#1a2a66'; const ABL2='#2a3a88';
+  const ABL3='#3a4aaa';
   const SPR_ARCHER = [
-//  0    1    2    3    4    5    6    7    8    9   10   11
-  [ _,   DH,  DH2, _,   _,   _,   _,   _,   _,   DH2, DH,  _ ],  //  0 horns
-  [ DH2, DH,  DH2, _,   _,   _,   _,   _,   DH2, DH,  DH2, _ ],  //  1
-  [ XO,  AR3, AR2, AR,  AR,  AR,  AR,  AR,  AR,  AR2, XO,  _ ],  //  2 head
-  [ AR3, AR4, DE,  AR3, AR,  AR,  AR3, DE,  AR4, AR2, AR3, _ ],  //  3 eyes
-  [ AR2, AR4, AR4, AR4, AR3, AR3, AR4, AR4, AR4, AR3, AR2, _ ],  //  4 brow
-  [ XO,  AR3, DT,  AR4, AR4, AR4, AR4, DT,  AR3, AR2, XO,  _ ],  //  5 fangs
-  [ _,   XO,  AR3, AR2, DW,  DW,  AR2, AR3, AR2, XO,  _,   _ ],  //  6 jaw
-  [ _,   ABL2,ABL, ABL3,ABL2,ABL, ABL2,ABL, ABL3,ABL2,_,   _ ],  //  7 robe top
-  [ ABL2,ABL, ABL3,ABL3,ABL2,ABL, ABL2,ABL3,ABL3,ABL2,ABL, _ ],  //  8 chest
-  [ ABL3,ABL2,ABL, ABL2,ABL3,ABL2,ABL3,ABL2,ABL, ABL2,ABL3,_ ],  //  9 body
-  [ ABL2,ABL3,ABL2,ABL, ABL2,ABL3,ABL2,ABL, ABL2,ABL3,ABL2,_ ],  // 10 robe
-  [ _,   ABL3,ABL2,DCL, ABL3,ABL2,ABL3,DCL, ABL2,ABL3,_,   _ ],  // 11 arm/claw
-  [ _,   _,   ABL2,DCL, ABL3,ABL2,ABL3,DCL, ABL2,_,   _,   _ ],  // 12
-  [ _,   _,   AR3, AR2, ABL2,ABL3,ABL2,AR2, AR3, _,   _,   _ ],  // 13 lower robe
-  [ _,   _,   _,   AR3, AR2, AR3, AR2, AR3, _,   _,   _,   _ ],  // 14 legs
-  [ _,   _,   _,   AR2, AR3, AR2, AR3, AR2, _,   _,   _,   _ ],  // 15
-  [ _,   _,   AR3, AR2, AR3, _,   AR3, AR2, AR3, _,   _,   _ ],  // 16
-  [ _,   _,   AR2, AR3, _,   _,   _,   AR3, AR2, _,   _,   _ ],  // 17
-  [ _,   _,   DCL, AR3, _,   _,   _,   AR3, DCL, _,   _,   _ ],  // 18
-  [ _,   DCL, AR3, _,   _,   _,   _,   _,   AR3, DCL, _,   _ ],  // 19
+//  0    1    2    3    4    5    6    7    8    9   10   11   12   13
+  [ _,   DH,  DH2, _,   _,   _,   _,   _,   _,   DH2, DH,  _,   _,   _ ],  //  0 horns
+  [ DH2, DH,  DH2, DH,  _,   _,   _,   _,   DH,  DH2, DH,  _,   _,   _ ],  //  1
+  [ XO,  AR3, AR2, AR,  AR,  AR,  AR,  AR,  AR,  AR2, XO,  _,   _,   _ ],  //  2 head
+  [ AR3, AR4, DE,  AR3, AR2, AR3, DE,  AR4, AR3, AR2, AR3, _,   _,   _ ],  //  3 eyes
+  [ AR2, AR4, AR4, AR3, AR2, AR3, AR4, AR4, AR3, AR2, AR2, _,   _,   _ ],  //  4 snout
+  [ XO,  AR3, DT,  AR4, AR3, AR4, DT,  AR3, AR2, XO,  _,   _,   _,   _ ],  //  5 fangs
+  [ _,   XO,  AR3, DW,  AR2, DW,  AR3, AR2, XO,  _,   _,   _,   _,   _ ],  //  6 jaw
+  [ _,   ABL2,ABL3,ABL2,ABL, ABL2,ABL3,ABL2,ABL3,ABL2,_,   _,   _,   _ ],  //  7 robe collar
+  [ ABL2,ABL, ABL3,ABL2,ABL, ABL2,ABL, ABL3,ABL2,ABL, ABL2,_,   _,   _ ],  //  8 chest robe
+  [ ABL3,ABL2,ABL, ABL3,ABL2,ABL3,ABL2,ABL, ABL3,ABL2,ABL3,_,   _,   _ ],  //  9 body
+  [ ABL2,ABL3,ABL2,ABL, ABL2,ABL3,ABL2,ABL3,ABL2,ABL3,ABL2,_,   _,   _ ],  // 10 robe mid
+  [ _,   ABL3,ABL2,DCL, ABL2,ABL3,ABL2,DCL, ABL3,ABL2,_,   _,   _,   _ ],  // 11 arms + claw
+  [ _,   _,   ABL3,DCL, ABL2,ABL3,DCL, ABL2,ABL3,_,   _,   _,   _,   _ ],  // 12 raised arm shoot
+  [ _,   _,   AR3, AR2, ABL2,ABL3,AR2, AR3, _,   _,   _,   _,   _,   _ ],  // 13 robe lower
+  [ _,   _,   _,   AR3, AR2, AR3, AR2, AR3, _,   _,   _,   _,   _,   _ ],  // 14 legs
+  [ _,   _,   _,   AR2, AR3, AR2, AR3, AR2, _,   _,   _,   _,   _,   _ ],  // 15
+  [ _,   _,   AR3, AR2, AR3, _,   AR3, AR2, AR3, _,   _,   _,   _,   _ ],  // 16 knees
+  [ _,   _,   AR2, AR3, _,   _,   _,   AR3, AR2, _,   _,   _,   _,   _ ],  // 17 lower legs
+  [ _,   _,   DCL, AR3, _,   _,   _,   AR3, DCL, _,   _,   _,   _,   _ ],  // 18 feet
+  [ _,   DCL, AR3, _,   _,   _,   _,   _,   AR3, DCL, _,   _,   _,   _ ],  // 19 claws
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 21
   ];
 
-  // ── BRUTE — 18 wide × 24 tall (huge, armored) ────────────────────────────
+  // ── BRUTE — 20 wide × 28 tall — massive armored demon, profile view ───────
   const BR = '#991800'; const BR2= '#cc2200'; const BR3= '#ff3311';
-  const BR4= '#770f00'; const BRA= '#555555'; const BRA2='#888888';
-  const BRA3='#333333'; const BRH= '#ddbb00';
+  const BR4= '#770f00'; const BRA= '#4a4a4a'; const BRA2='#707070';
+  const BRA3='#2a2a2a'; const BRH= '#ccaa00';
   const SPR_BRUTE = [
-//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17
-  [ _,   _,   BRH, BRH, _,   _,   _,   _,   _,   _,   _,   _,   BRH, BRH, _,   _,   _,   _ ],  //  0 horns
-  [ _,   BRH, BRH, BRH, BRH, _,   _,   _,   _,   _,   BRH, BRH, BRH, BRH, _,   _,   _,   _ ],  //  1
-  [ BRH, BRH, XO,  BR4, BR,  BR,  BR,  BR,  BR,  BR,  BR,  BR4, XO,  BRH, _,   _,   _,   _ ],  //  2 head
-  [ XO,  BR4, BR3, DE,  BR,  BR,  BR,  BR,  DE,  BR3, BR4, XO,  _,   _,   _,   _,   _,   _ ],  //  3 eyes
-  [ BRA3,BRA, BR4, BR3, BR3, BR,  BR,  BR3, BR3, BR4, BRA, BRA3,_,   _,   _,   _,   _,   _ ],  //  4 armored brow
-  [ XO,  BRA3,BRA, DT,  BR3, BR3, BR3, DT,  BRA, BRA3,XO,  _,   _,   _,   _,   _,   _,   _ ],  //  5 fangs
-  [ _,   XO,  BRA3,BR4, DW,  DW2, DW,  BR4, BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  6 jaw
-  [ BRA3,BRA, BRA2,BR4, BR3, BR2, BR3, BR4, BRA2,BRA, BRA3,_,   _,   _,   _,   _,   _,   _ ],  //  7 neck
-  [ BRA, BRA2,BRA2,BRA, BR4, BR3, BR4, BRA, BRA2,BRA2,BRA, BRA3,_,   _,   _,   _,   _,   _ ],  //  8 huge shoulder
-  [ BRA2,BRA2,BRA3,BRA, BRA2,BR4, BRA2,BRA, BRA3,BRA2,BRA2,BRA, BRA3,_,   _,   _,   _,   _ ],  //  9 chest plate
-  [ BRA3,BRA, BRA2,BRA3,BRA, BRA2,BRA3,BRA2,BRA, BRA3,BRA, BRA2,BRA3,BRA, _,   _,   _,   _ ],  // 10 body
-  [ BRA, BRA2,BRA3,BRA, BRA2,DCL, BRA3,BRA2,BRA, BRA3,BRA2,DCL, BRA, BRA2,XO,  _,   _,   _ ],  // 11 arms
-  [ XO,  BRA2,BRA3,BRA, DCL, DCL, BRA3,BRA, DCL, DCL, BRA3,BRA, BRA2,XO,  _,   _,   _,   _ ],  // 12 claws
-  [ _,   XO,  BRA3,BR4, BR3, BR4, BRA3,BR4, BR3, BR4, BRA3,XO,  _,   _,   _,   _,   _,   _ ],  // 13 waist
-  [ _,   _,   BRA, BR4, BR,  BR4, BRA, BR4, BR,  BR4, BRA, _,   _,   _,   _,   _,   _,   _ ],  // 14 hip
-  [ _,   _,   _,   BRA3,BRA, BRA2,BRA3,BRA2,BRA, BRA3,_,   _,   _,   _,   _,   _,   _,   _ ],  // 15 upper legs
-  [ _,   _,   _,   BRA, BRA2,BRA3,BRA2,BRA3,BRA2,BRA, _,   _,   _,   _,   _,   _,   _,   _ ],  // 16
-  [ _,   _,   BRA3,BRA2,BRA, BRA3,BRA, BRA3,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _ ],  // 17 knees
-  [ _,   _,   BRA, BRA2,BRA3,BRA, _,   BRA, BRA3,BRA2,BRA, _,   _,   _,   _,   _,   _,   _ ],  // 18 lower legs
-  [ _,   _,   BRA2,BRA3,BRA, _,   _,   _,   BRA, BRA3,BRA2,_,   _,   _,   _,   _,   _,   _ ],  // 19
-  [ _,   _,   DCL, BRA3,_,   _,   _,   _,   _,   BRA3,DCL, _,   _,   _,   _,   _,   _,   _ ],  // 20 feet
-  [ _,   DCL, BRA3,_,   _,   _,   _,   _,   _,   _,   BRA3,DCL, _,   _,   _,   _,   _,   _ ],  // 21 claws
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
-  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
+//  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19
+  [ _,   _,   BRH, BRH, _,   _,   _,   _,   _,   _,   _,   _,   _,   BRH, BRH, _,   _,   _,   _,   _ ],  //  0 horns
+  [ _,   BRH, BRH, BRH, BRH, _,   _,   _,   _,   _,   _,   BRH, BRH, BRH, BRH, _,   _,   _,   _,   _ ],  //  1 horn body
+  [ BRH, BRH, XO,  BR4, BR,  BR,  BR,  BR,  BR,  BR,  BR4, XO,  BRH, BRH, _,   _,   _,   _,   _,   _ ],  //  2 head
+  [ XO,  BR4, BR3, DE,  BR2, BR,  BR,  BR2, DE,  BR3, BR4, XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  //  3 eyes
+  [ BRA3,BRA, BR4, BR3, BR2, BR,  BR,  BR2, BR3, BR4, BRA, BRA3,_,   _,   _,   _,   _,   _,   _,   _ ],  //  4 armored brow
+  [ XO,  BRA3,BRA2,DT,  BR3, BR2, BR3, DT,  BRA2,BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  5 fangs
+  [ _,   XO,  BRA3,BR4, DW,  DW2, DW,  BR4, BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  6 lower jaw
+  [ BRA3,BRA, BRA2,BR4, BR3, BR2, BR3, BR4, BRA2,BRA, BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  //  7 neck armored
+  [ BRA2,BRA2,BRA, BRA2,BR4, BR3, BR4, BRA2,BRA, BRA2,BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _ ],  //  8 huge shoulder
+  [ BRA, BRA2,BRA3,BRA, BRA2,BR4, BRA2,BRA, BRA3,BRA2,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _ ],  //  9 chest plate wide
+  [ BRA3,BRA, BRA2,BRA3,BRA, BRA2,BRA3,BRA2,BRA, BRA3,BRA, BRA2,BRA3,BRA, _,   _,   _,   _,   _,   _ ],  // 10 body armored
+  [ BRA2,BRA3,BRA, BRA2,BRA3,DCL, BRA2,BRA3,BRA, BRA2,BRA3,DCL, BRA2,BRA3,XO,  _,   _,   _,   _,   _ ],  // 11 arms + claw
+  [ XO,  BRA2,BRA3,BRA, DCL, DCL, BRA3,BRA, DCL, DCL, BRA3,BRA2,BRA3,XO,  _,   _,   _,   _,   _,   _ ],  // 12 claws spread
+  [ _,   XO,  BRA3,BR4, BR3, BR4, BRA3,BR4, BR3, BR4, BRA3,XO,  _,   _,   _,   _,   _,   _,   _,   _ ],  // 13 waist
+  [ _,   _,   BRA2,BR4, BR2, BR4, BRA2,BR4, BR2, BR4, BRA2,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 14 hip
+  [ _,   _,   _,   BRA3,BRA2,BRA, BRA3,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 15 upper legs
+  [ _,   _,   _,   BRA2,BRA3,BRA2,BRA3,BRA2,BRA3,BRA2,_,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 16
+  [ _,   _,   BRA3,BRA2,BRA, BRA3,BRA, BRA3,BRA, BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 17 knees
+  [ _,   _,   BRA2,BRA3,BRA2,BRA3,_,   BRA3,BRA2,BRA3,BRA2,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 18 lower legs
+  [ _,   _,   BRA3,BRA2,BRA3,_,   _,   _,   BRA3,BRA2,BRA3,_,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 19
+  [ _,   _,   DCL, BRA3,_,   _,   _,   _,   _,   BRA3,DCL, _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 20 feet
+  [ _,   DCL, BRA3,_,   _,   _,   _,   _,   _,   _,   BRA3,DCL, _,   _,   _,   _,   _,   _,   _,   _ ],  // 21 toe claws
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 22
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 23
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 24
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 25
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 26
+  [ _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _,   _ ],  // 27
   ];
 
   // ── Projectile sprites ─────────────────────────────────────────────────────
