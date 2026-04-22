@@ -20,7 +20,8 @@
 
   const W = 800, H = 480;
   canvas.width = W; canvas.height = H;
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   const ROWS     = 3;
   const GROUND_Y = H - 22;
@@ -99,782 +100,189 @@
   ];
 
   // ─── sprite sizes ─────────────────────────────────────────────────────────
-  const WD_W    = 66,  WD_H    = 90;
-  const GRUNT_W = 64,  GRUNT_H = 96;
-  const ARCH_W  = 56,  ARCH_H  = 88;
-  const BRUTE_W = 80,  BRUTE_H = 112;
-  const SPIDER_W= 120, SPIDER_H= 90;
-  const LICH_W  = 80,  LICH_H  = 110;
-  const APOC_W  = 160, APOC_H  = 140;
+  // Sized to showcase the high-res sprite art while fitting within row height
+  const WD_W    = 88,  WD_H    = 88;
+  const GRUNT_W = 80,  GRUNT_H = 88;
+  const ARCH_W  = 72,  ARCH_H  = 80;
+  const BRUTE_W = 100, BRUTE_H = 100;
+  const SPIDER_W= 140, SPIDER_H= 100;
+  const LICH_W  = 96,  LICH_H  = 120;
+  const APOC_W  = 180, APOC_H  = 150;
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
   const SP_W    = SPR_SPELL[0].length * SC2;
   const SP_H    = SPR_SPELL.length    * SC2;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  VECTOR SPRITE DRAW FUNCTIONS
-  //  All characters drawn facing RIGHT by default.
-  //  Pass flipX=true to mirror (face left).
-  //  Coordinates are local to the sprite bounding box (0,0 = top-left).
+  //  SPRITE SHEET SYSTEM
+  //  Sheet R (ref):   1na7pu — 4-up reference art, GREY bg (~150,150,150)
+  //                   WolfDragon front+side, Demon front+side — clean, no labels
+  //  Sheet B (boss):  oajbktoajb — Brute + 3 bosses, DARK bg (~38,35,54)
+  //  Background pixels are flood-filled from corners to preserve character
+  //  dark-interior pixels (shadow, black outlines etc.).
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // ── WOLFDRAGON (66×90) ────────────────────────────────────────────────────
-  // Purple dragon-wolf: bat wings, wolf head with snout right, horns,
-  // glowing red eye, red sash, dragon tail, digitigrade legs.
-  function drawWDSprite(ox, oy, flipX, atk) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + WD_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // ── Source rectangles ────────────────────────────────────────────────────
+  // Sheet R = 1na7pu1na7pu1na7.png  (reference 4-up, grey bg)
+  // Sheet B = oajbktoajbktoajb.png  (boss sheet, dark bg)
+  const SRECTS = {
+    WD_FRONT:  { sh:'R', sx:19,  sy:512, sw:493, sh_:494 }, // wolfdragon front  (bottom-left)
+    WD_SIDE:   { sh:'R', sx:512, sy:512, sw:493, sh_:494 }, // wolfdragon side   (bottom-right)
+    DEM_FRONT: { sh:'R', sx:19,  sy:18,  sw:493, sh_:494 }, // demon front       (top-left)
+    DEM_SIDE:  { sh:'R', sx:512, sy:18,  sw:493, sh_:494 }, // demon side        (top-right)
+    BRUTE:     { sh:'B', sx:16,  sy:51,  sw:489, sh_:423 }, // brute demon
+    SPIDER:    { sh:'B', sx:16,  sy:560, sw:313, sh_:326 }, // spider boss
+    LICH:      { sh:'B', sx:342, sy:561, sw:340, sh_:341 }, // lich boss
+    APOC:      { sh:'B', sx:682, sy:561, sw:332, sh_:341 }, // apocalyptic boss
+  };
 
-    // TAIL — curling from lower-left body
-    ctx.beginPath();
-    ctx.moveTo(15, 58);
-    ctx.bezierCurveTo(2, 68, -6, 80, 4, 87);
-    ctx.bezierCurveTo(10, 92, 18, 88, 12, 82);
-    ctx.strokeStyle = '#7a1c50'; ctx.lineWidth = 9; ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(15, 58);
-    ctx.bezierCurveTo(3, 67, -4, 78, 5, 85);
-    ctx.strokeStyle = '#4a1030'; ctx.lineWidth = 5; ctx.stroke();
+  // ── Background-removal helpers ────────────────────────────────────────────
+  // globalReplace: removes ALL pixels within tolerance of the bg colour.
+  // Safe for sheet R (grey bg ~150,150,150 — characters are purple/red/dark,
+  // so no character pixels will accidentally match the neutral grey).
+  // Also does a secondary corner-flood to remove white border-frame lines.
+  function removeBgGlobal(img, tolerance) {
+    const oc = document.createElement('canvas');
+    oc.width = img.naturalWidth; oc.height = img.naturalHeight;
+    const ox = oc.getContext('2d');
+    ox.drawImage(img, 0, 0);
+    const W2 = oc.width, H2 = oc.height;
+    const id = ox.getImageData(0, 0, W2, H2);
+    const d  = id.data;
 
-    // BAT WINGS — large, behind body (3 angular fingers)
-    const wg = ctx.createLinearGradient(1, 3, 22, 58);
-    wg.addColorStop(0, '#1a0835'); wg.addColorStop(0.55, '#2e1260'); wg.addColorStop(1, '#441a7a');
-    ctx.beginPath();
-    ctx.moveTo(22, 30);   // wing root at shoulder
-    ctx.lineTo(1,  3);    // apex / finger 1 tip
-    ctx.lineTo(8,  24);   // notch
-    ctx.lineTo(0,  36);   // finger 2 tip
-    ctx.lineTo(5,  50);   // notch
-    ctx.lineTo(2,  60);   // finger 3 tip
-    ctx.lineTo(20, 55);   // wing base lower
-    ctx.closePath();
-    ctx.fillStyle = wg; ctx.fill();
-    ctx.strokeStyle = '#6828a8'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Leading-edge finger bones
-    ctx.strokeStyle = '#8822cc'; ctx.lineWidth = 1.5;
-    [[22,30, 1,3],[22,36, 0,36],[22,48, 2,60]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-
-    // BACK LEG (left, slightly faded)
-    ctx.save(); ctx.globalAlpha = 0.65;
-    ctx.lineWidth = 9;
-    ctx.beginPath(); ctx.moveTo(22,64); ctx.lineTo(16,76); ctx.lineTo(10,84); ctx.lineTo(8,90);
-    ctx.strokeStyle = '#2e1260'; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#d0c4f0';
-    [[8,90,4,87],[8,90,6,91],[8,90,11,90]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    ctx.restore();
-
-    // BODY — muscular purple torso
-    const bg = ctx.createRadialGradient(33, 44, 4, 33, 44, 22);
-    bg.addColorStop(0, '#ac66e8'); bg.addColorStop(0.5, '#6830b0'); bg.addColorStop(1, '#2e1260');
-    ctx.beginPath();
-    ctx.moveTo(22, 30);
-    ctx.bezierCurveTo(14, 32, 12, 40, 14, 52);
-    ctx.bezierCurveTo(16, 62, 22, 67, 31, 67);
-    ctx.bezierCurveTo(41, 67, 48, 60, 48, 51);
-    ctx.bezierCurveTo(50, 40, 46, 30, 40, 27);
-    ctx.bezierCurveTo(34, 22, 27, 25, 22, 30);
-    ctx.closePath();
-    ctx.fillStyle = bg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // RED SASH at waist
-    ctx.beginPath(); ctx.ellipse(31, 63, 13, 5, 0, 0, Math.PI*2);
-    ctx.fillStyle = '#aa1133'; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(29, 61, 7, 2.5, -0.15, 0, Math.PI*2);
-    ctx.fillStyle = '#ee3355'; ctx.fill();
-
-    // FRONT LEG (right, digitigrade)
-    ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.moveTo(36,64); ctx.lineTo(40,76); ctx.lineTo(46,84); ctx.lineTo(50,90);
-    ctx.strokeStyle = '#4a1e88'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(36,64); ctx.lineTo(40,76); ctx.lineTo(46,84); ctx.lineTo(50,90);
-    ctx.strokeStyle = '#6830b0'; ctx.lineWidth = 6; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#d0c4f0';
-    [[50,90,46,87],[50,90,48,91],[50,90,53,89]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-
-    // ARM + CLAWS (reaches further when attacking)
-    const ax = atk ? 62 : 56;
-    const ay = atk ? 42 : 38;
-    ctx.lineWidth = 9;
-    ctx.beginPath(); ctx.moveTo(44,37); ctx.quadraticCurveTo(52,34,ax,ay);
-    ctx.strokeStyle = '#4a1e88'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(44,37); ctx.quadraticCurveTo(52,34,ax,ay);
-    ctx.strokeStyle = '#6830b0'; ctx.lineWidth = 5; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#d0c4f0';
-    [[-5,-3],[0,0],[5,3]].forEach(([dy,slant])=>{
-      ctx.beginPath(); ctx.moveTo(ax+slant, ay+dy); ctx.lineTo(ax+slant+8, ay+dy-3); ctx.stroke();
-    });
-
-    // NECK
-    ctx.lineWidth = 11;
-    ctx.beginPath(); ctx.moveTo(38,28); ctx.lineTo(44,16);
-    ctx.strokeStyle = '#4a1e88'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(38,28); ctx.lineTo(44,16);
-    ctx.strokeStyle = '#6830b0'; ctx.lineWidth = 7; ctx.stroke();
-
-    // HEAD — wolf skull
-    const hg = ctx.createRadialGradient(47,13,2,47,13,14);
-    hg.addColorStop(0, '#8a48cc'); hg.addColorStop(0.6, '#4a1e88'); hg.addColorStop(1, '#18083a');
-    ctx.beginPath(); ctx.ellipse(46,13,13,11,0.2,0,Math.PI*2);
-    ctx.fillStyle = hg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // HORNS (two curved, one behind one front)
-    ctx.beginPath(); ctx.moveTo(41,5); ctx.bezierCurveTo(36,-4,30,-2,34,7);
-    ctx.strokeStyle = '#7720aa'; ctx.lineWidth = 3.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(41,5); ctx.bezierCurveTo(37,-2,32,0,35,6);
-    ctx.strokeStyle = '#aa44dd'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(53,3); ctx.bezierCurveTo(58,-4,63,-1,59,8);
-    ctx.strokeStyle = '#7720aa'; ctx.lineWidth = 3.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(53,3); ctx.bezierCurveTo(57,-3,61,0,58,7);
-    ctx.strokeStyle = '#aa44dd'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // SNOUT (wolf muzzle pointing right)
-    if (atk) {
-      // Upper jaw open
-      ctx.beginPath(); ctx.moveTo(52,11);
-      ctx.bezierCurveTo(57,8,64,9,65,13);
-      ctx.bezierCurveTo(64,15,60,15,55,15); ctx.lineTo(52,15); ctx.closePath();
-      ctx.fillStyle = '#4a1e88'; ctx.fill();
-      ctx.strokeStyle = '#080012'; ctx.lineWidth = 1; ctx.stroke();
-      // Lower jaw
-      ctx.beginPath(); ctx.moveTo(52,16);
-      ctx.bezierCurveTo(57,18,63,19,65,17);
-      ctx.bezierCurveTo(64,20,58,22,53,21); ctx.lineTo(52,19); ctx.closePath();
-      ctx.fillStyle = '#4a1e88'; ctx.fill();
-      ctx.strokeStyle = '#080012'; ctx.lineWidth = 1; ctx.stroke();
-      // Mouth interior dark
-      ctx.beginPath(); ctx.moveTo(52,15); ctx.lineTo(65,14); ctx.lineTo(64,17); ctx.lineTo(52,16); ctx.closePath();
-      ctx.fillStyle = '#100008'; ctx.fill();
-      // Fangs
-      ctx.beginPath(); ctx.moveTo(57,15); ctx.lineTo(59,12); ctx.lineTo(61,15); ctx.fillStyle='#f0f0f0'; ctx.fill();
-      ctx.beginPath(); ctx.moveTo(57,16); ctx.lineTo(59,19); ctx.lineTo(61,16); ctx.fillStyle='#f0f0f0'; ctx.fill();
-    } else {
-      // Closed muzzle
-      ctx.beginPath(); ctx.moveTo(52,11);
-      ctx.bezierCurveTo(57,8,64,10,65,13);
-      ctx.bezierCurveTo(64,17,59,18,55,17);
-      ctx.bezierCurveTo(53,20,50,20,50,17); ctx.lineTo(52,11); ctx.closePath();
-      ctx.fillStyle = '#4a1e88'; ctx.fill();
-      ctx.strokeStyle = '#080012'; ctx.lineWidth = 1; ctx.stroke();
-      // Fang hint
-      ctx.beginPath(); ctx.moveTo(62,15); ctx.lineTo(64,12); ctx.lineTo(65,15); ctx.fillStyle='#f0f0f0'; ctx.fill();
+    // Pass 1 — global grey removal
+    let br=0,bg2=0,bb2=0;
+    for(let cy=0;cy<4;cy++) for(let cx=0;cx<4;cx++){
+      const i=(cy*W2+cx)*4; br+=d[i]; bg2+=d[i+1]; bb2+=d[i+2];
+    }
+    br=Math.round(br/16); bg2=Math.round(bg2/16); bb2=Math.round(bb2/16);
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.max(Math.abs(d[i]-br),Math.abs(d[i+1]-bg2),Math.abs(d[i+2]-bb2)) <= tolerance)
+        d[i+3] = 0;
     }
 
-    // EYE — glowing red
-    ctx.beginPath(); ctx.arc(50,11,5,0,Math.PI*2);
-    ctx.fillStyle = 'rgba(255,136,0,0.25)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(50,11,3.5,0,Math.PI*2);
-    ctx.fillStyle = '#ff8800'; ctx.fill();
-    ctx.beginPath(); ctx.arc(50,11,2.5,0,Math.PI*2);
-    ctx.fillStyle = '#ff1111'; ctx.fill();
-    ctx.beginPath(); ctx.arc(51,10,1,0,Math.PI*2);
-    ctx.fillStyle = '#ffffc0'; ctx.fill();
+    // Pass 2 — corner flood-fill to remove white/near-white border lines
+    // (white fangs/highlights deep inside the character are unreachable from corners)
+    const visited = new Uint8Array(W2*H2);
+    const queue = new Int32Array(W2*H2);
+    let head=0, tail=0;
+    function enq(x,y){ if(x<0||x>=W2||y<0||y>=H2) return; const idx=y*W2+x; if(visited[idx]) return; visited[idx]=1; queue[tail++]=idx; }
+    enq(0,0); enq(W2-1,0); enq(0,H2-1); enq(W2-1,H2-1);
+    while(head<tail){
+      const idx=queue[head++];
+      const pi=idx*4;
+      // Already transparent (from pass 1) OR near-white → kill and expand
+      if(d[pi+3]===0 || (d[pi]>200 && d[pi+1]>200 && d[pi+2]>200)){
+        d[pi+3]=0;
+        const x=idx%W2, y=(idx/W2)|0;
+        enq(x-1,y); enq(x+1,y); enq(x,y-1); enq(x,y+1);
+      }
+    }
 
+    ox.putImageData(id, 0, 0);
+    return oc;
+  }
+
+  // floodFill: corner-seeds only — used for dark-bg boss sheet where global
+  // replace would incorrectly hit shadowed interior character pixels.
+  function removeBgFlood(img, tolerance) {
+    const oc = document.createElement('canvas');
+    oc.width = img.naturalWidth; oc.height = img.naturalHeight;
+    const ox = oc.getContext('2d');
+    ox.drawImage(img, 0, 0);
+    const W2 = oc.width, H2 = oc.height;
+    const id = ox.getImageData(0, 0, W2, H2);
+    const d  = id.data;
+    let br=0,bg2=0,bb2=0;
+    for(let cy=0;cy<4;cy++) for(let cx=0;cx<4;cx++){
+      const i=(cy*W2+cx)*4; br+=d[i]; bg2+=d[i+1]; bb2+=d[i+2];
+    }
+    br=Math.round(br/16); bg2=Math.round(bg2/16); bb2=Math.round(bb2/16);
+    const visited = new Uint8Array(W2*H2);
+    const queue = new Int32Array(W2*H2);
+    let head=0, tail=0;
+    function enq(x,y){ if(x<0||x>=W2||y<0||y>=H2) return; const idx=y*W2+x; if(visited[idx]) return; visited[idx]=1; queue[tail++]=idx; }
+    enq(0,0); enq(W2-1,0); enq(0,H2-1); enq(W2-1,H2-1);
+    while(head<tail){
+      const idx=queue[head++];
+      const pi=idx*4;
+      if(Math.max(Math.abs(d[pi]-br),Math.abs(d[pi+1]-bg2),Math.abs(d[pi+2]-bb2))<=tolerance){
+        d[pi+3]=0;
+        const x=idx%W2, y=(idx/W2)|0;
+        enq(x-1,y); enq(x+1,y); enq(x,y-1); enq(x,y+1);
+      }
+    }
+    ox.putImageData(id, 0, 0);
+    return oc;
+  }
+
+  // ── Sheet canvases (populated by loadSprites) ─────────────────────────────
+  const SHEETS = { R: null, B: null };
+  let spritesReady = false;
+
+  function loadSprites(cb) {
+    let n = 0;
+    const total = 2;
+    function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
+    const imgR = new Image();
+    imgR.onload = () => { SHEETS.R = removeBgGlobal(imgR, 35); done(); };
+    imgR.onerror = done;
+    imgR.src = '/images/Gemini_Generated_Image_1na7pu1na7pu1na7.png';
+    const imgB = new Image();
+    imgB.onload = () => { SHEETS.B = removeBgFlood(imgB, 48); done(); };
+    imgB.onerror = done;
+    imgB.src = '/images/Gemini_Generated_Image_oajbktoajbktoajb.png';
+  }
+
+  // ── Core draw helper ──────────────────────────────────────────────────────
+  // Draws a source-rect from a sheet into (ox,oy,dw,dh), optionally flipped.
+  function drawSpr(rect, ox, oy, dw, dh, flipX) {
+    const sheet = SHEETS[rect.sh];
+    if (!sheet) return;
+    ctx.save();
+    if (flipX) {
+      ctx.translate(ox + dw, oy);
+      ctx.scale(-1, 1);
+      ctx.drawImage(sheet, rect.sx, rect.sy, rect.sw, rect.sh_, 0, 0, dw, dh);
+    } else {
+      ctx.drawImage(sheet, rect.sx, rect.sy, rect.sw, rect.sh_, ox, oy, dw, dh);
+    }
     ctx.restore();
   }
 
-  // ── GRUNT DEMON (64×96) ───────────────────────────────────────────────────
-  // Lean red humanoid, hunched forward, long reaching arms with claws.
+  // ── Character draw functions ──────────────────────────────────────────────
+  // WolfDragon: use profile (side view) — natural for a side-scroller.
+  // Front view used during attack for dramatic look.
+  function drawWDSprite(ox, oy, flipX, atk) {
+    const r = atk ? SRECTS.WD_FRONT : SRECTS.WD_SIDE;
+    drawSpr(r, ox, oy, WD_W, WD_H, atk ? !flipX : flipX);
+  }
+
   function drawGruntSprite(ox, oy, flipX) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + GRUNT_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    // HORNS
-    ctx.beginPath(); ctx.moveTo(38,8); ctx.bezierCurveTo(33,0,27,2,30,10);
-    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 3; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(48,6); ctx.bezierCurveTo(53,-2,58,1,54,9);
-    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 3; ctx.stroke();
-
-    // HEAD
-    const hg = ctx.createRadialGradient(42,14,2,42,14,12);
-    hg.addColorStop(0, '#ff4422'); hg.addColorStop(0.6, '#cc2200'); hg.addColorStop(1, '#881000');
-    ctx.beginPath(); ctx.ellipse(42,14,12,10,0.15,0,Math.PI*2);
-    ctx.fillStyle = hg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Eyes
-    ctx.beginPath(); ctx.ellipse(47,11,3,2.5,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
-    ctx.beginPath(); ctx.arc(47,11,1.5,0,Math.PI*2); ctx.fillStyle='#220000'; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(37,12,2.5,2,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
-    ctx.beginPath(); ctx.arc(37,12,1.2,0,Math.PI*2); ctx.fillStyle='#220000'; ctx.fill();
-    // Fangs
-    ctx.beginPath(); ctx.moveTo(50,18); ctx.lineTo(52,22); ctx.lineTo(54,18); ctx.fillStyle='#f0f0f0'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(44,19); ctx.lineTo(46,23); ctx.lineTo(48,19); ctx.fillStyle='#f0f0f0'; ctx.fill();
-
-    // BODY — hunched, leaning forward
-    const bg = ctx.createRadialGradient(36,45,4,36,45,20);
-    bg.addColorStop(0, '#ff4422'); bg.addColorStop(0.6, '#cc2200'); bg.addColorStop(1, '#661500');
-    ctx.beginPath();
-    ctx.moveTo(40,24);
-    ctx.bezierCurveTo(48,26,52,36,50,50);
-    ctx.bezierCurveTo(48,60,40,64,32,64);
-    ctx.bezierCurveTo(20,64,14,56,14,48);
-    ctx.bezierCurveTo(12,36,22,28,28,24);
-    ctx.closePath();
-    ctx.fillStyle = bg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // RIGHT ARM — reaching forward with claws
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(46,36); ctx.quadraticCurveTo(56,40,62,52);
-    ctx.strokeStyle = '#881000'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(46,36); ctx.quadraticCurveTo(56,40,62,52);
-    ctx.strokeStyle = '#cc2200'; ctx.lineWidth = 5; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
-    [[62,52,64,47],[62,52,65,52],[62,52,63,57]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-
-    // LEFT ARM — back, partially visible
-    ctx.save(); ctx.globalAlpha = 0.5;
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(20,36); ctx.quadraticCurveTo(12,44,8,56);
-    ctx.strokeStyle = '#661500'; ctx.stroke();
-    ctx.restore();
-
-    // LEGS
-    ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.moveTo(40,60); ctx.lineTo(44,74); ctx.lineTo(48,84); ctx.lineTo(52,96);
-    ctx.strokeStyle = '#881000'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(40,60); ctx.lineTo(44,74); ctx.lineTo(48,84); ctx.lineTo(52,96);
-    ctx.strokeStyle = '#cc2200'; ctx.lineWidth = 6; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
-    [[52,96,48,93],[52,96,50,97],[52,96,54,95]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    ctx.save(); ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 9;
-    ctx.beginPath(); ctx.moveTo(28,60); ctx.lineTo(26,74); ctx.lineTo(22,84); ctx.lineTo(18,96);
-    ctx.strokeStyle = '#661500'; ctx.stroke();
-    ctx.restore();
-
-    ctx.restore();
+    drawSpr(SRECTS.DEM_FRONT, ox, oy, GRUNT_W, GRUNT_H, flipX);
   }
 
-  // ── ARCHER DEMON (56×88) ─────────────────────────────────────────────────
-  // Slim robed demon caster, raised arm glowing with energy ball.
+  // Archer uses the side-profile demon (distinct look from grunt)
   function drawArcherSprite(ox, oy, flipX) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + ARCH_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    // HORNS
-    ctx.beginPath(); ctx.moveTo(25,6); ctx.bezierCurveTo(21,0,16,2,19,8);
-    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(34,4); ctx.bezierCurveTo(38,-2,43,1,39,8);
-    ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 2.5; ctx.stroke();
-
-    // HEAD
-    const hg = ctx.createRadialGradient(30,12,2,30,12,11);
-    hg.addColorStop(0, '#cc3300'); hg.addColorStop(0.6, '#aa2800'); hg.addColorStop(1, '#661500');
-    ctx.beginPath(); ctx.ellipse(29,12,11,9,0,0,Math.PI*2);
-    ctx.fillStyle = hg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(35,10,2.5,2,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
-    ctx.beginPath(); ctx.arc(35,10,1.2,0,Math.PI*2); ctx.fillStyle='#1a0000'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(36,16); ctx.lineTo(38,20); ctx.lineTo(40,16); ctx.fillStyle='#f0f0f0'; ctx.fill();
-
-    // ROBED BODY
-    const rg = ctx.createLinearGradient(12,20,42,66);
-    rg.addColorStop(0, '#2a3a88'); rg.addColorStop(0.5, '#1a2a66'); rg.addColorStop(1, '#0e1844');
-    ctx.beginPath();
-    ctx.moveTo(26,20);
-    ctx.bezierCurveTo(18,22,12,32,12,46);
-    ctx.bezierCurveTo(12,58,18,66,26,66);
-    ctx.bezierCurveTo(34,66,42,60,42,48);
-    ctx.bezierCurveTo(44,36,38,24,32,20);
-    ctx.closePath();
-    ctx.fillStyle = rg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.strokeStyle = '#3a4aaa'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(27,22); ctx.lineTo(25,64); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(31,22); ctx.lineTo(33,64); ctx.stroke();
-
-    // RAISED CASTING ARM
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(38,32); ctx.quadraticCurveTo(48,22,52,14);
-    ctx.strokeStyle = '#661500'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(38,32); ctx.quadraticCurveTo(48,22,52,14);
-    ctx.strokeStyle = '#aa2800'; ctx.lineWidth = 4; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
-    [[52,14,49,10],[52,14,53,10],[52,14,55,14]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    // Glowing energy orb
-    const eg = ctx.createRadialGradient(52,14,1,52,14,5);
-    eg.addColorStop(0,'rgba(255,200,0,0.9)'); eg.addColorStop(1,'rgba(255,80,0,0)');
-    ctx.beginPath(); ctx.arc(52,14,5,0,Math.PI*2); ctx.fillStyle=eg; ctx.fill();
-
-    // LEGS
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(30,64); ctx.lineTo(34,76); ctx.lineTo(38,84); ctx.lineTo(42,88);
-    ctx.strokeStyle = '#661500'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(30,64); ctx.lineTo(34,76); ctx.lineTo(38,84); ctx.lineTo(42,88);
-    ctx.strokeStyle = '#aa2800'; ctx.lineWidth = 5; ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#e8c8a0';
-    [[42,88,38,85],[42,88,40,89],[42,88,44,87]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    ctx.save(); ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(20,64); ctx.lineTo(18,76); ctx.lineTo(14,84); ctx.lineTo(10,88);
-    ctx.strokeStyle = '#661500'; ctx.stroke();
-    ctx.restore();
-
-    ctx.restore();
+    drawSpr(SRECTS.DEM_SIDE, ox, oy, ARCH_W, ARCH_H, flipX);
   }
 
-  // ── BRUTE DEMON (80×112) ──────────────────────────────────────────────────
-  // Massive armored red demon — wide chest, huge golden horns, giant arms.
   function drawBruteSprite(ox, oy, flipX) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + BRUTE_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    // HUGE HORNS
-    ctx.beginPath(); ctx.moveTo(28,10); ctx.bezierCurveTo(18,-6,8,-4,12,12);
-    ctx.strokeStyle = '#ccaa00'; ctx.lineWidth = 7; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(28,10); ctx.bezierCurveTo(20,-4,11,-3,14,10);
-    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(52,10); ctx.bezierCurveTo(62,-6,72,-4,68,12);
-    ctx.strokeStyle = '#ccaa00'; ctx.lineWidth = 7; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(52,10); ctx.bezierCurveTo(60,-4,69,-3,66,10);
-    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2.5; ctx.stroke();
-
-    // HEAD
-    const hg = ctx.createRadialGradient(40,18,3,40,18,18);
-    hg.addColorStop(0, '#ff3311'); hg.addColorStop(0.6, '#991800'); hg.addColorStop(1, '#550d00');
-    ctx.beginPath(); ctx.ellipse(40,18,18,15,0,0,Math.PI*2);
-    ctx.fillStyle = hg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 2; ctx.stroke();
-    // Armored brow plate
-    ctx.beginPath();
-    ctx.moveTo(22,12); ctx.lineTo(58,12); ctx.lineTo(56,20); ctx.lineTo(24,20); ctx.closePath();
-    ctx.fillStyle = '#4a4a4a'; ctx.fill(); ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1; ctx.stroke();
-    // Eyes
-    ctx.beginPath(); ctx.ellipse(31,16,4,3,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
-    ctx.beginPath(); ctx.arc(31,16,2,0,Math.PI*2); ctx.fillStyle='#110000'; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(49,16,4,3,0,0,Math.PI*2); ctx.fillStyle='#ffee44'; ctx.fill();
-    ctx.beginPath(); ctx.arc(49,16,2,0,Math.PI*2); ctx.fillStyle='#110000'; ctx.fill();
-    // Fangs
-    ctx.beginPath(); ctx.moveTo(34,26); ctx.lineTo(32,32); ctx.lineTo(36,26); ctx.fillStyle='#f0f0f0'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(44,26); ctx.lineTo(42,32); ctx.lineTo(46,26); ctx.fillStyle='#f0f0f0'; ctx.fill();
-
-    // MASSIVE ARMORED CHEST + BODY
-    const cg = ctx.createLinearGradient(6,28,74,76);
-    cg.addColorStop(0, '#707070'); cg.addColorStop(0.4, '#4a4a4a'); cg.addColorStop(1, '#2a2a2a');
-    ctx.beginPath();
-    ctx.moveTo(10,32);
-    ctx.bezierCurveTo(4,36,2,48,6,60);
-    ctx.bezierCurveTo(10,70,18,76,28,76);
-    ctx.lineTo(52,76);
-    ctx.bezierCurveTo(62,76,70,70,74,60);
-    ctx.bezierCurveTo(78,48,76,36,70,32);
-    ctx.bezierCurveTo(62,24,56,22,40,22);
-    ctx.bezierCurveTo(24,22,18,24,10,32);
-    ctx.closePath();
-    ctx.fillStyle = cg; ctx.fill();
-    ctx.strokeStyle = '#080012'; ctx.lineWidth = 2; ctx.stroke();
-    // Armor plate lines
-    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(40,24); ctx.lineTo(40,74); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(8,50); ctx.lineTo(72,50); ctx.stroke();
-
-    // GIANT ARMS
-    ctx.lineWidth = 15;
-    ctx.beginPath(); ctx.moveTo(66,38); ctx.quadraticCurveTo(76,54,76,72);
-    ctx.strokeStyle = '#4a4a4a'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(66,38); ctx.quadraticCurveTo(76,54,76,72);
-    ctx.strokeStyle = '#707070'; ctx.lineWidth = 9; ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#e8c8a0';
-    [[76,72,72,68],[76,72,74,74],[76,72,79,70],[76,72,78,75]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    ctx.save(); ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 13;
-    ctx.beginPath(); ctx.moveTo(14,38); ctx.quadraticCurveTo(4,54,4,72);
-    ctx.strokeStyle = '#2a2a2a'; ctx.stroke();
-    ctx.restore();
-
-    // LEGS
-    ctx.lineWidth = 15;
-    ctx.beginPath(); ctx.moveTo(52,74); ctx.lineTo(56,90); ctx.lineTo(60,102); ctx.lineTo(62,112);
-    ctx.strokeStyle = '#3a3a3a'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(52,74); ctx.lineTo(56,90); ctx.lineTo(60,102); ctx.lineTo(62,112);
-    ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 9; ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#e8c8a0';
-    [[62,112,58,108],[62,112,60,113],[62,112,65,110]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    ctx.save(); ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 14;
-    ctx.beginPath(); ctx.moveTo(28,74); ctx.lineTo(24,90); ctx.lineTo(20,102); ctx.lineTo(18,112);
-    ctx.strokeStyle = '#2a2a2a'; ctx.stroke();
-    ctx.restore();
-
-    ctx.restore();
+    drawSpr(SRECTS.BRUTE, ox, oy, BRUTE_W, BRUTE_H, flipX);
   }
 
-  // ── SPIDER BOSS (120×90) ──────────────────────────────────────────────────
-  // Large spider: glossy dark body, 8 segmented legs, single glowing red eye,
-  // venomous mandibles, smaller secondary eyes.
   function drawSpiderSprite(ox, oy, flipX) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + SPIDER_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    const bx = 55, by = 46; // body centre
-
-    // LEGS — 4 on each side, segmented (back=left, front=right)
-    const legDefs = [
-      // [rootX, rootY, midX, midY, tipX, tipY]  — back to front on each side
-      [bx-12, by-10,  bx-36, by-28,  bx-54, by-10], // back-top-left
-      [bx-14, by,     bx-40, by-4,   bx-58, by+16], // back-mid-left
-      [bx-14, by+10,  bx-38, by+22,  bx-52, by+40], // back-low-left
-      [bx-10, by+18,  bx-28, by+44,  bx-24, by+62], // rear-left
-
-      [bx+12, by-10,  bx+36, by-28,  bx+50, by-10], // back-top-right
-      [bx+14, by,     bx+40, by-4,   bx+60, by+16], // back-mid-right
-      [bx+14, by+10,  bx+38, by+22,  bx+50, by+40], // back-low-right
-      [bx+10, by+18,  bx+28, by+44,  bx+24, by+62], // rear-right
-    ];
-    // Draw leg shadows first
-    legDefs.forEach(([rx,ry,mx,my,tx,ty])=>{
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(mx,my); ctx.lineTo(tx,ty);
-      ctx.strokeStyle = '#1a0020'; ctx.lineWidth = 5; ctx.stroke();
-    });
-    // Draw legs
-    legDefs.forEach(([rx,ry,mx,my,tx,ty])=>{
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(mx,my); ctx.lineTo(tx,ty);
-      ctx.strokeStyle = '#3a0040'; ctx.lineWidth = 3.5; ctx.stroke();
-      // Joint dot
-      ctx.beginPath(); ctx.arc(mx,my,3,0,Math.PI*2);
-      ctx.fillStyle = '#5a0060'; ctx.fill();
-    });
-
-    // ABDOMEN (back oval, darker)
-    const abg = ctx.createRadialGradient(bx-14, by+8, 4, bx-14, by+8, 26);
-    abg.addColorStop(0, '#2a003a'); abg.addColorStop(0.6, '#16001e'); abg.addColorStop(1, '#0a0010');
-    ctx.beginPath(); ctx.ellipse(bx-14, by+8, 26, 22, 0.15, 0, Math.PI*2);
-    ctx.fillStyle = abg; ctx.fill();
-    ctx.strokeStyle = '#4a0055'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // CEPHALOTHORAX (front head-body, slightly brighter)
-    const chg = ctx.createRadialGradient(bx+8, by-4, 3, bx+8, by-4, 22);
-    chg.addColorStop(0, '#3a0050'); chg.addColorStop(0.6, '#200030'); chg.addColorStop(1, '#0e0018');
-    ctx.beginPath(); ctx.ellipse(bx+8, by-4, 22, 18, -0.1, 0, Math.PI*2);
-    ctx.fillStyle = chg; ctx.fill();
-    ctx.strokeStyle = '#6600aa'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // Glossy sheen on cephalothorax
-    ctx.beginPath(); ctx.ellipse(bx+10, by-10, 10, 6, -0.4, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(180,100,255,0.12)'; ctx.fill();
-
-    // SECONDARY EYES — 3 small glowing eyes on face
-    [[bx+22, by-12],[bx+24, by-2],[bx+22, by+8]].forEach(([ex,ey], i)=>{
-      ctx.beginPath(); ctx.arc(ex, ey, 3.5, 0, Math.PI*2);
-      ctx.fillStyle = '#ff8800'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex, ey, 2, 0, Math.PI*2);
-      ctx.fillStyle = '#ffee00'; ctx.fill();
-    });
-
-    // MAIN CENTRAL EYE — large, glowing red
-    const eyeX = bx+18, eyeY = by-4;
-    ctx.beginPath(); ctx.arc(eyeX, eyeY, 13, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,60,0,0.15)'; ctx.fill(); // outer glow
-    const eg = ctx.createRadialGradient(eyeX, eyeY, 1, eyeX, eyeY, 11);
-    eg.addColorStop(0, '#ffffff'); eg.addColorStop(0.2, '#ffee00'); eg.addColorStop(0.5, '#ff4400'); eg.addColorStop(1, '#660000');
-    ctx.beginPath(); ctx.arc(eyeX, eyeY, 11, 0, Math.PI*2);
-    ctx.fillStyle = eg; ctx.fill();
-    ctx.strokeStyle = '#220000'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Pupil
-    ctx.beginPath(); ctx.ellipse(eyeX+1, eyeY, 3, 5, 0, 0, Math.PI*2);
-    ctx.fillStyle = '#000000'; ctx.fill();
-    // Eye glint
-    ctx.beginPath(); ctx.arc(eyeX-3, eyeY-3, 2, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fill();
-
-    // MANDIBLES — two curved fangs at front-right
-    ctx.strokeStyle = '#1a0020'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(bx+26, by-2);
-    ctx.bezierCurveTo(bx+36, by+4, bx+40, by+14, bx+34, by+22);
-    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx+26, by+4);
-    ctx.bezierCurveTo(bx+34, by+12, bx+36, by+22, bx+28, by+28);
-    ctx.stroke();
-    ctx.strokeStyle = '#4a0055'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(bx+26, by-2);
-    ctx.bezierCurveTo(bx+36, by+4, bx+40, by+14, bx+34, by+22);
-    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx+26, by+4);
-    ctx.bezierCurveTo(bx+34, by+12, bx+36, by+22, bx+28, by+28);
-    ctx.stroke();
-    // Fang tips
-    ctx.fillStyle = '#ddaaff';
-    ctx.beginPath(); ctx.arc(bx+34, by+22, 3, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(bx+28, by+28, 3, 0, Math.PI*2); ctx.fill();
-
-    ctx.restore();
+    drawSpr(SRECTS.SPIDER, ox, oy, SPIDER_W, SPIDER_H, flipX);
   }
 
-  // ── LICH BOSS (80×110) ────────────────────────────────────────────────────
-  // Floating undead sorcerer: skull, flowing purple robe, bony arms, dark crown.
   function drawLichSprite(ox, oy, flipX) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + LICH_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    // DARK CROWN — jagged spikes atop skull
-    ctx.fillStyle = '#1a0035';
-    [28,35,40,45,52].forEach((cx,i)=>{
-      const h = i%2===0 ? 14 : 9;
-      ctx.beginPath(); ctx.moveTo(cx-4,22); ctx.lineTo(cx,22-h); ctx.lineTo(cx+4,22); ctx.fill();
-    });
-    ctx.fillStyle = '#4400aa';
-    [28,40,52].forEach(cx=>{
-      ctx.beginPath(); ctx.arc(cx,22-12,2.5,0,Math.PI*2); ctx.fill();
-    });
-
-    // SKULL HEAD
-    const sg = ctx.createRadialGradient(40,30,4,40,30,16);
-    sg.addColorStop(0, '#e8e4d8'); sg.addColorStop(0.6, '#c8c4b8'); sg.addColorStop(1, '#908c80');
-    ctx.beginPath(); ctx.ellipse(40,32,15,18,0,0,Math.PI*2);
-    ctx.fillStyle = sg; ctx.fill();
-    ctx.strokeStyle = '#403c30'; ctx.lineWidth = 1; ctx.stroke();
-
-    // Cheekbones / skull definition
-    ctx.strokeStyle = '#a09880'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(30,34,6,0,Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.arc(50,34,6,0,Math.PI); ctx.stroke();
-
-    // GLOWING EYE SOCKETS
-    [[32,28],[48,28]].forEach(([ex,ey])=>{
-      ctx.beginPath(); ctx.ellipse(ex,ey,5,6,0,0,Math.PI*2);
-      ctx.fillStyle = '#0a0015'; ctx.fill();
-      const eyeg = ctx.createRadialGradient(ex,ey,1,ex,ey,5);
-      eyeg.addColorStop(0,'rgba(180,80,255,0.95)'); eyeg.addColorStop(0.5,'rgba(100,20,200,0.6)'); eyeg.addColorStop(1,'rgba(50,0,100,0)');
-      ctx.beginPath(); ctx.arc(ex,ey,5,0,Math.PI*2);
-      ctx.fillStyle = eyeg; ctx.fill();
-    });
-
-    // Nasal cavity
-    ctx.beginPath(); ctx.arc(40,36,2,0,Math.PI*2); ctx.fillStyle='#604c30'; ctx.fill();
-
-    // Rictus grin
-    ctx.strokeStyle = '#403c30'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(32,46); ctx.bezierCurveTo(36,50,44,50,48,46); ctx.stroke();
-    // Teeth
-    ctx.fillStyle = '#e0dccc';
-    [34,37,40,43,46].forEach(tx=>{
-      ctx.fillRect(tx,46,2,4);
-    });
-
-    // BONY ARMS — spread wide, reaching to sides
-    // Left arm
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(28,60); ctx.lineTo(10,75); ctx.lineTo(4,90);
-    ctx.strokeStyle = '#a09880'; ctx.stroke();
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(28,60); ctx.lineTo(10,75); ctx.lineTo(4,90);
-    ctx.strokeStyle = '#d0ccbc'; ctx.stroke();
-    // Left hand fingers
-    ctx.lineWidth = 1.5; ctx.strokeStyle = '#c0bcac';
-    [[4,90,-6,98],[4,90,-2,100],[4,90,4,102],[4,90,10,100]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    // Right arm
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(52,60); ctx.lineTo(70,75); ctx.lineTo(76,90);
-    ctx.strokeStyle = '#a09880'; ctx.stroke();
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(52,60); ctx.lineTo(70,75); ctx.lineTo(76,90);
-    ctx.strokeStyle = '#d0ccbc'; ctx.stroke();
-    // Right hand fingers
-    ctx.lineWidth = 1.5; ctx.strokeStyle = '#c0bcac';
-    [[76,90,70,98],[76,90,74,100],[76,90,78,102],[76,90,84,100]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    // Arm joint circles (radius bones)
-    ctx.fillStyle = '#b8b4a4';
-    ctx.beginPath(); ctx.arc(10,75,4,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(70,75,4,0,Math.PI*2); ctx.fill();
-
-    // FLOWING ROBE — dark purple, wispy at bottom
-    const rg = ctx.createLinearGradient(15,52,65,110);
-    rg.addColorStop(0,'#1e0035'); rg.addColorStop(0.5,'#150025'); rg.addColorStop(1,'rgba(10,0,20,0)');
-    ctx.beginPath();
-    ctx.moveTo(26,52);
-    ctx.bezierCurveTo(14,60,8,80,12,100);
-    ctx.bezierCurveTo(18,115,30,118,40,116);
-    ctx.bezierCurveTo(50,118,62,115,68,100);
-    ctx.bezierCurveTo(72,80,66,60,54,52);
-    ctx.closePath();
-    ctx.fillStyle = rg; ctx.fill();
-    ctx.strokeStyle = '#3a0065'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Robe sheen and detail
-    ctx.strokeStyle = '#4400aa'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(40,54); ctx.lineTo(40,114); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(30,58); ctx.bezierCurveTo(28,80,26,100,28,112); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(50,58); ctx.bezierCurveTo(52,80,54,100,52,112); ctx.stroke();
-
-    // MAGICAL AURA — purple glow around body
-    const ag = ctx.createRadialGradient(40,70,10,40,70,40);
-    ag.addColorStop(0,'rgba(120,0,200,0)'); ag.addColorStop(0.7,'rgba(80,0,150,0.08)'); ag.addColorStop(1,'rgba(60,0,120,0)');
-    ctx.beginPath(); ctx.ellipse(40,70,38,46,0,0,Math.PI*2);
-    ctx.fillStyle = ag; ctx.fill();
-
-    ctx.restore();
+    drawSpr(SRECTS.LICH, ox, oy, LICH_W, LICH_H, flipX);
   }
 
-  // ── APOCALYPTIC END BOSS (160×140) ────────────────────────────────────────
-  // The final nightmare: a single colossal eye set in a massive armored body,
-  // flanked by vast bat wings, with enormous clawed arms.
   function drawApocSprite(ox, oy, flipX) {
-    ctx.save();
-    if (flipX) { ctx.translate(ox + APOC_W, oy); ctx.scale(-1, 1); }
-    else        { ctx.translate(ox, oy); }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    const cx = 80, cy = 72; // centre
-
-    // DARK AURA — radiating from behind
-    const aura = ctx.createRadialGradient(cx,cy,20,cx,cy,80);
-    aura.addColorStop(0,'rgba(60,0,0,0)'); aura.addColorStop(0.5,'rgba(80,0,20,0.12)'); aura.addColorStop(1,'rgba(40,0,10,0)');
-    ctx.beginPath(); ctx.ellipse(cx,cy,78,68,0,0,Math.PI*2);
-    ctx.fillStyle = aura; ctx.fill();
-
-    // BAT WINGS — massive, behind body
-    // Left wing
-    const lwg = ctx.createLinearGradient(0,10,cx,cy);
-    lwg.addColorStop(0,'#0e0005'); lwg.addColorStop(0.6,'#1e0010'); lwg.addColorStop(1,'#2e0020');
-    ctx.beginPath();
-    ctx.moveTo(cx-20, cy-10);
-    ctx.lineTo(4, 8);
-    ctx.lineTo(16, 36);
-    ctx.lineTo(2, 58);
-    ctx.lineTo(20, 80);
-    ctx.lineTo(6, 110);
-    ctx.lineTo(cx-22, cy+20);
-    ctx.closePath();
-    ctx.fillStyle = lwg; ctx.fill();
-    ctx.strokeStyle = '#330018'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Wing bones (left)
-    ctx.strokeStyle = '#440025'; ctx.lineWidth = 1.5;
-    [[cx-20,cy-10, 4,8],[cx-20,cy, 2,58],[cx-20,cy+14, 6,110]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-
-    // Right wing
-    const rwg = ctx.createLinearGradient(cx,cy,156,10);
-    rwg.addColorStop(0,'#2e0020'); rwg.addColorStop(0.4,'#1e0010'); rwg.addColorStop(1,'#0e0005');
-    ctx.beginPath();
-    ctx.moveTo(cx+20, cy-10);
-    ctx.lineTo(156, 8);
-    ctx.lineTo(144, 36);
-    ctx.lineTo(158, 58);
-    ctx.lineTo(140, 80);
-    ctx.lineTo(154, 110);
-    ctx.lineTo(cx+22, cy+20);
-    ctx.closePath();
-    ctx.fillStyle = rwg; ctx.fill();
-    ctx.strokeStyle = '#330018'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.strokeStyle = '#440025'; ctx.lineWidth = 1.5;
-    [[cx+20,cy-10, 156,8],[cx+20,cy, 158,58],[cx+20,cy+14, 154,110]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-
-    // BODY — massive dark armored torso
-    const bg = ctx.createRadialGradient(cx,cy,10,cx,cy,55);
-    bg.addColorStop(0,'#3a1020'); bg.addColorStop(0.5,'#200810'); bg.addColorStop(1,'#0e0408');
-    ctx.beginPath(); ctx.ellipse(cx,cy,52,48,0,0,Math.PI*2);
-    ctx.fillStyle = bg; ctx.fill();
-    ctx.strokeStyle = '#550022'; ctx.lineWidth = 2; ctx.stroke();
-    // Armor plates
-    ctx.strokeStyle = '#3a0818'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(cx,cy-46); ctx.lineTo(cx,cy+46); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx-48,cy); ctx.lineTo(cx+48,cy); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(cx,cy,30,28,0,0,Math.PI*2); ctx.stroke();
-
-    // THE MASSIVE CENTRAL EYE — the defining feature
-    const ey = cy - 4;
-    // Eyelid / socket outer
-    ctx.beginPath(); ctx.ellipse(cx, ey, 36, 28, 0, 0, Math.PI*2);
-    ctx.fillStyle = '#0a0005'; ctx.fill();
-    ctx.strokeStyle = '#660030'; ctx.lineWidth = 2; ctx.stroke();
-    // Eye white (actually deep blood red)
-    const ewg = ctx.createRadialGradient(cx, ey, 5, cx, ey, 30);
-    ewg.addColorStop(0,'#ff6600'); ewg.addColorStop(0.3,'#cc2200'); ewg.addColorStop(0.7,'#660000'); ewg.addColorStop(1,'#1a0000');
-    ctx.beginPath(); ctx.ellipse(cx, ey, 30, 22, 0, 0, Math.PI*2);
-    ctx.fillStyle = ewg; ctx.fill();
-    // Iris rings
-    ctx.strokeStyle = '#ff4400'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(cx,ey,20,15,0,0,Math.PI*2); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(cx,ey,10,8,0,0,Math.PI*2); ctx.stroke();
-    // PUPIL — vertical slit
-    ctx.beginPath(); ctx.ellipse(cx, ey, 5, 14, 0, 0, Math.PI*2);
-    ctx.fillStyle = '#000000'; ctx.fill();
-    // Eye glints
-    ctx.fillStyle = 'rgba(255,200,100,0.6)';
-    ctx.beginPath(); ctx.ellipse(cx-8, ey-6, 5, 3, -0.5, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.beginPath(); ctx.ellipse(cx-6, ey-8, 3, 2, -0.4, 0, Math.PI*2); ctx.fill();
-    // Eyelid crease
-    ctx.strokeStyle = '#330010'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(cx,ey,34,26,0,Math.PI*1.1, Math.PI*1.9); ctx.stroke(); // upper lid
-    ctx.beginPath(); ctx.ellipse(cx,ey,34,26,0,Math.PI*0.1, Math.PI*0.9); ctx.stroke(); // lower lid
-
-    // SMALLER SATELLITE EYES — 4 surrounding the main eye
-    [[cx-42,ey-8],[cx+42,ey-8],[cx-30,cy+32],[cx+30,cy+32]].forEach(([ex,ey2])=>{
-      ctx.beginPath(); ctx.arc(ex,ey2,7,0,Math.PI*2);
-      ctx.fillStyle = '#0a0005'; ctx.fill();
-      const seg = ctx.createRadialGradient(ex,ey2,1,ex,ey2,6);
-      seg.addColorStop(0,'#ff8800'); seg.addColorStop(0.5,'#cc2200'); seg.addColorStop(1,'#330000');
-      ctx.beginPath(); ctx.arc(ex,ey2,6,0,Math.PI*2);
-      ctx.fillStyle = seg; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex,ey2,2,0,Math.PI*2);
-      ctx.fillStyle = '#000'; ctx.fill();
-    });
-
-    // HUGE CLAWED ARMS
-    // Left arm
-    ctx.lineWidth = 16;
-    ctx.beginPath(); ctx.moveTo(cx-44,cy+10); ctx.quadraticCurveTo(cx-62,cy+40,cx-58,cy+75);
-    ctx.strokeStyle = '#2a0008'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx-44,cy+10); ctx.quadraticCurveTo(cx-62,cy+40,cx-58,cy+75);
-    ctx.strokeStyle = '#440012'; ctx.lineWidth = 9; ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#cc8844';
-    [[cx-58,cy+75,cx-66,cy+65],[cx-58,cy+75,cx-62,cy+77],[cx-58,cy+75,cx-52,cy+80],[cx-58,cy+75,cx-50,cy+72]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-    // Right arm
-    ctx.lineWidth = 16;
-    ctx.beginPath(); ctx.moveTo(cx+44,cy+10); ctx.quadraticCurveTo(cx+62,cy+40,cx+58,cy+75);
-    ctx.strokeStyle = '#2a0008'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx+44,cy+10); ctx.quadraticCurveTo(cx+62,cy+40,cx+58,cy+75);
-    ctx.strokeStyle = '#440012'; ctx.lineWidth = 9; ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#cc8844';
-    [[cx+58,cy+75,cx+66,cy+65],[cx+58,cy+75,cx+62,cy+77],[cx+58,cy+75,cx+52,cy+80],[cx+58,cy+75,cx+50,cy+72]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    });
-
-    ctx.restore();
+    drawSpr(SRECTS.APOC, ox, oy, APOC_W, APOC_H, flipX);
   }
 
-  // ─── enemy type definitions ───────────────────────────────────────────────
   const ENEMY_TYPES = {
     grunt: {
       drawFn: drawGruntSprite, w: GRUNT_W, h: GRUNT_H,
@@ -1698,6 +1106,23 @@
   }
 
   if(overlay) overlay.classList.add('hidden');
-  frame();
+
+  // Load sprite sheets first, then kick off the game loop
+  loadSprites(function() {
+    frame();
+  });
+
+  // Show a brief loading screen while sprites load
+  (function waitLoop() {
+    if (spritesReady) return;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0a0015';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#aa44ff';
+    ctx.font = 'bold 28px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Loading sprites…', W/2, H/2);
+    requestAnimationFrame(waitLoop);
+  })();
 
 })();
