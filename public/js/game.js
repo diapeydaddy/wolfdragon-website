@@ -99,10 +99,13 @@
   ];
 
   // ─── sprite sizes ─────────────────────────────────────────────────────────
-  const WD_W   = 66, WD_H   = 90;
-  const GRUNT_W = 64, GRUNT_H = 96;
-  const ARCH_W  = 56, ARCH_H  = 88;
-  const BRUTE_W = 80, BRUTE_H = 112;
+  const WD_W    = 66,  WD_H    = 90;
+  const GRUNT_W = 64,  GRUNT_H = 96;
+  const ARCH_W  = 56,  ARCH_H  = 88;
+  const BRUTE_W = 80,  BRUTE_H = 112;
+  const SPIDER_W= 120, SPIDER_H= 90;
+  const LICH_W  = 80,  LICH_H  = 110;
+  const APOC_W  = 160, APOC_H  = 140;
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
   const SP_W    = SPR_SPELL[0].length * SC2;
@@ -524,6 +527,353 @@
     ctx.restore();
   }
 
+  // ── SPIDER BOSS (120×90) ──────────────────────────────────────────────────
+  // Large spider: glossy dark body, 8 segmented legs, single glowing red eye,
+  // venomous mandibles, smaller secondary eyes.
+  function drawSpiderSprite(ox, oy, flipX) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + SPIDER_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    const bx = 55, by = 46; // body centre
+
+    // LEGS — 4 on each side, segmented (back=left, front=right)
+    const legDefs = [
+      // [rootX, rootY, midX, midY, tipX, tipY]  — back to front on each side
+      [bx-12, by-10,  bx-36, by-28,  bx-54, by-10], // back-top-left
+      [bx-14, by,     bx-40, by-4,   bx-58, by+16], // back-mid-left
+      [bx-14, by+10,  bx-38, by+22,  bx-52, by+40], // back-low-left
+      [bx-10, by+18,  bx-28, by+44,  bx-24, by+62], // rear-left
+
+      [bx+12, by-10,  bx+36, by-28,  bx+50, by-10], // back-top-right
+      [bx+14, by,     bx+40, by-4,   bx+60, by+16], // back-mid-right
+      [bx+14, by+10,  bx+38, by+22,  bx+50, by+40], // back-low-right
+      [bx+10, by+18,  bx+28, by+44,  bx+24, by+62], // rear-right
+    ];
+    // Draw leg shadows first
+    legDefs.forEach(([rx,ry,mx,my,tx,ty])=>{
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(mx,my); ctx.lineTo(tx,ty);
+      ctx.strokeStyle = '#1a0020'; ctx.lineWidth = 5; ctx.stroke();
+    });
+    // Draw legs
+    legDefs.forEach(([rx,ry,mx,my,tx,ty])=>{
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(mx,my); ctx.lineTo(tx,ty);
+      ctx.strokeStyle = '#3a0040'; ctx.lineWidth = 3.5; ctx.stroke();
+      // Joint dot
+      ctx.beginPath(); ctx.arc(mx,my,3,0,Math.PI*2);
+      ctx.fillStyle = '#5a0060'; ctx.fill();
+    });
+
+    // ABDOMEN (back oval, darker)
+    const abg = ctx.createRadialGradient(bx-14, by+8, 4, bx-14, by+8, 26);
+    abg.addColorStop(0, '#2a003a'); abg.addColorStop(0.6, '#16001e'); abg.addColorStop(1, '#0a0010');
+    ctx.beginPath(); ctx.ellipse(bx-14, by+8, 26, 22, 0.15, 0, Math.PI*2);
+    ctx.fillStyle = abg; ctx.fill();
+    ctx.strokeStyle = '#4a0055'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // CEPHALOTHORAX (front head-body, slightly brighter)
+    const chg = ctx.createRadialGradient(bx+8, by-4, 3, bx+8, by-4, 22);
+    chg.addColorStop(0, '#3a0050'); chg.addColorStop(0.6, '#200030'); chg.addColorStop(1, '#0e0018');
+    ctx.beginPath(); ctx.ellipse(bx+8, by-4, 22, 18, -0.1, 0, Math.PI*2);
+    ctx.fillStyle = chg; ctx.fill();
+    ctx.strokeStyle = '#6600aa'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Glossy sheen on cephalothorax
+    ctx.beginPath(); ctx.ellipse(bx+10, by-10, 10, 6, -0.4, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(180,100,255,0.12)'; ctx.fill();
+
+    // SECONDARY EYES — 3 small glowing eyes on face
+    [[bx+22, by-12],[bx+24, by-2],[bx+22, by+8]].forEach(([ex,ey], i)=>{
+      ctx.beginPath(); ctx.arc(ex, ey, 3.5, 0, Math.PI*2);
+      ctx.fillStyle = '#ff8800'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex, ey, 2, 0, Math.PI*2);
+      ctx.fillStyle = '#ffee00'; ctx.fill();
+    });
+
+    // MAIN CENTRAL EYE — large, glowing red
+    const eyeX = bx+18, eyeY = by-4;
+    ctx.beginPath(); ctx.arc(eyeX, eyeY, 13, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,60,0,0.15)'; ctx.fill(); // outer glow
+    const eg = ctx.createRadialGradient(eyeX, eyeY, 1, eyeX, eyeY, 11);
+    eg.addColorStop(0, '#ffffff'); eg.addColorStop(0.2, '#ffee00'); eg.addColorStop(0.5, '#ff4400'); eg.addColorStop(1, '#660000');
+    ctx.beginPath(); ctx.arc(eyeX, eyeY, 11, 0, Math.PI*2);
+    ctx.fillStyle = eg; ctx.fill();
+    ctx.strokeStyle = '#220000'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Pupil
+    ctx.beginPath(); ctx.ellipse(eyeX+1, eyeY, 3, 5, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#000000'; ctx.fill();
+    // Eye glint
+    ctx.beginPath(); ctx.arc(eyeX-3, eyeY-3, 2, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fill();
+
+    // MANDIBLES — two curved fangs at front-right
+    ctx.strokeStyle = '#1a0020'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(bx+26, by-2);
+    ctx.bezierCurveTo(bx+36, by+4, bx+40, by+14, bx+34, by+22);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx+26, by+4);
+    ctx.bezierCurveTo(bx+34, by+12, bx+36, by+22, bx+28, by+28);
+    ctx.stroke();
+    ctx.strokeStyle = '#4a0055'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(bx+26, by-2);
+    ctx.bezierCurveTo(bx+36, by+4, bx+40, by+14, bx+34, by+22);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx+26, by+4);
+    ctx.bezierCurveTo(bx+34, by+12, bx+36, by+22, bx+28, by+28);
+    ctx.stroke();
+    // Fang tips
+    ctx.fillStyle = '#ddaaff';
+    ctx.beginPath(); ctx.arc(bx+34, by+22, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx+28, by+28, 3, 0, Math.PI*2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  // ── LICH BOSS (80×110) ────────────────────────────────────────────────────
+  // Floating undead sorcerer: skull, flowing purple robe, bony arms, dark crown.
+  function drawLichSprite(ox, oy, flipX) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + LICH_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // DARK CROWN — jagged spikes atop skull
+    ctx.fillStyle = '#1a0035';
+    [28,35,40,45,52].forEach((cx,i)=>{
+      const h = i%2===0 ? 14 : 9;
+      ctx.beginPath(); ctx.moveTo(cx-4,22); ctx.lineTo(cx,22-h); ctx.lineTo(cx+4,22); ctx.fill();
+    });
+    ctx.fillStyle = '#4400aa';
+    [28,40,52].forEach(cx=>{
+      ctx.beginPath(); ctx.arc(cx,22-12,2.5,0,Math.PI*2); ctx.fill();
+    });
+
+    // SKULL HEAD
+    const sg = ctx.createRadialGradient(40,30,4,40,30,16);
+    sg.addColorStop(0, '#e8e4d8'); sg.addColorStop(0.6, '#c8c4b8'); sg.addColorStop(1, '#908c80');
+    ctx.beginPath(); ctx.ellipse(40,32,15,18,0,0,Math.PI*2);
+    ctx.fillStyle = sg; ctx.fill();
+    ctx.strokeStyle = '#403c30'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Cheekbones / skull definition
+    ctx.strokeStyle = '#a09880'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(30,34,6,0,Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(50,34,6,0,Math.PI); ctx.stroke();
+
+    // GLOWING EYE SOCKETS
+    [[32,28],[48,28]].forEach(([ex,ey])=>{
+      ctx.beginPath(); ctx.ellipse(ex,ey,5,6,0,0,Math.PI*2);
+      ctx.fillStyle = '#0a0015'; ctx.fill();
+      const eyeg = ctx.createRadialGradient(ex,ey,1,ex,ey,5);
+      eyeg.addColorStop(0,'rgba(180,80,255,0.95)'); eyeg.addColorStop(0.5,'rgba(100,20,200,0.6)'); eyeg.addColorStop(1,'rgba(50,0,100,0)');
+      ctx.beginPath(); ctx.arc(ex,ey,5,0,Math.PI*2);
+      ctx.fillStyle = eyeg; ctx.fill();
+    });
+
+    // Nasal cavity
+    ctx.beginPath(); ctx.arc(40,36,2,0,Math.PI*2); ctx.fillStyle='#604c30'; ctx.fill();
+
+    // Rictus grin
+    ctx.strokeStyle = '#403c30'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(32,46); ctx.bezierCurveTo(36,50,44,50,48,46); ctx.stroke();
+    // Teeth
+    ctx.fillStyle = '#e0dccc';
+    [34,37,40,43,46].forEach(tx=>{
+      ctx.fillRect(tx,46,2,4);
+    });
+
+    // BONY ARMS — spread wide, reaching to sides
+    // Left arm
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(28,60); ctx.lineTo(10,75); ctx.lineTo(4,90);
+    ctx.strokeStyle = '#a09880'; ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(28,60); ctx.lineTo(10,75); ctx.lineTo(4,90);
+    ctx.strokeStyle = '#d0ccbc'; ctx.stroke();
+    // Left hand fingers
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#c0bcac';
+    [[4,90,-6,98],[4,90,-2,100],[4,90,4,102],[4,90,10,100]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    // Right arm
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(52,60); ctx.lineTo(70,75); ctx.lineTo(76,90);
+    ctx.strokeStyle = '#a09880'; ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(52,60); ctx.lineTo(70,75); ctx.lineTo(76,90);
+    ctx.strokeStyle = '#d0ccbc'; ctx.stroke();
+    // Right hand fingers
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#c0bcac';
+    [[76,90,70,98],[76,90,74,100],[76,90,78,102],[76,90,84,100]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    // Arm joint circles (radius bones)
+    ctx.fillStyle = '#b8b4a4';
+    ctx.beginPath(); ctx.arc(10,75,4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(70,75,4,0,Math.PI*2); ctx.fill();
+
+    // FLOWING ROBE — dark purple, wispy at bottom
+    const rg = ctx.createLinearGradient(15,52,65,110);
+    rg.addColorStop(0,'#1e0035'); rg.addColorStop(0.5,'#150025'); rg.addColorStop(1,'rgba(10,0,20,0)');
+    ctx.beginPath();
+    ctx.moveTo(26,52);
+    ctx.bezierCurveTo(14,60,8,80,12,100);
+    ctx.bezierCurveTo(18,115,30,118,40,116);
+    ctx.bezierCurveTo(50,118,62,115,68,100);
+    ctx.bezierCurveTo(72,80,66,60,54,52);
+    ctx.closePath();
+    ctx.fillStyle = rg; ctx.fill();
+    ctx.strokeStyle = '#3a0065'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Robe sheen and detail
+    ctx.strokeStyle = '#4400aa'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(40,54); ctx.lineTo(40,114); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(30,58); ctx.bezierCurveTo(28,80,26,100,28,112); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(50,58); ctx.bezierCurveTo(52,80,54,100,52,112); ctx.stroke();
+
+    // MAGICAL AURA — purple glow around body
+    const ag = ctx.createRadialGradient(40,70,10,40,70,40);
+    ag.addColorStop(0,'rgba(120,0,200,0)'); ag.addColorStop(0.7,'rgba(80,0,150,0.08)'); ag.addColorStop(1,'rgba(60,0,120,0)');
+    ctx.beginPath(); ctx.ellipse(40,70,38,46,0,0,Math.PI*2);
+    ctx.fillStyle = ag; ctx.fill();
+
+    ctx.restore();
+  }
+
+  // ── APOCALYPTIC END BOSS (160×140) ────────────────────────────────────────
+  // The final nightmare: a single colossal eye set in a massive armored body,
+  // flanked by vast bat wings, with enormous clawed arms.
+  function drawApocSprite(ox, oy, flipX) {
+    ctx.save();
+    if (flipX) { ctx.translate(ox + APOC_W, oy); ctx.scale(-1, 1); }
+    else        { ctx.translate(ox, oy); }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    const cx = 80, cy = 72; // centre
+
+    // DARK AURA — radiating from behind
+    const aura = ctx.createRadialGradient(cx,cy,20,cx,cy,80);
+    aura.addColorStop(0,'rgba(60,0,0,0)'); aura.addColorStop(0.5,'rgba(80,0,20,0.12)'); aura.addColorStop(1,'rgba(40,0,10,0)');
+    ctx.beginPath(); ctx.ellipse(cx,cy,78,68,0,0,Math.PI*2);
+    ctx.fillStyle = aura; ctx.fill();
+
+    // BAT WINGS — massive, behind body
+    // Left wing
+    const lwg = ctx.createLinearGradient(0,10,cx,cy);
+    lwg.addColorStop(0,'#0e0005'); lwg.addColorStop(0.6,'#1e0010'); lwg.addColorStop(1,'#2e0020');
+    ctx.beginPath();
+    ctx.moveTo(cx-20, cy-10);
+    ctx.lineTo(4, 8);
+    ctx.lineTo(16, 36);
+    ctx.lineTo(2, 58);
+    ctx.lineTo(20, 80);
+    ctx.lineTo(6, 110);
+    ctx.lineTo(cx-22, cy+20);
+    ctx.closePath();
+    ctx.fillStyle = lwg; ctx.fill();
+    ctx.strokeStyle = '#330018'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Wing bones (left)
+    ctx.strokeStyle = '#440025'; ctx.lineWidth = 1.5;
+    [[cx-20,cy-10, 4,8],[cx-20,cy, 2,58],[cx-20,cy+14, 6,110]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // Right wing
+    const rwg = ctx.createLinearGradient(cx,cy,156,10);
+    rwg.addColorStop(0,'#2e0020'); rwg.addColorStop(0.4,'#1e0010'); rwg.addColorStop(1,'#0e0005');
+    ctx.beginPath();
+    ctx.moveTo(cx+20, cy-10);
+    ctx.lineTo(156, 8);
+    ctx.lineTo(144, 36);
+    ctx.lineTo(158, 58);
+    ctx.lineTo(140, 80);
+    ctx.lineTo(154, 110);
+    ctx.lineTo(cx+22, cy+20);
+    ctx.closePath();
+    ctx.fillStyle = rwg; ctx.fill();
+    ctx.strokeStyle = '#330018'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = '#440025'; ctx.lineWidth = 1.5;
+    [[cx+20,cy-10, 156,8],[cx+20,cy, 158,58],[cx+20,cy+14, 154,110]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // BODY — massive dark armored torso
+    const bg = ctx.createRadialGradient(cx,cy,10,cx,cy,55);
+    bg.addColorStop(0,'#3a1020'); bg.addColorStop(0.5,'#200810'); bg.addColorStop(1,'#0e0408');
+    ctx.beginPath(); ctx.ellipse(cx,cy,52,48,0,0,Math.PI*2);
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.strokeStyle = '#550022'; ctx.lineWidth = 2; ctx.stroke();
+    // Armor plates
+    ctx.strokeStyle = '#3a0818'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx,cy-46); ctx.lineTo(cx,cy+46); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-48,cy); ctx.lineTo(cx+48,cy); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx,cy,30,28,0,0,Math.PI*2); ctx.stroke();
+
+    // THE MASSIVE CENTRAL EYE — the defining feature
+    const ey = cy - 4;
+    // Eyelid / socket outer
+    ctx.beginPath(); ctx.ellipse(cx, ey, 36, 28, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#0a0005'; ctx.fill();
+    ctx.strokeStyle = '#660030'; ctx.lineWidth = 2; ctx.stroke();
+    // Eye white (actually deep blood red)
+    const ewg = ctx.createRadialGradient(cx, ey, 5, cx, ey, 30);
+    ewg.addColorStop(0,'#ff6600'); ewg.addColorStop(0.3,'#cc2200'); ewg.addColorStop(0.7,'#660000'); ewg.addColorStop(1,'#1a0000');
+    ctx.beginPath(); ctx.ellipse(cx, ey, 30, 22, 0, 0, Math.PI*2);
+    ctx.fillStyle = ewg; ctx.fill();
+    // Iris rings
+    ctx.strokeStyle = '#ff4400'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(cx,ey,20,15,0,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx,ey,10,8,0,0,Math.PI*2); ctx.stroke();
+    // PUPIL — vertical slit
+    ctx.beginPath(); ctx.ellipse(cx, ey, 5, 14, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#000000'; ctx.fill();
+    // Eye glints
+    ctx.fillStyle = 'rgba(255,200,100,0.6)';
+    ctx.beginPath(); ctx.ellipse(cx-8, ey-6, 5, 3, -0.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.ellipse(cx-6, ey-8, 3, 2, -0.4, 0, Math.PI*2); ctx.fill();
+    // Eyelid crease
+    ctx.strokeStyle = '#330010'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(cx,ey,34,26,0,Math.PI*1.1, Math.PI*1.9); ctx.stroke(); // upper lid
+    ctx.beginPath(); ctx.ellipse(cx,ey,34,26,0,Math.PI*0.1, Math.PI*0.9); ctx.stroke(); // lower lid
+
+    // SMALLER SATELLITE EYES — 4 surrounding the main eye
+    [[cx-42,ey-8],[cx+42,ey-8],[cx-30,cy+32],[cx+30,cy+32]].forEach(([ex,ey2])=>{
+      ctx.beginPath(); ctx.arc(ex,ey2,7,0,Math.PI*2);
+      ctx.fillStyle = '#0a0005'; ctx.fill();
+      const seg = ctx.createRadialGradient(ex,ey2,1,ex,ey2,6);
+      seg.addColorStop(0,'#ff8800'); seg.addColorStop(0.5,'#cc2200'); seg.addColorStop(1,'#330000');
+      ctx.beginPath(); ctx.arc(ex,ey2,6,0,Math.PI*2);
+      ctx.fillStyle = seg; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex,ey2,2,0,Math.PI*2);
+      ctx.fillStyle = '#000'; ctx.fill();
+    });
+
+    // HUGE CLAWED ARMS
+    // Left arm
+    ctx.lineWidth = 16;
+    ctx.beginPath(); ctx.moveTo(cx-44,cy+10); ctx.quadraticCurveTo(cx-62,cy+40,cx-58,cy+75);
+    ctx.strokeStyle = '#2a0008'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-44,cy+10); ctx.quadraticCurveTo(cx-62,cy+40,cx-58,cy+75);
+    ctx.strokeStyle = '#440012'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#cc8844';
+    [[cx-58,cy+75,cx-66,cy+65],[cx-58,cy+75,cx-62,cy+77],[cx-58,cy+75,cx-52,cy+80],[cx-58,cy+75,cx-50,cy+72]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    // Right arm
+    ctx.lineWidth = 16;
+    ctx.beginPath(); ctx.moveTo(cx+44,cy+10); ctx.quadraticCurveTo(cx+62,cy+40,cx+58,cy+75);
+    ctx.strokeStyle = '#2a0008'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx+44,cy+10); ctx.quadraticCurveTo(cx+62,cy+40,cx+58,cy+75);
+    ctx.strokeStyle = '#440012'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#cc8844';
+    [[cx+58,cy+75,cx+66,cy+65],[cx+58,cy+75,cx+62,cy+77],[cx+58,cy+75,cx+52,cy+80],[cx+58,cy+75,cx+50,cy+72]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    ctx.restore();
+  }
+
   // ─── enemy type definitions ───────────────────────────────────────────────
   const ENEMY_TYPES = {
     grunt: {
@@ -541,6 +891,22 @@
       drawFn: drawBruteSprite, w: BRUTE_W, h: BRUTE_H,
       hp: 120, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
       dropRate: 0.4, spellDrop: 0.20,
+    },
+    // ── BOSSES ──
+    spider: {
+      drawFn: drawSpiderSprite, w: SPIDER_W, h: SPIDER_H,
+      hp: 500, speed: 0.6, shootCd: 70, dmg: 18, score: 1200,
+      dropRate: 1.0, spellDrop: 1.0, isBoss: true,
+    },
+    lich: {
+      drawFn: drawLichSprite, w: LICH_W, h: LICH_H,
+      hp: 400, speed: 0.4, shootCd: 55, dmg: 22, score: 1800,
+      dropRate: 1.0, spellDrop: 1.0, isBoss: true,
+    },
+    apocalyptic: {
+      drawFn: drawApocSprite, w: APOC_W, h: APOC_H,
+      hp: 700, speed: 0.25, shootCd: 45, dmg: 30, score: 3000,
+      dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
   };
 
@@ -600,29 +966,44 @@
   // ─── waves ────────────────────────────────────────────────────────────────
   let spawnT=0, spawnRate=120, leftToSpawn=0, cleared=false, msgT=0, msg='';
   let spawnQueue=[];
+  const BOSS_SEQUENCE = ['spider','lich','apocalyptic'];
+
+  function isBossWave() { return gs.wave % 3 === 0; }
+  function bossTypeForWave() {
+    return BOSS_SEQUENCE[Math.floor((gs.wave/3 - 1)) % BOSS_SEQUENCE.length];
+  }
 
   function buildWaveQueue() {
-    const wi = ((gs.wave-1)%3)+1;
-    const count = 5 + wi*2 + gs.level;
     spawnQueue = [];
-    for(let i=0;i<count;i++){
-      const r = Math.random();
-      if(gs.level >= 2 && r < 0.20) spawnQueue.push('brute');
-      else if(gs.level >= 1 && r < 0.45) spawnQueue.push('archer');
-      else spawnQueue.push('grunt');
-    }
-    for(let i=spawnQueue.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [spawnQueue[i],spawnQueue[j]]=[spawnQueue[j],spawnQueue[i]];
+    if (isBossWave()) {
+      spawnQueue.push(bossTypeForWave());
+    } else {
+      const wi = ((gs.wave-1)%3)+1;
+      const count = 5 + wi*2 + gs.level;
+      for(let i=0;i<count;i++){
+        const r = Math.random();
+        if(gs.level >= 2 && r < 0.20) spawnQueue.push('brute');
+        else if(gs.level >= 1 && r < 0.45) spawnQueue.push('archer');
+        else spawnQueue.push('grunt');
+      }
+      for(let i=spawnQueue.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [spawnQueue[i],spawnQueue[j]]=[spawnQueue[j],spawnQueue[i]];
+      }
     }
     leftToSpawn = spawnQueue.length;
   }
 
   function startWave() {
     buildWaveQueue();
-    spawnRate = Math.max(50, 130 - gs.level*7);
+    spawnRate = isBossWave() ? 0 : Math.max(50, 130 - gs.level*7);
     spawnT=0; cleared=false;
-    msg=`WAVE ${gs.wave}`; msgT=130;
+    if (isBossWave()) {
+      const name = bossTypeForWave().toUpperCase();
+      msg = `⚠ BOSS: ${name} ⚠`; msgT = 200;
+    } else {
+      msg=`WAVE ${gs.wave}`; msgT=130;
+    }
   }
 
   function spawnEnemy() {
@@ -630,27 +1011,56 @@
     const type = spawnQueue.pop();
     leftToSpawn = spawnQueue.length;
     const def  = ENEMY_TYPES[type];
-    const row  = Math.floor(Math.random()*ROWS);
-    const landX= (type==='archer')
-      ? 480 + Math.random()*120
-      : W - 60 - Math.random()*120;
 
-    enemies.push({
-      type, row,
-      x: landX,
-      y: -def.h,
-      targetY: ROW_Y[row],
-      phase: 'drop',
-      dropSpd: 4 + Math.random()*2,
-      hp: def.hp + gs.level*10,
-      maxHp: def.hp + gs.level*10,
-      speed: def.speed + gs.level*0.1,
-      shootT: def.shootCd * 0.5,
-      flashT: 0,
-      facing: -1,
-      score: def.score + gs.level*15,
-      minX: def.minX || 0,
-    });
+    if (def.isBoss) {
+      // Boss enters from the right, targets the middle row vertically centred
+      const row = 1;
+      const totalH = ROW_Y[0] - ROW_Y[2] + GRUNT_H;  // full arena height
+      const arenaTop = ROW_Y[2];
+      const targetY = arenaTop + (totalH - def.h) / 2;
+      const bossHp = def.hp + gs.level * 60;
+      enemies.push({
+        type, row,
+        x: W + 20,                     // enters from right
+        y: -def.h,
+        targetY,
+        phase: 'drop',
+        dropSpd: 3,
+        hp: bossHp, maxHp: bossHp,
+        speed: def.speed,
+        shootT: def.shootCd,
+        flashT: 0,
+        facing: -1,
+        score: def.score + gs.level*50,
+        minX: 0,
+        bossPhase: 1,                  // escalating phases
+        moveDir: 1,                    // for side-to-side patrol
+        moveTimer: 0,
+        teleTimer: 0,                  // lich teleport cooldown
+        enrageT: 0,                    // apoc beam charge timer
+      });
+    } else {
+      const row  = Math.floor(Math.random()*ROWS);
+      const landX= (type==='archer')
+        ? 480 + Math.random()*120
+        : W - 60 - Math.random()*120;
+      enemies.push({
+        type, row,
+        x: landX,
+        y: -def.h,
+        targetY: ROW_Y[row],
+        phase: 'drop',
+        dropSpd: 4 + Math.random()*2,
+        hp: def.hp + gs.level*10,
+        maxHp: def.hp + gs.level*10,
+        speed: def.speed + gs.level*0.1,
+        shootT: def.shootCd * 0.5,
+        flashT: 0,
+        facing: -1,
+        score: def.score + gs.level*15,
+        minX: def.minX || 0,
+      });
+    }
   }
 
   // ─── collision ────────────────────────────────────────────────────────────
@@ -757,6 +1167,102 @@
       const dirToPlayer = (playerCX < eCX) ? -1 : 1;
       e.facing = dirToPlayer;
 
+      // ── BOSS AI ──────────────────────────────────────────────────────────
+      if (def.isBoss) {
+        // Update boss phase based on HP fraction
+        const hpFrac = e.hp / e.maxHp;
+        e.bossPhase = hpFrac > 0.6 ? 1 : hpFrac > 0.3 ? 2 : 3;
+        const spd = def.speed * (1 + (e.bossPhase - 1) * 0.4);
+
+        if (e.type === 'spider') {
+          // Patrol left-right in right half of screen, occasionally lunge
+          e.moveTimer++;
+          if (e.moveTimer > 90 / e.bossPhase) {
+            e.moveDir *= -1;
+            e.moveTimer = 0;
+          }
+          e.x += e.moveDir * spd * 1.2;
+          e.x = Math.max(W*0.35, Math.min(W - def.w - 8, e.x));
+
+          // Spider fires spread shot across all rows
+          e.shootT--;
+          if(e.shootT <= 0){
+            e.shootT = Math.max(25, def.shootCd - e.bossPhase * 15);
+            const numShots = 3 + e.bossPhase * 2;
+            for(let i=0;i<numShots;i++){
+              const vy = (i - (numShots-1)/2) * 0.7;
+              projs.push({x:e.x, y:e.y+def.h/2-FB_H/2,
+                vx:-4, vy, row:1, dmg:def.dmg,
+                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:300});
+            }
+            burst(e.x, e.y+def.h/2, '#ff4400', 8);
+          }
+
+        } else if (e.type === 'lich') {
+          // Float in place, teleport between rows, fire homing orbs
+          e.y += Math.sin(Date.now()/400) * 0.6; // gentle bob
+
+          e.teleTimer++;
+          if(e.teleTimer > 180 / e.bossPhase){
+            e.teleTimer = 0;
+            const newRow = Math.floor(Math.random()*ROWS);
+            e.row = newRow;
+            e.targetY = ROW_Y[newRow] + (GRUNT_H - def.h)/2;
+            burst(eCX, e.y+def.h/2, '#aa44ff', 16, 5);
+          }
+          // Drift toward target row Y
+          const targY = e.targetY !== undefined ? e.targetY : ROW_Y[1];
+          e.y += (targY - e.y) * 0.04;
+          // Slow drift leftward
+          e.x = Math.max(W*0.45, Math.min(W - def.w - 8, e.x - spd * 0.3));
+
+          e.shootT--;
+          if(e.shootT <= 0){
+            e.shootT = Math.max(30, def.shootCd - e.bossPhase * 10);
+            const shots = e.bossPhase + 1;
+            for(let i=0;i<shots;i++){
+              const targetVY = (ROW_Y[PL.row] - (e.y+def.h/2)) * 0.015;
+              projs.push({x:e.x, y:e.y+def.h/2-FB_H/2,
+                vx:-3.5 - i*0.5, vy: targetVY + (i-Math.floor(shots/2))*0.4,
+                row:e.row, dmg:def.dmg,
+                owner:'enemy', spr:SPR_SPELL, w:SP_W, h:SP_H, life:320});
+            }
+            burst(e.x, e.y+def.h/2, '#8800cc', 10);
+          }
+
+        } else if (e.type === 'apocalyptic') {
+          // Slow menacing advance, fires sweeping beam + calls minions at phase 3
+          e.x = Math.max(W*0.38, Math.min(W - def.w - 5, e.x - spd));
+
+          e.enrageT++;
+          const chargeTime = Math.max(50, 110 - e.bossPhase * 25);
+          if(e.enrageT >= chargeTime){
+            e.enrageT = 0;
+            // Beam: fire projectiles across ALL rows
+            for(let r=0;r<ROWS;r++){
+              projs.push({x:e.x, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
+                vx:-5, vy:0, row:r, dmg:def.dmg,
+                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:300});
+            }
+            burst(e.x+def.w/2, e.y+def.h/2, '#cc0000', 20, 8);
+            // Phase 3: also spawn a grunt minion
+            if(e.bossPhase === 3 && Math.random()<0.5){
+              spawnQueue.push('grunt');
+            }
+          }
+        }
+
+        // Boss melee — if it reaches the player
+        for(let r=0;r<ROWS;r++){
+          const plHb = {x:PL.x+12, y:ROW_Y[r]+10, w:PL.w-24, h:PL.h-16};
+          if(r===PL.row && ov({x:e.x,y:e.y,w:def.w,h:def.h}, plHb)){
+            hurtPlayer(def.dmg * 0.5);
+          }
+        }
+        return;
+      }
+      // ── NORMAL ENEMY AI ───────────────────────────────────────────────────
+
       if(e.type === 'archer') {
         const dist = Math.abs(playerCX - eCX);
         const ideal = 220;
@@ -775,7 +1281,6 @@
       if(e.shootT<=0){
         e.shootT = Math.max(40, def.shootCd - gs.level*8);
         const rowDist = Math.abs(e.row - PL.row);
-        // Archers and brutes fire if player is within 2 rows; grunts within 1
         const shootRange = (e.type==='archer') ? 2 : 1;
         if(rowDist <= shootRange) {
           const shotVX = dirToPlayer * (e.type==='brute' ? 2 : 3);
@@ -810,9 +1315,15 @@
       if(p.owner==='player'){
         enemies.forEach(e=>{
           if(e.phase!=='charge') return;
-          const rowDiff=Math.abs(e.row-p.row);
-          if(rowDiff>0) return;
-          if(ov({x:p.x,y:p.y,w:p.w,h:p.h}, ehb(e))){
+          const def2 = ENEMY_TYPES[e.type];
+          // Bosses can be hit from any row; normal enemies same-row only
+          if(!def2.isBoss){
+            if(Math.abs(e.row - p.row) > 0) return;
+          }
+          const hitbox = def2.isBoss
+            ? {x:e.x+10, y:e.y+8, w:def2.w-20, h:def2.h-16}
+            : ehb(e);
+          if(ov({x:p.x,y:p.y,w:p.w,h:p.h}, hitbox)){
             hitEnemy(e,p.dmg); burst(p.x,p.y,FO,10); p.life=0;
           }
         });
@@ -854,14 +1365,24 @@
     // wave complete
     if(!cleared&&spawnQueue.length===0&&enemies.length===0){
       cleared=true; msgT=0;
-      // Guarantee 1–2 spell refill orbs appear spread across rows
+      // Guarantee 1–2 spell refill orbs
       const spellCount = 1 + Math.floor(Math.random()*2);
       for(let i=0;i<spellCount;i++){
         const row = Math.floor(Math.random()*ROWS);
         drops.push({x: 150 + Math.random()*(W-300), y: ROW_Y[row],
           row, type:'spell', life:500});
       }
-      setTimeout(()=>{ gs.wave++; startWave(); },2200);
+      if(isBossWave()){
+        // Boss cleared — advance level, big fanfare
+        msg = '★ BOSS DEFEATED ★'; msgT = 260;
+        burst(W/2, H/2, '#ffcc00', 40, 10);
+        gs.level++;
+        // Also restore all spells as a reward
+        gs.spellUses = gs.maxSpell;
+        setTimeout(()=>{ gs.wave++; startWave(); },3200);
+      } else {
+        setTimeout(()=>{ gs.wave++; startWave(); },2200);
+      }
     }
     if(msgT>0) msgT--;
   }
@@ -949,6 +1470,32 @@
     ctx.fillText(`LVL ${gs.level}   WAVE ${gs.wave}`,W-155,22);
     ctx.fillStyle='#2a2a2a'; ctx.font='9px monospace';
     ctx.fillText('ARROWS MOVE  Z ATK  X SPELL  HOLD C BLOCK',12,H-5);
+
+    // Boss health bar — shown below HUD when a boss is on screen
+    const boss = enemies.find(e=>ENEMY_TYPES[e.type].isBoss);
+    if(boss){
+      const bdef = ENEMY_TYPES[boss.type];
+      const bw = W - 40, bx2 = 20, by2 = 46;
+      const bfrac = boss.hp / boss.maxHp;
+      // Background
+      ctx.fillStyle='rgba(0,0,0,0.85)'; ctx.fillRect(0,44,W,20);
+      ctx.fillStyle='#1a0000'; ctx.fillRect(bx2,by2,bw,10);
+      // Bar colour shifts red→orange→yellow as boss takes damage
+      const barCol = boss.bossPhase===3?'#ff6600':boss.bossPhase===2?'#cc0000':'#880000';
+      ctx.fillStyle = barCol;
+      ctx.fillRect(bx2, by2, Math.floor(bw*bfrac), 10);
+      // Pulse overlay when enraged
+      if(boss.bossPhase===3){
+        ctx.fillStyle=`rgba(255,100,0,${0.15+Math.sin(Date.now()/60)*0.12})`;
+        ctx.fillRect(bx2, by2, Math.floor(bw*bfrac), 10);
+      }
+      ctx.strokeStyle='#440000'; ctx.lineWidth=1; ctx.strokeRect(bx2,by2,bw,10);
+      // Label
+      const bname = boss.type.toUpperCase();
+      ctx.fillStyle='#ff4400'; ctx.font='bold 8px monospace'; ctx.textAlign='center';
+      ctx.fillText(`⚡ ${bname} — ${Math.ceil(boss.hp)}/${boss.maxHp} ⚡`, W/2, by2+8);
+      ctx.textAlign='left';
+    }
   }
 
   // ─── draw player ──────────────────────────────────────────────────────────
