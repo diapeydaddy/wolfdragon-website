@@ -467,7 +467,7 @@
     screen: 'title',
     score: 0, level: 1, wave: 1,
     hp: CFG.playerHp, maxHp: CFG.playerHp,
-    spellUses: 3, maxSpell: 3,
+    spellUses: 3, maxSpell: 3, spellUpgrades: 0,
     rewardChoice: 0,
     itemTier: 0,
     activeItem: null,
@@ -520,7 +520,7 @@
   function eat(c){ if(J[c]){J[c]=false;return true;} return false; }
 
   // ─── entity lists ─────────────────────────────────────────────────────────
-  let enemies=[], projs=[], parts=[], drops=[], obstacles=[];
+  let enemies=[], projs=[], parts=[], drops=[], obstacles=[], flameshields=[];
   let webZones=[], shockwaves=[], darknessT=0;
 
   // ─── particles ────────────────────────────────────────────────────────────
@@ -615,6 +615,7 @@
         lungeT: 0,                     // spider lunge timer
         diveT: 0,          // spider ceiling-drop timer
         diveRow: 0,        // spider ceiling-drop target row
+        diveX: 0,          // spider ceiling-drop target X (set at trigger)
         soulPullT: 0,      // lich soul-vortex duration
         quakeWindupT: 0,   // apoc shockwave windup
       });
@@ -664,7 +665,15 @@
     };
     enemies.forEach(e=>{
       if(e.phase!=='charge') return;
-      if(e.row !== PL.row) return;
+      const def = ENEMY_TYPES[e.type];
+      if(def.isBoss){
+        // Boss: allow hit if player Y-center is within ~1 row of boss Y-center
+        const plCY = ROW_Y[PL.row] + PL.h / 2;
+        const bsCY = e.y + def.h / 2;
+        if(Math.abs(plCY - bsCY) >= 88) return;
+      } else {
+        if(e.row !== PL.row) return;
+      }
       if(ov(box, ehb(e))) hitEnemy(e, PL.weapon.dmg);
     });
   }
@@ -672,11 +681,43 @@
   function doSpell() {
     if(gs.spellUses<=0) return;
     gs.spellUses--;
-    projs.push({x:PL.cx, y:ROW_Y[PL.row]+PL.h/2-SP_H/2,
-      vx:PL.facing*12, vy:0, row:PL.row,
-      dmg:PL.spell.dmg, owner:'player',
-      spr:SPR_SPELL, w:SP_W, h:SP_H, life:160});
-    burst(PL.cx, PL.cy, '#aa44ff', 16);
+    const tier = gs.spellUpgrades || 0;
+    const spY  = ROW_Y[PL.row] + PL.h/2 - SP_H/2;
+
+    // Always: main fireball
+    projs.push({x:PL.cx, y:spY, vx:PL.facing*12, vy:0, row:PL.row,
+      dmg:PL.spell.dmg, owner:'player', spr:SPR_SPELL, w:SP_W, h:SP_H, life:160});
+
+    // Tier 1+: +Spray — side fireballs aimed at adjacent rows
+    if(tier >= 1){
+      [-1, 1].forEach(off => {
+        const tr = Math.max(0, Math.min(ROWS-1, PL.row + off));
+        projs.push({x:PL.cx, y:ROW_Y[tr]+PL.h/2-SP_H/2,
+          vx:PL.facing*10, vy:off*1.5, row:tr,
+          dmg:Math.round(PL.spell.dmg*0.65), owner:'player',
+          spr:SPR_SPELL, w:SP_W, h:SP_H, life:140});
+      });
+    }
+
+    // Tier 2+: Flameshield — 4 orbiting fire orbs (don't stack)
+    if(tier >= 2 && flameshields.length === 0){
+      for(let i=0;i<4;i++){
+        flameshields.push({angle:(i/4)*Math.PI*2, dmg:Math.round(PL.spell.dmg*0.5)});
+      }
+    }
+
+    // Tier 3+: Nova burst — fire a fireball on every row
+    if(tier >= 3){
+      for(let r=0;r<ROWS;r++){
+        if(r===PL.row) continue; // already fired above
+        projs.push({x:PL.cx, y:ROW_Y[r]+PL.h/2-SP_H/2,
+          vx:PL.facing*9, vy:0, row:r,
+          dmg:Math.round(PL.spell.dmg*0.5), owner:'player',
+          spr:SPR_SPELL, w:SP_W, h:SP_H, life:150});
+      }
+    }
+
+    burst(PL.cx, PL.cy, '#aa44ff', tier>=2?24:16);
   }
 
   function hitEnemy(e,dmg) {
@@ -723,8 +764,13 @@
     return [
       { icon:'⚔', label:'WEAPON UP',  desc:'+8 dmg  +25% range (max 300)',
         fn(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
-      { icon:'✦', label:'+SPELL',     desc:'+1 spell charge  +10 spell dmg\n(max 6 charges)',
-        fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; PL.spell.dmg+=10; } },
+      { icon:'✦', label:'+SPELL',
+        get desc(){
+          const t=gs.spellUpgrades||0;
+          const hint=['✦ Next: +Spray (side fireballs)','✦ Next: Flameshield orbs','✦ Next: Full nova burst'];
+          return '+1 spell charge  +10 spell dmg\n(max 6 charges)'+(t<hint.length?'\n'+hint[t]:'');
+        },
+        fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; PL.spell.dmg+=10; gs.spellUpgrades=(gs.spellUpgrades||0)+1; } },
       { icon:'🛡', label:'FORTIFY',    desc:'+35 max HP\nFull heal',
         fn(){ gs.maxHp+=35; gs.hp=gs.maxHp; } },
     ];
@@ -855,11 +901,26 @@
         break;
       }
       case 'whirlwind': {
+        const wCX = W / 2;
         enemies.forEach(e=>{
-          if(e.row!==CENTER_ROW){ e.row=CENTER_ROW; e.y=ROW_Y[CENTER_ROW]; e.targetY=ROW_Y[CENTER_ROW]; }
-          e.frozen=(e.frozen||0)+60;
+          const def = ENEMY_TYPES[e.type];
+          // 5% current HP damage to all enemies including bosses
+          const wpDmg = Math.max(1, Math.floor(e.hp * 0.05));
+          hitEnemy(e, wpDmg);
+          if(!def.isBoss){
+            // Non-boss: snap to center row and center X, freeze
+            e.row = CENTER_ROW;
+            e.y = ROW_Y[CENTER_ROW];
+            e.targetY = ROW_Y[CENTER_ROW];
+            e.x = wCX - def.w / 2;
+            e.frozen = (e.frozen||0) + 60;
+          } else {
+            // Boss: pull X toward screen center (partial), no row change
+            e.x = Math.max(W*0.15, Math.min(W - def.w - 5,
+              e.x + (wCX - (e.x + def.w/2)) * 0.5));
+          }
         });
-        burst(W/2,H/2,'#88ffff',30,10);
+        burst(W/2, H/2, '#88ffff', 40, 12);
         break;
       }
       case 'mirrorshield': {
@@ -964,6 +1025,23 @@
     if(PL.atkTimer  > 0) PL.atkTimer--;
     if(PL.slashTimer > 0) PL.slashTimer--;
     if(PL.iframes   > 0) PL.iframes--;
+    // Flameshield orb update — orbit player and damage enemies on contact
+    if(flameshields.length > 0){
+      flameshields = flameshields.filter(fs=>{
+        fs.angle += 0.06;
+        const fx = PL.cx + Math.cos(fs.angle) * 40;
+        const fy = ROW_Y[PL.row] + PL.h/2 + Math.sin(fs.angle) * 26;
+        for(const e of enemies){
+          const def=ENEMY_TYPES[e.type];
+          if(Math.hypot(fx-(e.x+def.w/2), fy-(e.y+def.h/2)) < def.w/2 + 12){
+            hitEnemy(e, fs.dmg);
+            burst(fx, fy, '#ff6600', 8, 4);
+            return false; // orb expended
+          }
+        }
+        return true;
+      });
+    }
     if(blockMsg     > 0) blockMsg--;
     if(PL.itemCd    > 0) PL.itemCd--;
     if(PL.bloodlustT> 0) PL.bloodlustT--;
@@ -1139,6 +1217,8 @@
           // Spider disappears briefly, telegraphs crash-down on player's row
           e.diveT = 70;
           e.diveRow = PL.row;
+          e.diveX = Math.max(W*0.1, Math.min(W - ENEMY_TYPES.spider.w - 8,
+            PL.x + PL.w/2 - ENEMY_TYPES.spider.w/2));
           e.atkAnim = 50;
           burst(cx, cy, '#ff4400', 10, 5);
           break;
@@ -1203,8 +1283,7 @@
             } else if (e.diveT === 30) {
               // start dropping onto target row
               e.y = -def.h;
-              e.x = Math.max(W*0.1, Math.min(W - def.w - 8,
-                PL.x + PL.w/2 - def.w/2));
+              e.x = e.diveX;
             } else {
               // crashing down
               e.y += 18;
@@ -1859,6 +1938,23 @@
     }
   }
 
+  // draw flameshield orbs orbiting the player
+  function drawFlameshields(){
+    flameshields.forEach(fs=>{
+      const fx = PL.cx + Math.cos(fs.angle) * 40;
+      const fy = ROW_Y[PL.row] + PL.h/2 + Math.sin(fs.angle) * 26;
+      const p  = 0.8 + Math.sin(Date.now()/90)*0.2;
+      ctx.save();
+      ctx.globalAlpha = p;
+      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 12;
+      ctx.fillStyle   = '#ff4400';
+      ctx.beginPath(); ctx.arc(fx, fy, 8, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle   = '#ffcc00';
+      ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+  }
+
   // ─── draw player ──────────────────────────────────────────────────────────
   function drawPlayer(){
     const wy = ROW_Y[PL.row];
@@ -2126,12 +2222,12 @@
         ctx.strokeStyle = '#ff3300';
         ctx.lineWidth = 3;
         ctx.setLineDash([8, 6]);
-        ctx.strokeRect(e.x - 10, ry, def.w + 20, def.h);
+        ctx.strokeRect(e.diveX - 10, ry, def.w + 20, def.h);
         ctx.setLineDash([]);
         ctx.fillStyle = '#ff3300';
         ctx.font = 'bold 16px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('⚠', e.x + def.w/2, ry - 8);
+        ctx.fillText('⚠', e.diveX + def.w/2, ry - 8);
         ctx.textAlign = 'left';
         ctx.restore();
       }
@@ -2359,7 +2455,7 @@
   // ─── reset ────────────────────────────────────────────────────────────────
   function reset(){
     Object.assign(gs,{screen:'playing',score:0,level:1,wave:1,
-      hp:CFG.playerHp,maxHp:CFG.playerHp,spellUses:3,maxSpell:3,rewardChoice:0,
+      hp:CFG.playerHp,maxHp:CFG.playerHp,spellUses:3,maxSpell:3,spellUpgrades:0,rewardChoice:0,
       itemTier:0,activeItem:null,rewardItemChoices:[],rewardItemChoice:0});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
@@ -2371,7 +2467,7 @@
     PL.shBroken=false; PL.shHp=PL.shMaxHp; PL.soulDrainActive=false; PL.deathMarkActive=false;
     PL.mirrorActive=false; PL.thornActive=false; PL.explodeShieldActive=false;
     PL.bloodlustT=0;
-    enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; bgOff=0;
+    enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[]; bgOff=0;
     webZones=[]; shockwaves=[]; darknessT=0;
     PL.webbed=0;
     startWave();
@@ -2402,7 +2498,7 @@
     } else {
       update();
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
-      drawPlayer(); drawParts(); drawWaveMsg(); drawHUD();
+      drawFlameshields(); drawPlayer(); drawParts(); drawWaveMsg(); drawHUD();
       if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     }
     requestAnimationFrame(frame);
