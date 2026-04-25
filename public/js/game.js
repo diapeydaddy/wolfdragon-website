@@ -661,12 +661,12 @@
   function hitEnemy(e,dmg) {
     e.hp-=dmg; e.flashT=9;
     burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#ff4422', 9);
-    if(PL.soulDrainActive){ PL.soulDrainActive=false; gs.hp=Math.min(gs.maxHp,gs.hp+40); burst(PL.cx,PL.cy,'#8800ff',10); }
+    if(PL.soulDrainActive){ PL.soulDrainActive=false; gs.hp=Math.min(gs.maxHp,gs.hp+15); burst(PL.cx,PL.cy,'#8800ff',10); }
     if(e.hp<=0) killEnemy(e);
   }
 
   function killEnemy(e) {
-    if(PL.deathMarkActive){ PL.deathMarkActive=false; const kcx=e.x+ENEMY_TYPES[e.type].w/2,kcy=e.y+ENEMY_TYPES[e.type].h/2; enemies.forEach(e2=>{ if(e2!==e) hitEnemy(e2,200); }); burst(kcx,kcy,'#ff8800',50,14); }
+    if(PL.deathMarkActive){ PL.deathMarkActive=false; const kcx=e.x+ENEMY_TYPES[e.type].w/2,kcy=e.y+ENEMY_TYPES[e.type].h/2; enemies.forEach(e2=>{ if(e2!==e) hitEnemy(e2,80); }); burst(kcx,kcy,'#ff8800',50,14); }
     e.hp=0; gs.score+=e.score;
     const def = ENEMY_TYPES[e.type];
     const cx = e.x + def.w/2, cy = e.y + def.h/2;
@@ -686,8 +686,8 @@
       burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
       blockMsg = 40;
       if(PL.shHp <= 0) PL.shBroken = true;
-      if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,80)); burst(PL.cx,PL.cy,'#44ff44',20); }
-      if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,150)); burst(W/2,H/2,'#ff8800',50,14); }
+      if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,35)); burst(PL.cx,PL.cy,'#44ff44',20); }
+      if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,60)); burst(W/2,H/2,'#ff8800',50,14); }
       return;
     }
     if(PL.iframes>0) return;
@@ -700,10 +700,10 @@
   // ─── reward screen input ──────────────────────────────────────────────────
   function getRewards(){
     return [
-      { icon:'⚔', label:'WEAPON UP',  desc:'+15 dmg  +25% range (max 300)',
-        fn(){ PL.weapon.dmg+=15; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
-      { icon:'✦', label:'+SPELL',     desc:'+1 spell charge  +18 spell dmg\n(max 6 charges)',
-        fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; PL.spell.dmg+=18; } },
+      { icon:'⚔', label:'WEAPON UP',  desc:'+8 dmg  +25% range (max 300)',
+        fn(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
+      { icon:'✦', label:'+SPELL',     desc:'+1 spell charge  +10 spell dmg\n(max 6 charges)',
+        fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; PL.spell.dmg+=10; } },
       { icon:'🛡', label:'FORTIFY',    desc:'+35 max HP\nFull heal',
         fn(){ gs.maxHp+=35; gs.hp=gs.maxHp; } },
     ];
@@ -712,63 +712,63 @@
   const ITEM_POOLS = {
     weapon: [
       // tier 0
-      { name:"Dragon's Fang",    icon:'🗡', desc:'+20 dmg / +10 max HP',    abilityName:'Lunge Strike', abDesc:'V: Dash+strike 2x dmg',      ability:'lunge',      cdMax:360, stat(){ PL.weapon.dmg+=20; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
-      { name:"Soul Reaper",       icon:'💀', desc:'+15 dmg / +1 spell slot', abilityName:'Soul Drain',   abDesc:'V: Next hit heals 40 HP',   ability:'souldrain',  cdMax:300, stat(){ PL.weapon.dmg+=15; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Sundering Axe",     icon:'🪓', desc:'+25 dmg / +30% range',    abilityName:'Cleave',       abDesc:'V: Hit all enemies on row', ability:'cleave',     cdMax:420, stat(){ PL.weapon.dmg+=25; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.3)); } },
-      { name:"Warblade",          icon:'⚔', desc:'+18 dmg / +20 max HP',    abilityName:'Lunge Strike', abDesc:'V: Dash+strike 2x dmg',      ability:'lunge',      cdMax:360, stat(){ PL.weapon.dmg+=18; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Hexfang",           icon:'🐍', desc:'+22 dmg / +1 spell slot', abilityName:'Void Slash',   abDesc:'V: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=22; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Dragon's Fang",    icon:'🗡', desc:'+6 dmg / +10 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, stat(){ PL.weapon.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
+      { name:"Soul Reaper",       icon:'💀', desc:'+5 dmg / +1 spell slot',  abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, stat(){ PL.weapon.dmg+=5; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Sundering Axe",     icon:'🪓', desc:'+8 dmg / +15% range',     abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, stat(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.15)); } },
+      { name:"Warblade",          icon:'⚔', desc:'+6 dmg / +15 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, stat(){ PL.weapon.dmg+=6; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Hexfang",           icon:'🐍', desc:'+7 dmg / +1 spell slot',  abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
       // tier 1
-      { name:"Thunderstrike",     icon:'⚡', desc:'+35 dmg / +20 max HP',    abilityName:'Chain Lightning',abDesc:'V: Lightning all enemies', ability:'lightning',  cdMax:480, stat(){ PL.weapon.dmg+=35; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Bloodfang Blade",   icon:'🩸', desc:'+30 dmg / +2 spell slots',abilityName:'Bloodlust',    abDesc:'V: Rapid strikes 5s',       ability:'bloodlust',  cdMax:600, stat(){ PL.weapon.dmg+=30; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Voidblade",         icon:'🌑', desc:'+40 dmg / +40% range',    abilityName:'Void Slash',   abDesc:'V: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=40; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.4)); } },
-      { name:"Soulbreaker",       icon:'👁', desc:'+45 dmg / +1 spell slot', abilityName:'Soul Drain',   abDesc:'V: Next hit heals 40 HP',   ability:'souldrain',  cdMax:300, stat(){ PL.weapon.dmg+=45; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Crimson Edge",      icon:'🔥', desc:'+38 dmg / +25 max HP',    abilityName:'Cleave',       abDesc:'V: Hit all enemies on row', ability:'cleave',     cdMax:420, stat(){ PL.weapon.dmg+=38; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+25); } },
+      { name:"Thunderstrike",     icon:'⚡', desc:'+12 dmg / +15 max HP',    abilityName:'Chain Lightning',abDesc:'S: Lightning all enemies', ability:'lightning',  cdMax:480, stat(){ PL.weapon.dmg+=12; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Bloodfang Blade",   icon:'🩸', desc:'+10 dmg / +2 spell slots',abilityName:'Bloodlust',    abDesc:'S: Rapid strikes 5s',       ability:'bloodlust',  cdMax:600, stat(){ PL.weapon.dmg+=10; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Voidblade",         icon:'🌑', desc:'+14 dmg / +20% range',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=14; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.2)); } },
+      { name:"Soulbreaker",       icon:'👁', desc:'+12 dmg / +1 spell slot', abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, stat(){ PL.weapon.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Crimson Edge",      icon:'🔥', desc:'+13 dmg / +20 max HP',    abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, stat(){ PL.weapon.dmg+=13; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+25); } },
       // tier 2
-      { name:"Dragonfang Ancient",icon:'🐉', desc:'+60 dmg / +40 max HP',    abilityName:'Dragon Fury',  abDesc:'V: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.weapon.dmg+=60; gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
-      { name:"Reaper's Scythe",   icon:'⚰', desc:'+55 dmg / +2 spell slots',abilityName:'Death Mark',   abDesc:'V: Marked kill explodes',   ability:'deathmark',  cdMax:540, stat(){ PL.weapon.dmg+=55; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Worldbreaker",      icon:'💥', desc:'+70 dmg / +50% range',    abilityName:'Chain Lightning',abDesc:'V: Lightning hits all',    ability:'lightning',  cdMax:480, stat(){ PL.weapon.dmg+=70; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.5)); } },
-      { name:"Abyss Blade",       icon:'🕳', desc:'+65 dmg / +30 max HP',    abilityName:'Void Slash',   abDesc:'V: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=65; gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
-      { name:"Godslayer",         icon:'👑', desc:'+80 dmg / +3 spell slots',abilityName:'Dragon Fury',  abDesc:'V: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.weapon.dmg+=80; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Dragonfang Ancient",icon:'🐉', desc:'+20 dmg / +25 max HP',    abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.weapon.dmg+=20; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
+      { name:"Reaper's Scythe",   icon:'⚰', desc:'+18 dmg / +2 spell slots',abilityName:'Death Mark',   abDesc:'S: Marked kill explodes',   ability:'deathmark',  cdMax:540, stat(){ PL.weapon.dmg+=18; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Worldbreaker",      icon:'💥', desc:'+22 dmg / +25% range',    abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',    ability:'lightning',  cdMax:480, stat(){ PL.weapon.dmg+=22; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
+      { name:"Abyss Blade",       icon:'🕳', desc:'+20 dmg / +20 max HP',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=20; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
+      { name:"Godslayer",         icon:'👑', desc:'+25 dmg / +3 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.weapon.dmg+=25; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
     ],
     spell: [
       // tier 0
-      { name:"Frost Tome",        icon:'❄', desc:'+20 spell dmg / +1 slot',  abilityName:'Ice Nova',     abDesc:'V: Freeze all enemies 3s',  ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=20; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Firewall Scroll",   icon:'🔥', desc:'+18 spell dmg / +10 HP',   abilityName:'Firewall',     abDesc:'V: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=18; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
-      { name:"Tempest Rod",       icon:'🌪', desc:'+15 spell dmg / +1 slot',  abilityName:'Whirlwind',    abDesc:'V: Pull enemies to mid row',ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=15; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Shadow Grimoire",   icon:'📖', desc:'+22 spell dmg / +15 HP',   abilityName:'Ice Nova',     abDesc:'V: Freeze all enemies',     ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=22; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+15); } },
-      { name:"Spirit Wand",       icon:'✨', desc:'+20 spell dmg / +1 slot',  abilityName:'Whirlwind',    abDesc:'V: Pull enemies to mid',    ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=20; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Frost Tome",        icon:'❄', desc:'+7 spell dmg / +1 slot',   abilityName:'Ice Nova',     abDesc:'S: Freeze all enemies 3s',  ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Firewall Scroll",   icon:'🔥', desc:'+6 spell dmg / +10 HP',    abilityName:'Firewall',     abDesc:'S: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
+      { name:"Tempest Rod",       icon:'🌪', desc:'+7 spell dmg / +1 slot',   abilityName:'Whirlwind',    abDesc:'S: Pull enemies to mid row',ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Shadow Grimoire",   icon:'📖', desc:'+7 spell dmg / +15 HP',    abilityName:'Ice Nova',     abDesc:'S: Freeze all enemies',     ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=7; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+15); } },
+      { name:"Spirit Wand",       icon:'✨', desc:'+6 spell dmg / +1 slot',   abilityName:'Whirlwind',    abDesc:'S: Pull enemies to mid',    ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=6; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
       // tier 1
-      { name:"Storm Codex",       icon:'⛈', desc:'+35 spell dmg / +2 slots', abilityName:'Chain Lightning',abDesc:'V: Lightning hits all',    ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=35; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Void Grimoire",     icon:'🌌', desc:'+30 spell dmg / +20 HP',   abilityName:'Firewall',     abDesc:'V: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=30; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Cataclysm Tome",    icon:'💫', desc:'+40 spell dmg / +1 slot',  abilityName:'Ice Nova',     abDesc:'V: Freeze all enemies',     ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=40; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Runic Staff",       icon:'🔮', desc:'+38 spell dmg / +2 slots', abilityName:'Whirlwind',    abDesc:'V: Pull enemies to mid',    ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=38; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Soulfire Orb",      icon:'🔴', desc:'+45 spell dmg / +20 HP',   abilityName:'Chain Lightning',abDesc:'V: Lightning hits all',   ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=45; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Storm Codex",       icon:'⛈', desc:'+12 spell dmg / +2 slots', abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',    ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Void Grimoire",     icon:'🌌', desc:'+10 spell dmg / +20 HP',   abilityName:'Firewall',     abDesc:'S: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=10; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Cataclysm Tome",    icon:'💫', desc:'+13 spell dmg / +1 slot',  abilityName:'Ice Nova',     abDesc:'S: Freeze all enemies',     ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=13; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Runic Staff",       icon:'🔮', desc:'+12 spell dmg / +2 slots', abilityName:'Whirlwind',    abDesc:'S: Pull enemies to mid',    ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Soulfire Orb",      icon:'🔴', desc:'+14 spell dmg / +20 HP',   abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',   ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=14; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
       // tier 2
-      { name:"Armageddon Tome",   icon:'☄', desc:'+60 spell dmg / +3 slots', abilityName:'Dragon Fury',  abDesc:'V: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.spell.dmg+=60; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"World Ender Scroll",icon:'🌍', desc:'+55 spell dmg / +30 HP',   abilityName:'Firewall',     abDesc:'V: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=55; gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
-      { name:"Eternal Grimoire",  icon:'♾', desc:'+70 spell dmg / +2 slots', abilityName:'Ice Nova',     abDesc:'V: Freeze all 3s',          ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=70; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Chaos Staff",       icon:'🌀', desc:'+65 spell dmg / +3 slots', abilityName:'Whirlwind',    abDesc:'V: Pull all enemies',       ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=65; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"Divine Codex",      icon:'💎', desc:'+80 spell dmg / +40 HP',   abilityName:'Chain Lightning',abDesc:'V: Lightning all enemies', ability:'lightning', cdMax:480, stat(){ PL.spell.dmg+=80; gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
+      { name:"Armageddon Tome",   icon:'☄', desc:'+20 spell dmg / +3 slots', abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.spell.dmg+=20; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"World Ender Scroll",icon:'🌍', desc:'+18 spell dmg / +30 HP',   abilityName:'Firewall',     abDesc:'S: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=18; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
+      { name:"Eternal Grimoire",  icon:'♾', desc:'+22 spell dmg / +2 slots', abilityName:'Ice Nova',     abDesc:'S: Freeze all 3s',          ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=22; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Chaos Staff",       icon:'🌀', desc:'+20 spell dmg / +3 slots', abilityName:'Whirlwind',    abDesc:'S: Pull all enemies',       ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=20; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Divine Codex",      icon:'💎', desc:'+25 spell dmg / +40 HP',   abilityName:'Chain Lightning',abDesc:'S: Lightning all enemies', ability:'lightning', cdMax:480, stat(){ PL.spell.dmg+=25; gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
     ],
     shield: [
       // tier 0
-      { name:"Spiked Buckler",    icon:'🛡', desc:'+20 max HP / +1 spell slot',abilityName:'Thorn Wall',    abDesc:'V: Next block deals 80 dmg outward', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Mirror Shield",     icon:'🔵', desc:'+25 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'V: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+25); PL.weapon.dmg+=10; } },
-      { name:"Iron Wall",         icon:'🧱', desc:'+30 max HP / +15 weapon dmg',abilityName:'Holy Barrier',  abDesc:'V: Invincible for 3 seconds',ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=15; } },
-      { name:"Ward Stone",        icon:'🪨', desc:'+20 max HP / +1 slot',       abilityName:'Thorn Wall',    abDesc:'V: Next block deals 80 dmg', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Scale Armor",       icon:'🦎', desc:'+35 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'V: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); PL.weapon.dmg+=10; } },
+      { name:"Spiked Buckler",    icon:'🛡', desc:'+20 max HP / +1 spell slot',abilityName:'Thorn Wall',    abDesc:'S: Next block deals 80 dmg outward', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Mirror Shield",     icon:'🔵', desc:'+25 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'S: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+25); PL.weapon.dmg+=10; } },
+      { name:"Iron Wall",         icon:'🧱', desc:'+30 max HP / +15 weapon dmg',abilityName:'Holy Barrier',  abDesc:'S: Invincible for 3 seconds',ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=15; } },
+      { name:"Ward Stone",        icon:'🪨', desc:'+20 max HP / +1 slot',       abilityName:'Thorn Wall',    abDesc:'S: Next block deals 80 dmg', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Scale Armor",       icon:'🦎', desc:'+35 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'S: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); PL.weapon.dmg+=10; } },
       // tier 1
-      { name:"Explosion Shield",  icon:'💣', desc:'+30 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'V: Next block = big explosion',ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=20; } },
-      { name:"Runic Aegis",       icon:'🔷', desc:'+40 max HP / +2 spell slots',abilityName:'Holy Barrier',  abDesc:'V: Invincible 3 seconds',    ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Void Guard",        icon:'⬛', desc:'+45 max HP / +25 weapon dmg',abilityName:'Thorn Wall',    abDesc:'V: Next block explodes',     ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); PL.weapon.dmg+=25; } },
-      { name:"Spectral Wall",     icon:'👻', desc:'+35 max HP / +2 spell slots',abilityName:'Mirror',        abDesc:'V: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Hellforged Plate",  icon:'🔱', desc:'+50 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'V: Block = explosion',       ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=20; } },
+      { name:"Explosion Shield",  icon:'💣', desc:'+30 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Next block = big explosion',ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=20; } },
+      { name:"Runic Aegis",       icon:'🔷', desc:'+40 max HP / +2 spell slots',abilityName:'Holy Barrier',  abDesc:'S: Invincible 3 seconds',    ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Void Guard",        icon:'⬛', desc:'+45 max HP / +25 weapon dmg',abilityName:'Thorn Wall',    abDesc:'S: Next block explodes',     ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); PL.weapon.dmg+=25; } },
+      { name:"Spectral Wall",     icon:'👻', desc:'+35 max HP / +2 spell slots',abilityName:'Mirror',        abDesc:'S: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Hellforged Plate",  icon:'🔱', desc:'+50 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Block = explosion',       ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=20; } },
       // tier 2
-      { name:"Divine Bulwark",    icon:'✝', desc:'+70 max HP / +3 spell slots',abilityName:'Holy Barrier',  abDesc:'V: Invincible 3 seconds',    ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=70; gs.hp=Math.min(gs.maxHp,gs.hp+70); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"Titan Shield",      icon:'🏛', desc:'+80 max HP / +35 weapon dmg',abilityName:'Explode Shield',abDesc:'V: Massive block explosion', ability:'explodeshield', cdMax:540, stat(){ gs.maxHp+=80; gs.hp=Math.min(gs.maxHp,gs.hp+80); PL.weapon.dmg+=35; } },
-      { name:"Eternal Aegis",     icon:'⚜', desc:'+60 max HP / +3 spell slots',abilityName:'Mirror',        abDesc:'V: Reflect projectile',      ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=60; gs.hp=Math.min(gs.maxHp,gs.hp+60); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"Chaos Barrier",     icon:'🌪', desc:'+65 max HP / +40 weapon dmg',abilityName:'Thorn Wall',    abDesc:'V: Block deals 300 dmg',     ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=65; gs.hp=Math.min(gs.maxHp,gs.hp+65); PL.weapon.dmg+=40; } },
-      { name:"Godwall",           icon:'⭐', desc:'+100 max HP / +4 spell slots',abilityName:'Dragon Fury', abDesc:'V: Claw hits all rows',       ability:'dragonfury',   cdMax:600, stat(){ gs.maxHp+=100; gs.hp=Math.min(gs.maxHp,gs.hp+100); gs.maxSpell=Math.min(8,gs.maxSpell+4); gs.spellUses=gs.maxSpell; } },
+      { name:"Divine Bulwark",    icon:'✝', desc:'+45 max HP / +3 spell slots',abilityName:'Holy Barrier',  abDesc:'S: Invincible 3 seconds',    ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Titan Shield",      icon:'🏛', desc:'+50 max HP / +12 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Massive block explosion', ability:'explodeshield', cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=12; } },
+      { name:"Eternal Aegis",     icon:'⚜', desc:'+40 max HP / +3 spell slots',abilityName:'Mirror',        abDesc:'S: Reflect projectile',      ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Chaos Barrier",     icon:'🌪', desc:'+40 max HP / +14 weapon dmg',abilityName:'Thorn Wall',    abDesc:'S: Block deals 35 dmg out',  ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); PL.weapon.dmg+=14; } },
+      { name:"Godwall",           icon:'⭐', desc:'+55 max HP / +4 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Claw hits all rows',       ability:'dragonfury',   cdMax:600, stat(){ gs.maxHp+=55; gs.hp=Math.min(gs.maxHp,gs.hp+55); gs.maxSpell=Math.min(8,gs.maxSpell+4); gs.spellUses=gs.maxSpell; } },
     ],
   };
 
@@ -779,7 +779,7 @@
         const dashDir = PL.facing;
         PL.x = Math.max(0, Math.min(W-PL.w, PL.x + dashDir * 120));
         const box={x:PL.x-40,y:ROW_Y[PL.row]-6,w:PL.w+80,h:PL.h+12};
-        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*2); });
+        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*1.2); });
         burst(PL.cx,PL.cy,'#ffaa00',20,8);
         break;
       }
@@ -790,7 +790,7 @@
       }
       case 'cleave': {
         const box={x:0,y:ROW_Y[PL.row]-6,w:W,h:PL.h+12};
-        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*1.5); });
+        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*1.2); });
         burst(PL.cx,PL.cy,'#ff8800',24,7);
         break;
       }
@@ -806,12 +806,12 @@
       }
       case 'voidslash': {
         projs.push({x:PL.cx,y:ROW_Y[PL.row],vx:PL.facing*18,vy:0,row:PL.row,
-          dmg:PL.weapon.dmg*3,owner:'player',spr:SPR_SPELL,w:SP_W*2,h:SP_H*2,life:120});
+          dmg:PL.weapon.dmg*2,owner:'player',spr:SPR_SPELL,w:SP_W*2,h:SP_H*2,life:120});
         burst(PL.cx,PL.cy,'#cc00ff',20,8);
         break;
       }
       case 'dragonfury': {
-        enemies.forEach(e=>hitEnemy(e,PL.weapon.dmg*2.5));
+        enemies.forEach(e=>hitEnemy(e,PL.weapon.dmg*1.8));
         burst(W/2,H/2,'#ff4400',50,12);
         break;
       }
@@ -823,7 +823,7 @@
       case 'firewall': {
         for(let r=0;r<ROWS;r++){
           projs.push({x:PL.cx,y:ROW_Y[r],vx:PL.facing*6,vy:0,row:r,
-            dmg:PL.spell.dmg*1.5,owner:'player',spr:SPR_SPELL,w:SP_W,h:SP_H,life:200});
+            dmg:PL.spell.dmg*1.2,owner:'player',spr:SPR_SPELL,w:SP_W,h:SP_H,life:200});
         }
         burst(PL.cx,PL.cy,'#ff6600',25,10);
         break;
@@ -1890,6 +1890,17 @@
       ctx.globalAlpha *= 0.7;
       ctx.stroke();
       ctx.restore();
+    }
+
+    // Soul drain skull indicator
+    if(PL.soulDrainActive){
+      const pulse = 0.7 + Math.sin(Date.now()/150)*0.3;
+      ctx.globalAlpha = pulse;
+      ctx.font        = '18px serif';
+      ctx.textAlign   = 'center';
+      ctx.fillText('💀', PL.cx, wy - 16);
+      ctx.textAlign   = 'left';
+      ctx.globalAlpha = 1;
     }
 
     // "BLOCKED!" feedback
