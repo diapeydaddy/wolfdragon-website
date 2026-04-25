@@ -1693,7 +1693,7 @@
     ctx.fillStyle='#aa44ff'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
     ctx.fillText('✦  CHOOSE YOUR ITEM  ✦',W/2,65);
     ctx.fillStyle='#666'; ctx.font='13px monospace';
-    ctx.fillText('← → navigate   Z / ENTER confirm   or press 1 / 2 / 3',W/2,90);
+    ctx.fillText('← → navigate   Z / W confirm   or press 1 / 2 / 3',W/2,90);
     if(gs.activeItem){
       ctx.fillStyle='#555'; ctx.font='11px monospace';
       ctx.fillText(`Current: ${gs.activeItem.name} — V: ${gs.activeItem.abilityName}`,W/2,112);
@@ -1737,7 +1737,7 @@
     ctx.fillStyle='#ffcc00'; ctx.font='bold 26px monospace'; ctx.textAlign='center';
     ctx.fillText('★  BOSS DEFEATED — CHOOSE YOUR REWARD  ★',W/2,70);
     ctx.fillStyle='#888'; ctx.font='13px monospace';
-    ctx.fillText('← → navigate   Z / ENTER confirm   or press 1 / 2 / 3',W/2,98);
+    ctx.fillText('← → navigate   Z / W confirm   or press 1 / 2 / 3',W/2,98);
     const rewards=getRewards();
     const cardW=200, cardH=180, gap=20;
     const totalW=cardW*3+gap*2;
@@ -2332,7 +2332,7 @@
     // (controls shown above the canvas in HTML)
     const blink=Math.floor(t*2)%2===0;
     ctx.fillStyle=blink?'#cc0000':'#550000'; ctx.font='bold 15px monospace';
-    ctx.fillText('PRESS  ENTER  TO  BEGIN',W/2,435);
+    ctx.fillText('PRESS  W  TO  BEGIN',W/2,435);
     ctx.textAlign='left';
   }
 
@@ -2343,7 +2343,7 @@
     ctx.fillStyle='#888'; ctx.font='18px monospace';
     ctx.fillText(`SCORE: ${gs.score}`,W/2,H/2+12);
     ctx.fillStyle='#444'; ctx.font='13px monospace';
-    ctx.fillText('PRESS ENTER TO RETRY',W/2,H/2+52);
+    ctx.fillText('PRESS W TO RETRY',W/2,H/2+52);
     ctx.textAlign='left';
   }
 
