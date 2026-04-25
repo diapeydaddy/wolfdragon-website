@@ -1302,13 +1302,15 @@
           }
         }
 
-        // Contact damage with cooldown — row proximity + horizontal overlap
-        // (pixel-perfect Y check misses player standing 1 row above boss)
+        // Contact damage — Y-center distance + horizontal overlap
+        // Avoids relying on e.row which isn't kept in sync for all bosses
         if (e.meleeCd > 0) e.meleeCd--;
-        const rowDist   = Math.abs(PL.row - e.row);
+        const plCY    = ROW_Y[PL.row] + PL.h / 2;
+        const bsCY    = e.y + def.h / 2;
+        const yClose  = Math.abs(plCY - bsCY) < 88; // ~1 row gap = 72px; 88 gives a little tolerance
         const horizOvlp = PL.x + PL.w - 10 > e.x + def.w * 0.2 &&
                           PL.x + 10       < e.x + def.w * 0.8;
-        if (e.meleeCd === 0 && rowDist <= 1 && horizOvlp) {
+        if (e.meleeCd === 0 && yClose && horizOvlp) {
           hurtPlayer(def.dmg * 0.5, true);
           e.meleeCd = 60;
         }
