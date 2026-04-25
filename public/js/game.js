@@ -1196,6 +1196,7 @@
                 }
                 burst(e.x + def.w/2, landY, '#ff6600', 30, 9);
                 e.diveT = 0;
+                e.row = e.diveRow; // sync logical row so player can hit spider on landing row
                 e.shootT = Math.max(55, def.shootCd - e.bossPhase*15);
               }
             }
@@ -1783,20 +1784,7 @@
     }
     ctx.fillStyle='#773399'; ctx.font='9px monospace';
     ctx.fillText('SP',12+gs.maxSpell*17+3,37);
-    if(K['KeyC']){
-      // Shield bar: 3 pips
-      const shX = 12+gs.maxSpell*17+22;
-      for(let i=0;i<PL.shMaxHp;i++){
-        const filled = i < PL.shHp;
-        ctx.fillStyle = filled ? (PL.shBroken ? '#884422' : '#4499ff') : '#1a1a2a';
-        ctx.fillRect(shX+i*14, 26, 11, 9);
-        ctx.strokeStyle = filled ? (PL.shBroken ? '#cc6633' : '#aaddff') : '#333';
-        ctx.lineWidth=1; ctx.strokeRect(shX+i*14, 26, 11, 9);
-      }
-      ctx.fillStyle = PL.shBroken ? '#cc4400' : '#aaddff';
-      ctx.font='bold 8px monospace';
-      ctx.fillText(PL.shBroken ? '🛡✗' : '🛡', shX+PL.shMaxHp*14+3, 34);
-    }
+    // Shield pips now drawn near player in drawPlayer() — nothing needed here
     ctx.fillStyle='#cc0000'; ctx.font='bold 13px monospace';
     ctx.textAlign='center'; ctx.fillText('SCORE '+String(gs.score).padStart(7,'0'),W/2,22);
     ctx.textAlign='left';
@@ -1849,20 +1837,79 @@
   function drawPlayer(){
     const wy = ROW_Y[PL.row];
 
-    // Shield aura (behind player)
+    // Shield aura (behind player) + pip bar above head
     if(PL.sh){
-      const pulse = 0.55 + Math.sin(Date.now()/80)*0.45;
-      ctx.shadowColor = '#4499ff';
-      ctx.shadowBlur  = 18;
-      ctx.globalAlpha = pulse;
-      ctx.strokeStyle = '#aaddff';
-      ctx.lineWidth   = 3;
-      ctx.strokeRect(PL.x-4, wy-4, PL.w+8, PL.h+8);
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur  = 0;
+      const t     = Date.now();
+      const pulse = 0.55 + Math.sin(t / 80) * 0.45;
+      const brokenColor = '#ff6622';
+      const baseColor   = PL.shBroken ? brokenColor : '#55bbff';
+      const glowColor   = PL.shBroken ? '#ff4400'   : '#4499ff';
 
-      const shX = PL.facing > 0 ? PL.x + PL.w - 4 : PL.x - SPR_SHIELD[0].length*SC2 + 4;
-      spr(SPR_SHIELD, shX, wy + PL.h/2 - SPR_SHIELD.length*SC2/2, SC2);
+      ctx.save();
+
+      // Outer glow halo
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur  = 22;
+      ctx.globalAlpha = pulse * 0.55;
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth   = 10;
+      const rx = PL.x - 8, ry = wy - 8, rw = PL.w + 16, rh = PL.h + 16;
+      const cr = 12; // corner radius
+      ctx.beginPath();
+      ctx.moveTo(rx + cr, ry);
+      ctx.lineTo(rx + rw - cr, ry);
+      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + cr);
+      ctx.lineTo(rx + rw, ry + rh - cr);
+      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - cr, ry + rh);
+      ctx.lineTo(rx + cr, ry + rh);
+      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - cr);
+      ctx.lineTo(rx, ry + cr);
+      ctx.quadraticCurveTo(rx, ry, rx + cr, ry);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Inner crisp edge
+      ctx.shadowBlur  = 8;
+      ctx.globalAlpha = pulse * 0.85;
+      ctx.lineWidth   = 2;
+      ctx.strokeStyle = PL.shBroken ? '#ffaa66' : '#cceeff';
+      const ir = 4;
+      const ix = PL.x - 3, iy = wy - 3, iw = PL.w + 6, ih = PL.h + 6;
+      ctx.beginPath();
+      ctx.moveTo(ix + ir, iy);
+      ctx.lineTo(ix + iw - ir, iy);
+      ctx.quadraticCurveTo(ix + iw, iy, ix + iw, iy + ir);
+      ctx.lineTo(ix + iw, iy + ih - ir);
+      ctx.quadraticCurveTo(ix + iw, iy + ih, ix + iw - ir, iy + ih);
+      ctx.lineTo(ix + ir, iy + ih);
+      ctx.quadraticCurveTo(ix, iy + ih, ix, iy + ih - ir);
+      ctx.lineTo(ix, iy + ir);
+      ctx.quadraticCurveTo(ix, iy, ix + ir, iy);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Shield pip bar above player's head
+      const pipW = 10, pipH = 7, pipGap = 4;
+      const totalPipW = PL.shMaxHp * (pipW + pipGap) - pipGap;
+      const pipStartX = PL.cx - totalPipW / 2;
+      const pipY = wy - 18;
+      for(let i = 0; i < PL.shMaxHp; i++){
+        const filled = i < PL.shHp;
+        const px = pipStartX + i * (pipW + pipGap);
+        ctx.save();
+        ctx.shadowColor = filled ? glowColor : 'transparent';
+        ctx.shadowBlur  = filled ? 6 : 0;
+        ctx.fillStyle   = filled ? (PL.shBroken ? '#ff6622' : '#55bbff') : 'rgba(20,30,60,0.7)';
+        ctx.beginPath();
+        ctx.roundRect(px, pipY, pipW, pipH, 2);
+        ctx.fill();
+        ctx.strokeStyle = filled ? (PL.shBroken ? '#ffaa55' : '#aaddff') : '#334';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // Player sprite
@@ -1977,7 +2024,7 @@
         ctx.globalAlpha = pulse;
         ctx.font        = '15px serif';
         ctx.textAlign   = 'center';
-        inds.forEach((ic, i) => ctx.fillText(ic, startX + i * spacing, wy - 14));
+        inds.forEach((ic, i) => ctx.fillText(ic, startX + i * spacing, wy - 30));
         ctx.restore();
       }
       // Bloodlust timer bar under indicator row
@@ -1986,7 +2033,7 @@
         ctx.save();
         ctx.fillStyle   = '#ff0044';
         ctx.globalAlpha = 0.75;
-        ctx.fillRect(PL.x, wy - 7, barW, 3);
+        ctx.fillRect(PL.x, wy - 22, barW, 3);
         ctx.restore();
       }
     }
