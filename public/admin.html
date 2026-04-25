@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wolfdragon Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: 'Oswald', monospace, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Password Gate ── */
+    #gate {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 18px;
+    }
+    #gate h1 {
+      font-size: 2rem;
+      color: #cc0000;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+    #gate-form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    #gate-pw {
+      background: #111;
+      border: 1px solid #440000;
+      color: #e0e0e0;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 1rem;
+      border-radius: 3px;
+      outline: none;
+      width: 240px;
+      transition: border-color 0.2s;
+    }
+    #gate-pw:focus { border-color: #cc0000; }
+    #gate-error {
+      color: #ff4444;
+      font-size: 0.9rem;
+      min-height: 1.2em;
+    }
+
+    /* ── Panel ── */
+    #panel { display: none; max-width: 860px; margin: 0 auto; padding: 30px 20px 60px; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      border-bottom: 2px solid #cc0000;
+      padding-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .panel-header h1 {
+      font-size: 1.8rem;
+      color: #cc0000;
+      letter-spacing: 3px;
+    }
+    .back-link {
+      color: #888;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #cc0000; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 3px;
+      font-family: 'Oswald', monospace, sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-save  { background: #cc0000; color: #fff; }
+    .btn-save:hover  { background: #ee0000; }
+    .btn-reset { background: #222; color: #aaa; border: 1px solid #440000; }
+    .btn-reset:hover { background: #330000; color: #e0e0e0; }
+
+    /* ── Flash message ── */
+    #flash {
+      padding: 10px 16px;
+      background: #0f2e0f;
+      border: 1px solid #226622;
+      color: #66ff66;
+      border-radius: 3px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      margin-top: 16px;
+    }
+    #flash.show { opacity: 1; }
+
+    /* ── Details sections ── */
+    details {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    details[open] { border-color: #440000; }
+    summary {
+      display: flex;
+      align-items: center;
+      padding: 14px 18px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #cc0000;
+      letter-spacing: 1px;
+      list-style: none;
+      transition: background 0.2s;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before {
+      content: '▶';
+      display: inline-block;
+      margin-right: 10px;
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+      color: #660000;
+    }
+    details[open] > summary::before { transform: rotate(90deg); }
+    summary:hover { background: #1a0000; }
+
+    .section-body {
+      padding: 18px 20px 20px;
+      border-top: 1px solid #220000;
+    }
+
+    /* ── Sub-group ── */
+    .sub-group {
+      margin-bottom: 20px;
+    }
+    .sub-group-label {
+      font-size: 0.8rem;
+      color: #aa4444;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    /* ── Field grid ── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px 20px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field label {
+      font-size: 0.78rem;
+      color: #999;
+      letter-spacing: 0.5px;
+    }
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .field input[type=number] {
+      flex: 1;
+      background: #0d0d0d;
+      border: 1px solid #2a2a2a;
+      color: #e0e0e0;
+      padding: 7px 10px;
+      font-family: monospace;
+      font-size: 0.95rem;
+      border-radius: 3px;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+    .field input[type=number]:focus { border-color: #cc0000; }
+    .cd-hint {
+      font-size: 0.75rem;
+      color: #666;
+      white-space: nowrap;
+      min-width: 44px;
+    }
+
+    /* ── Bottom actions ── */
+    .actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Password Gate ── -->
+<div id="gate">
+  <h1>&#9881; WOLFDRAGON ADMIN</h1>
+  <form id="gate-form" onsubmit="checkPw(event)">
+    <input type="password" id="gate-pw" placeholder="Password" autocomplete="off" />
+    <button type="submit" class="btn btn-save">Enter</button>
+  </form>
+  <div id="gate-error"></div>
+</div>
+
+<!-- ── Admin Panel ── -->
+<div id="panel">
+  <div class="panel-header">
+    <h1>&#9881; WOLFDRAGON ADMIN</h1>
+    <a href="/" class="back-link">&#8592; Back to Game</a>
+  </div>
+
+  <!-- 1. Player -->
+  <details open>
+    <summary>Player</summary>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field"><label>Starting HP</label><input type="number" id="playerHp" data-default="140" step="1" /></div>
+        <div class="field"><label>Move Speed</label><input type="number" id="playerSpeed" data-default="4" step="0.1" /></div>
+        <div class="field"><label>Starting Weapon DMG</label><input type="number" id="weaponDmg" data-default="25" step="1" /></div>
+        <div class="field"><label>Starting Spell DMG</label><input type="number" id="spellDmg" data-default="60" step="1" /></div>
+        <div class="field"><label>Attack Range (px)</label><input type="number" id="atkRange" data-default="100" step="1" /></div>
+        <div class="field"><label>Shield Pips</label><input type="number" id="shMaxHp" data-default="3" step="1" min="0" /></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- 2. Bosses -->
+  <details>
+    <summary>Bosses</summary>
+    <div class="section-body">
+      <div class="sub-group">
+        <div class="sub-group-label">Spider Boss</div>
+        <div class="field-grid">
+          <div class="field"><label>HP</label><input type="number" id="spiderHp" data-default="625" step="1" /></div>
+          <div class="field"><label>Contact DMG</label><input type="number" id="spiderDmg" data-default="18" step="1" /></div>
+          <div class="field"><label>Speed</label><input type="number" id="spiderSpeed" data-default="0.6" step="0.05" /></div>
+          <div class="field"><label>Attack Cooldown (frames)</label><input type="number" id="spiderCd" data-default="110" step="1" /></div>
+        </div>
+      </div>
+      <div class="sub-group">
+        <div class="sub-group-label">Lich Boss</div>
+        <div class="field-grid">
+          <div class="field"><label>HP</label><input type="number" id="lichHp" data-default="500" step="1" /></div>
+          <div class="field"><label>Contact DMG</label><input type="number" id="lichDmg" data-default="22" step="1" /></div>
+          <div class="field"><label>Speed</label><input type="number" id="lichSpeed" data-default="0.4" step="0.05" /></div>
+          <div class="field"><label>Attack Cooldown (frames)</label><input type="number" id="lichCd" data-default="90" step="1" /></div>
+        </div>
+      </div>
+      <div class="sub-group">
+        <div class="sub-group-label">Apocalyptic Boss</div>
+        <div class="field-grid">
+          <div class="field"><label>HP</label><input type="number" id="apocHp" data-default="1050" step="1" /></div>
+          <div class="field"><label>Contact DMG</label><input type="number" id="apocDmg" data-default="30" step="1" /></div>
+          <div class="field"><label>Speed</label><input type="number" id="apocSpeed" data-default="0.25" step="0.05" /></div>
+          <div class="field"><label>Attack Cooldown (frames)</label><input type="number" id="apocCd" data-default="45" step="1" /></div>
+        </div>
+      </div>
+      <div class="sub-group" style="margin-bottom:0">
+        <div class="sub-group-label">Shared</div>
+        <div class="field-grid">
+          <div class="field"><label>HP per level bonus</label><input type="number" id="bossHpScaling" data-default="60" step="1" /></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- 3. Normal Enemies -->
+  <details>
+    <summary>Normal Enemies</summary>
+    <div class="section-body">
+      <div class="sub-group">
+        <div class="sub-group-label">Grunt</div>
+        <div class="field-grid">
+          <div class="field"><label>HP</label><input type="number" id="gruntHp" data-default="40" step="1" /></div>
+          <div class="field"><label>Damage</label><input type="number" id="gruntDmg" data-default="10" step="1" /></div>
+          <div class="field"><label>Speed</label><input type="number" id="gruntSpeed" data-default="0.9" step="0.05" /></div>
+        </div>
+      </div>
+      <div class="sub-group">
+        <div class="sub-group-label">Archer</div>
+        <div class="field-grid">
+          <div class="field"><label>HP</label><input type="number" id="archerHp" data-default="25" step="1" /></div>
+          <div class="field"><label>Damage</label><input type="number" id="archerDmg" data-default="8" step="1" /></div>
+          <div class="field"><label>Speed</label><input type="number" id="archerSpeed" data-default="0.55" step="0.05" /></div>
+        </div>
+      </div>
+      <div class="sub-group" style="margin-bottom:0">
+        <div class="sub-group-label">Brute</div>
+        <div class="field-grid">
+          <div class="field"><label>HP</label><input type="number" id="bruteHp" data-default="240" step="1" /></div>
+          <div class="field"><label>Damage</label><input type="number" id="bruteDmg" data-default="22" step="1" /></div>
+          <div class="field"><label>Speed</label><input type="number" id="bruteSpeed" data-default="0.4" step="0.05" /></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- 4. Ability Cooldowns -->
+  <details>
+    <summary>Ability Cooldowns</summary>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field"><label>Lunge Strike</label><div class="field-row"><input type="number" id="cdLunge" data-default="360" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdLunge">6.0s</span></div></div>
+        <div class="field"><label>Soul Drain</label><div class="field-row"><input type="number" id="cdSouldrain" data-default="300" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdSouldrain">5.0s</span></div></div>
+        <div class="field"><label>Cleave</label><div class="field-row"><input type="number" id="cdCleave" data-default="420" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdCleave">7.0s</span></div></div>
+        <div class="field"><label>Chain Lightning</label><div class="field-row"><input type="number" id="cdLightning" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdLightning">8.0s</span></div></div>
+        <div class="field"><label>Bloodlust</label><div class="field-row"><input type="number" id="cdBloodlust" data-default="600" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdBloodlust">10.0s</span></div></div>
+        <div class="field"><label>Void Slash</label><div class="field-row"><input type="number" id="cdVoidslash" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdVoidslash">8.0s</span></div></div>
+        <div class="field"><label>Dragon Fury</label><div class="field-row"><input type="number" id="cdDragonfury" data-default="600" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdDragonfury">10.0s</span></div></div>
+        <div class="field"><label>Ice Nova</label><div class="field-row"><input type="number" id="cdIcenova" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdIcenova">8.0s</span></div></div>
+        <div class="field"><label>Firewall</label><div class="field-row"><input type="number" id="cdFirewall" data-default="420" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdFirewall">7.0s</span></div></div>
+        <div class="field"><label>Death Mark</label><div class="field-row"><input type="number" id="cdDeathmark" data-default="540" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdDeathmark">9.0s</span></div></div>
+        <div class="field"><label>Whirlwind</label><div class="field-row"><input type="number" id="cdWhirlwind" data-default="540" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdWhirlwind">9.0s</span></div></div>
+        <div class="field"><label>Mirror Shield</label><div class="field-row"><input type="number" id="cdMirrorshield" data-default="360" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdMirrorshield">6.0s</span></div></div>
+        <div class="field"><label>Thorn Wall</label><div class="field-row"><input type="number" id="cdThornwall" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdThornwall">8.0s</span></div></div>
+        <div class="field"><label>Holy Barrier</label><div class="field-row"><input type="number" id="cdHolybarrier" data-default="600" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdHolybarrier">10.0s</span></div></div>
+        <div class="field"><label>Explode Shield</label><div class="field-row"><input type="number" id="cdExplodeshield" data-default="540" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdExplodeshield">9.0s</span></div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- 5. Ability Effects -->
+  <details>
+    <summary>Ability Effects</summary>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field"><label>Lunge DMG multiplier</label><input type="number" id="multLunge" data-default="1.2" step="0.05" /></div>
+        <div class="field"><label>Cleave DMG multiplier</label><input type="number" id="multCleave" data-default="1.2" step="0.05" /></div>
+        <div class="field"><label>Chain Lightning multiplier</label><input type="number" id="multLightning" data-default="0.8" step="0.05" /></div>
+        <div class="field"><label>Void Slash multiplier</label><input type="number" id="multVoidslash" data-default="2.0" step="0.05" /></div>
+        <div class="field"><label>Dragon Fury multiplier</label><input type="number" id="multDragonfury" data-default="1.8" step="0.05" /></div>
+        <div class="field"><label>Firewall multiplier</label><input type="number" id="multFirewall" data-default="1.2" step="0.05" /></div>
+        <div class="field"><label>Soul Drain heal (HP)</label><input type="number" id="healSouldrain" data-default="15" step="1" /></div>
+        <div class="field"><label>Bloodlust duration (frames)</label><input type="number" id="bloodlustDuration" data-default="300" step="1" /></div>
+        <div class="field"><label>Death Mark explosion DMG</label><input type="number" id="dmgDeathmark" data-default="80" step="1" /></div>
+        <div class="field"><label>Thorn Wall DMG</label><input type="number" id="dmgThornwall" data-default="35" step="1" /></div>
+        <div class="field"><label>Explode Shield DMG</label><input type="number" id="dmgExplodeshield" data-default="60" step="1" /></div>
+        <div class="field"><label>Ice Nova freeze (frames)</label><input type="number" id="freezeIcenova" data-default="90" step="1" /></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-save" onclick="saveConfig()">&#10003; Save</button>
+    <button class="btn btn-reset" onclick="resetConfig()">Reset to Defaults</button>
+  </div>
+  <div id="flash"></div>
+</div>
+
+<script>
+  // ── Keys in order (must match input IDs exactly) ──
+  const KEYS = [
+    'playerHp','playerSpeed','weaponDmg','spellDmg','atkRange','shMaxHp',
+    'spiderHp','spiderDmg','spiderSpeed','spiderCd',
+    'lichHp','lichDmg','lichSpeed','lichCd',
+    'apocHp','apocDmg','apocSpeed','apocCd',
+    'bossHpScaling',
+    'gruntHp','gruntDmg','gruntSpeed',
+    'archerHp','archerDmg','archerSpeed',
+    'bruteHp','bruteDmg','bruteSpeed',
+    'cdLunge','cdSouldrain','cdCleave','cdLightning','cdBloodlust',
+    'cdVoidslash','cdDragonfury','cdIcenova','cdFirewall','cdDeathmark',
+    'cdWhirlwind','cdMirrorshield','cdThornwall','cdHolybarrier','cdExplodeshield',
+    'multLunge','multCleave','multLightning','multVoidslash','multDragonfury','multFirewall',
+    'healSouldrain','bloodlustDuration','dmgDeathmark','dmgThornwall','dmgExplodeshield','freezeIcenova',
+  ];
+
+  // ── Auth ──
+  function checkPw(e) {
+    e.preventDefault();
+    var pw = document.getElementById('gate-pw').value;
+    if (pw === 'wolfdragon2026') {
+      sessionStorage.setItem('wd_auth', '1');
+      showPanel();
+    } else {
+      document.getElementById('gate-error').textContent = 'Incorrect password.';
+      document.getElementById('gate-pw').value = '';
+      document.getElementById('gate-pw').focus();
+    }
+  }
+
+  function showPanel() {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('panel').style.display = 'block';
+    loadValues();
+  }
+
+  // ── Load saved or default values ──
+  function loadValues() {
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}'); } catch(e) {}
+    KEYS.forEach(function(k) {
+      var el = document.getElementById(k);
+      if (!el) return;
+      var def = parseFloat(el.getAttribute('data-default'));
+      var val = (k in saved) ? saved[k] : def;
+      el.value = val;
+      // Update CD hint if applicable
+      if (k.indexOf('cd') === 0 && document.getElementById('hint-' + k)) {
+        document.getElementById('hint-' + k).textContent = (val / 60).toFixed(1) + 's';
+      }
+    });
+  }
+
+  // ── Live cooldown hint update ──
+  function updateHint(input) {
+    var hint = document.getElementById('hint-' + input.id);
+    if (hint) {
+      var frames = parseFloat(input.value) || 0;
+      hint.textContent = (frames / 60).toFixed(1) + 's';
+    }
+  }
+
+  // ── Save ──
+  function saveConfig() {
+    var cfg = {};
+    KEYS.forEach(function(k) {
+      var el = document.getElementById(k);
+      if (el) cfg[k] = parseFloat(el.value);
+    });
+    localStorage.setItem('wolfdragon_config', JSON.stringify(cfg));
+    flash('✓ Saved! Reload the game to apply.');
+  }
+
+  // ── Reset ──
+  function resetConfig() {
+    localStorage.removeItem('wolfdragon_config');
+    KEYS.forEach(function(k) {
+      var el = document.getElementById(k);
+      if (!el) return;
+      var def = parseFloat(el.getAttribute('data-default'));
+      el.value = def;
+      if (k.indexOf('cd') === 0 && document.getElementById('hint-' + k)) {
+        document.getElementById('hint-' + k).textContent = (def / 60).toFixed(1) + 's';
+      }
+    });
+    flash('✓ Reset to defaults.');
+  }
+
+  // ── Flash message ──
+  var flashTimer = null;
+  function flash(msg) {
+    var el = document.getElementById('flash');
+    el.textContent = msg;
+    el.classList.add('show');
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(function() { el.classList.remove('show'); }, 3000);
+  }
+
+  // ── Init ──
+  if (sessionStorage.getItem('wd_auth') === '1') {
+    showPanel();
+  } else {
+    document.getElementById('gate').style.display = 'flex';
+    setTimeout(function() { document.getElementById('gate-pw').focus(); }, 50);
+  }
+</script>
+</body>
+</html>

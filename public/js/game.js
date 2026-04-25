@@ -406,37 +406,58 @@
     drawSpr(atk ? SRECTS.APOC_SIDE : SRECTS.APOC_FRONT, ox, oy, APOC_W, APOC_H, atk ? !flipX : flipX);
   }
 
+  // ─── admin config ─────────────────────────────────────────────────────────
+  const WD_DEFAULTS = {
+    playerHp:140, playerSpeed:4, weaponDmg:25, spellDmg:60, atkRange:100, shMaxHp:3,
+    spiderHp:625, spiderDmg:18, spiderSpeed:0.6, spiderCd:110,
+    lichHp:500,   lichDmg:22,   lichSpeed:0.4,  lichCd:90,
+    apocHp:1050,  apocDmg:30,   apocSpeed:0.25, apocCd:45,
+    bossHpScaling:60,
+    gruntHp:40,  gruntDmg:10, gruntSpeed:0.9,
+    archerHp:25, archerDmg:8, archerSpeed:0.55,
+    bruteHp:240, bruteDmg:22, bruteSpeed:0.4,
+    cdLunge:360, cdSouldrain:300, cdCleave:420, cdLightning:480, cdBloodlust:600,
+    cdVoidslash:480, cdDragonfury:600, cdIcenova:480, cdFirewall:420, cdDeathmark:540,
+    cdWhirlwind:540, cdMirrorshield:360, cdThornwall:480, cdHolybarrier:600, cdExplodeshield:540,
+    multLunge:1.2, multCleave:1.2, multLightning:0.8, multVoidslash:2.0,
+    multDragonfury:1.8, multFirewall:1.2,
+    healSouldrain:15, bloodlustDuration:300, dmgDeathmark:80,
+    dmgThornwall:35, dmgExplodeshield:60, freezeIcenova:90,
+  };
+  const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
+  const CFG = Object.assign({}, WD_DEFAULTS, _wdSaved);
+
   const ENEMY_TYPES = {
     grunt: {
       drawFn: drawGruntSprite, w: GRUNT_W, h: GRUNT_H,
-      hp: 40, speed: 0.9, shootCd: 240, dmg: 10, score: 100,
+      hp: CFG.gruntHp, speed: CFG.gruntSpeed, shootCd: 240, dmg: CFG.gruntDmg, score: 100,
       dropRate: 0.15, spellDrop: 0.04,
     },
     archer: {
       drawFn: drawArcherSprite, w: ARCH_W, h: ARCH_H,
-      hp: 25, speed: 0.55, shootCd: 150, dmg: 8, score: 150,
+      hp: CFG.archerHp, speed: CFG.archerSpeed, shootCd: 150, dmg: CFG.archerDmg, score: 150,
       dropRate: 0.12, spellDrop: 0.10,  // archers drop spell refills more often
       minX: 420,
     },
     brute: {
       drawFn: drawBruteSprite, w: BRUTE_W, h: BRUTE_H,
-      hp: 240, speed: 0.4, shootCd: 999, dmg: 22, score: 250,
+      hp: CFG.bruteHp, speed: CFG.bruteSpeed, shootCd: 999, dmg: CFG.bruteDmg, score: 250,
       dropRate: 0.4, spellDrop: 0.20,
     },
     // ── BOSSES ──
     spider: {
       drawFn: drawSpiderSprite, w: SPIDER_W, h: SPIDER_H,
-      hp: 625, speed: 0.6, shootCd: 110, dmg: 18, score: 1200,
+      hp: CFG.spiderHp, speed: CFG.spiderSpeed, shootCd: CFG.spiderCd, dmg: CFG.spiderDmg, score: 1200,
       dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
     lich: {
       drawFn: drawLichSprite, w: LICH_W, h: LICH_H,
-      hp: 500, speed: 0.4, shootCd: 90, dmg: 22, score: 1800,
+      hp: CFG.lichHp, speed: CFG.lichSpeed, shootCd: CFG.lichCd, dmg: CFG.lichDmg, score: 1800,
       dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
     apocalyptic: {
       drawFn: drawApocSprite, w: APOC_W, h: APOC_H,
-      hp: 1050, speed: 0.25, shootCd: 45, dmg: 30, score: 3000,
+      hp: CFG.apocHp, speed: CFG.apocSpeed, shootCd: CFG.apocCd, dmg: CFG.apocDmg, score: 3000,
       dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
   };
@@ -445,7 +466,7 @@
   const gs = {
     screen: 'title',
     score: 0, level: 1, wave: 1,
-    hp: 140, maxHp: 140,
+    hp: CFG.playerHp, maxHp: CFG.playerHp,
     spellUses: 3, maxSpell: 3,
     rewardChoice: 0,
     itemTier: 0,
@@ -457,20 +478,20 @@
   // ─── player ───────────────────────────────────────────────────────────────
   const PL = {
     row: 0, x: 70,
-    speed: 4, facing: 1,
+    speed: CFG.playerSpeed, facing: 1,
     atkTimer: 0, atkDur: 14,
-    atkRange: 100,
+    atkRange: CFG.atkRange,
     slashTimer: 0,
     shTimer: 0, shDur: 999,
     iframes: 0,
-    weapon: { name:'Dragon Claws', dmg: 25, slashColor:'#c8b8e8', slashStyle:'sweep' },
-    spell:  { name:'Fire Breath',  dmg: 60 },
+    weapon: { name:'Dragon Claws', dmg: CFG.weaponDmg, slashColor:'#c8b8e8', slashStyle:'sweep' },
+    spell:  { name:'Fire Breath',  dmg: CFG.spellDmg },
     shield: { name:'Scale Shield', block: 50 },
     itemAbility: null,
     itemCd: 0,
     itemCdMax: 0,
     shBroken: false,
-    shHp: 3, shMaxHp: 3,
+    shHp: CFG.shMaxHp, shMaxHp: CFG.shMaxHp,
     soulDrainActive: false,
     deathMarkActive: false,
     mirrorActive: false,
@@ -568,7 +589,7 @@
       const totalH = ROW_Y[0] - ROW_Y[ROWS-1] + GRUNT_H;  // full arena height
       const arenaTop = ROW_Y[ROWS-1];
       const targetY = arenaTop + (totalH - def.h) / 2;
-      const bossHp = def.hp + gs.level * 60;
+      const bossHp = def.hp + gs.level * CFG.bossHpScaling;
       enemies.push({
         type, row,
         x: W + 20,                     // enters from right
@@ -661,12 +682,12 @@
   function hitEnemy(e,dmg) {
     e.hp-=dmg; e.flashT=9;
     burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#ff4422', 9);
-    if(PL.soulDrainActive){ PL.soulDrainActive=false; gs.hp=Math.min(gs.maxHp,gs.hp+15); burst(PL.cx,PL.cy,'#8800ff',10); }
+    if(PL.soulDrainActive){ PL.soulDrainActive=false; gs.hp=Math.min(gs.maxHp,gs.hp+CFG.healSouldrain); burst(PL.cx,PL.cy,'#8800ff',10); }
     if(e.hp<=0) killEnemy(e);
   }
 
   function killEnemy(e) {
-    if(PL.deathMarkActive){ PL.deathMarkActive=false; const kcx=e.x+ENEMY_TYPES[e.type].w/2,kcy=e.y+ENEMY_TYPES[e.type].h/2; enemies.forEach(e2=>{ if(e2!==e) hitEnemy(e2,80); }); burst(kcx,kcy,'#ff8800',50,14); }
+    if(PL.deathMarkActive){ PL.deathMarkActive=false; const kcx=e.x+ENEMY_TYPES[e.type].w/2,kcy=e.y+ENEMY_TYPES[e.type].h/2; enemies.forEach(e2=>{ if(e2!==e) hitEnemy(e2,CFG.dmgDeathmark); }); burst(kcx,kcy,'#ff8800',50,14); }
     e.hp=0; gs.score+=e.score;
     const def = ENEMY_TYPES[e.type];
     const cx = e.x + def.w/2, cy = e.y + def.h/2;
@@ -686,8 +707,8 @@
       burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
       blockMsg = 40;
       if(PL.shHp <= 0) PL.shBroken = true;
-      if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,35)); burst(PL.cx,PL.cy,'#44ff44',20); }
-      if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,60)); burst(W/2,H/2,'#ff8800',50,14); }
+      if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgThornwall)); burst(PL.cx,PL.cy,'#44ff44',20); }
+      if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgExplodeshield)); burst(W/2,H/2,'#ff8800',50,14); }
       return;
     }
     if(PL.iframes>0) return;
@@ -779,7 +800,7 @@
         const dashDir = PL.facing;
         PL.x = Math.max(0, Math.min(W-PL.w, PL.x + dashDir * 120));
         const box={x:PL.x-40,y:ROW_Y[PL.row]-6,w:PL.w+80,h:PL.h+12};
-        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*1.2); });
+        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*CFG.multLunge); });
         burst(PL.cx,PL.cy,'#ffaa00',20,8);
         break;
       }
@@ -790,40 +811,40 @@
       }
       case 'cleave': {
         const box={x:0,y:ROW_Y[PL.row]-6,w:W,h:PL.h+12};
-        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*1.2); });
+        enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*CFG.multCleave); });
         burst(PL.cx,PL.cy,'#ff8800',24,7);
         break;
       }
       case 'lightning': {
-        enemies.forEach(e=>{ hitEnemy(e,PL.spell.dmg*0.8); burst(e.x+ENEMY_TYPES[e.type].w/2,e.y,'#ffff00',8,4); });
+        enemies.forEach(e=>{ hitEnemy(e,PL.spell.dmg*CFG.multLightning); burst(e.x+ENEMY_TYPES[e.type].w/2,e.y,'#ffff00',8,4); });
         burst(PL.cx,PL.cy,'#ffff00',30,12);
         break;
       }
       case 'bloodlust': {
-        PL.bloodlustT=300;
+        PL.bloodlustT=CFG.bloodlustDuration;
         burst(PL.cx,PL.cy,'#ff0044',20,7);
         break;
       }
       case 'voidslash': {
         projs.push({x:PL.cx,y:ROW_Y[PL.row],vx:PL.facing*18,vy:0,row:PL.row,
-          dmg:PL.weapon.dmg*2,owner:'player',spr:SPR_SPELL,w:SP_W*2,h:SP_H*2,life:120});
+          dmg:PL.weapon.dmg*CFG.multVoidslash,owner:'player',spr:SPR_SPELL,w:SP_W*2,h:SP_H*2,life:120});
         burst(PL.cx,PL.cy,'#cc00ff',20,8);
         break;
       }
       case 'dragonfury': {
-        enemies.forEach(e=>hitEnemy(e,PL.weapon.dmg*1.8));
+        enemies.forEach(e=>hitEnemy(e,PL.weapon.dmg*CFG.multDragonfury));
         burst(W/2,H/2,'#ff4400',50,12);
         break;
       }
       case 'icenova': {
-        enemies.forEach(e=>{ e.frozen=(e.frozen||0)+90; burst(e.x+ENEMY_TYPES[e.type].w/2,e.y,'#88ccff',8,3); });
+        enemies.forEach(e=>{ e.frozen=(e.frozen||0)+CFG.freezeIcenova; burst(e.x+ENEMY_TYPES[e.type].w/2,e.y,'#88ccff',8,3); });
         burst(PL.cx,PL.cy,'#aaddff',30,8);
         break;
       }
       case 'firewall': {
         for(let r=0;r<ROWS;r++){
           projs.push({x:PL.cx,y:ROW_Y[r],vx:PL.facing*6,vy:0,row:r,
-            dmg:PL.spell.dmg*1.2,owner:'player',spr:SPR_SPELL,w:SP_W,h:SP_H,life:200});
+            dmg:PL.spell.dmg*CFG.multFirewall,owner:'player',spr:SPR_SPELL,w:SP_W,h:SP_H,life:200});
         }
         burst(PL.cx,PL.cy,'#ff6600',25,10);
         break;
@@ -877,12 +898,13 @@
     gs.screen='itemreward';
   }
 
+  const _CDMAP={lunge:'cdLunge',souldrain:'cdSouldrain',cleave:'cdCleave',lightning:'cdLightning',bloodlust:'cdBloodlust',voidslash:'cdVoidslash',dragonfury:'cdDragonfury',icenova:'cdIcenova',firewall:'cdFirewall',deathmark:'cdDeathmark',whirlwind:'cdWhirlwind',mirrorshield:'cdMirrorshield',thornwall:'cdThornwall',holybarrier:'cdHolybarrier',explodeshield:'cdExplodeshield'};
   function applyItemReward(i){
     const item=gs.rewardItemChoices[i];
     item.stat();
     PL.itemAbility=item.ability;
     PL.itemCd=0;
-    PL.itemCdMax=item.cdMax;
+    PL.itemCdMax = (_CDMAP[item.ability] && CFG[_CDMAP[item.ability]] !== undefined) ? CFG[_CDMAP[item.ability]] : item.cdMax;
     if(item.slashColor){ PL.weapon.slashColor=item.slashColor; PL.weapon.slashStyle=item.slashStyle||'sweep'; }
     gs.activeItem=item;
     gs.itemTier++;
@@ -2337,12 +2359,14 @@
   // ─── reset ────────────────────────────────────────────────────────────────
   function reset(){
     Object.assign(gs,{screen:'playing',score:0,level:1,wave:1,
-      hp:140,maxHp:140,spellUses:3,maxSpell:3,rewardChoice:0,
+      hp:CFG.playerHp,maxHp:CFG.playerHp,spellUses:3,maxSpell:3,rewardChoice:0,
       itemTier:0,activeItem:null,rewardItemChoices:[],rewardItemChoice:0});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
-    PL.weapon.dmg=25; PL.atkRange=100;
-    PL.spell.dmg=60;
+    PL.weapon.dmg=CFG.weaponDmg; PL.atkRange=CFG.atkRange;
+    PL.spell.dmg=CFG.spellDmg;
+    PL.speed=CFG.playerSpeed;
+    PL.shMaxHp=CFG.shMaxHp; PL.shHp=CFG.shMaxHp;
     PL.itemAbility=null; PL.itemCd=0; PL.itemCdMax=0;
     PL.shBroken=false; PL.shHp=PL.shMaxHp; PL.soulDrainActive=false; PL.deathMarkActive=false;
     PL.mirrorActive=false; PL.thornActive=false; PL.explodeShieldActive=false;
