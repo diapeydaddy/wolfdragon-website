@@ -1897,19 +1897,7 @@
     ctx.fillText(`LVL ${gs.level}   WAVE ${gs.wave}`,W-155,22);
     // (controls shown above the canvas in HTML)
 
-    // Active item V ability
-    if(gs.activeItem){
-      const cdFrac=PL.itemCd/Math.max(1,PL.itemCdMax);
-      const vReady=PL.itemCd===0;
-      ctx.fillStyle=vReady?'#ffcc00':'#666';
-      ctx.font='bold 10px monospace'; ctx.textAlign='right';
-      ctx.fillText(`S: ${gs.activeItem.abilityName}${vReady?' ✓':' ('+(Math.ceil(PL.itemCd/60))+'s)'}`,W-12,38);
-      if(!vReady){
-        ctx.fillStyle='#333'; ctx.fillRect(W-120,28,100,4);
-        ctx.fillStyle='#aa44ff'; ctx.fillRect(W-120,28,Math.round(100*(1-cdFrac)),4);
-      }
-      ctx.textAlign='left';
-    }
+    // Active item ability — drawn near player in drawPlayer(), nothing here
 
     // Boss health bar — shown below HUD when a boss is on screen
     const boss = enemies.find(e=>ENEMY_TYPES[e.type].isBoss);
@@ -1963,37 +1951,47 @@
     if(PL.sh){
       const t     = Date.now();
       const pulse = 0.55 + Math.sin(t / 80) * 0.45;
-      const brokenColor = '#ff6622';
-      const baseColor   = PL.shBroken ? brokenColor : '#55bbff';
-      const glowColor   = PL.shBroken ? '#ff4400'   : '#4499ff';
+      const glowColor = PL.shBroken ? '#ff4400' : '#4499ff';
+      const boltColor = PL.shBroken ? '#ff8844' : '#88ddff';
+      const coreColor = PL.shBroken ? '#ffcc88' : '#ffffff';
 
       const ecx = PL.cx;
       const ecy = wy + PL.h * 0.5;
-      const erx = PL.w * 0.72;   // horizontal radius — slightly wider than player
-      const ery = PL.h * 0.62;   // vertical radius   — slightly taller than player
+      const erx = PL.w * 0.72;
+      const ery = PL.h * 0.62;
 
-      ctx.save();
+      // Lightning crackle helper — draws a jagged ellipse with per-frame jitter
+      const drawCrackle = (rxOff, ryOff, jAmt, lw, color, alpha) => {
+        const N = 36;
+        // Seed changes ~12× per second so it "crackles" without being too jittery
+        const seed = Math.floor(t / 85) * 6271 + Math.round(rxOff * 100);
+        const jr = i => { let v=(seed+i*2654435761)|0; v=((v>>>16)^v)*0x45d9f3b|0; return ((v>>>16)^v&0xffff)/0xffff - 0.5; };
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = color;
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur  = lw * 3;
+        ctx.lineWidth   = lw;
+        ctx.beginPath();
+        for(let i = 0; i <= N; i++){
+          const a  = (i / N) * Math.PI * 2;
+          const jx = jr(i * 2)     * jAmt;
+          const jy = jr(i * 2 + 1) * jAmt * 0.7;
+          const px = ecx + Math.cos(a) * (erx + rxOff + jx);
+          const py = ecy + Math.sin(a) * (ery + ryOff + jy);
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      };
 
-      // Outer glow ellipse
-      ctx.shadowColor = glowColor;
-      ctx.shadowBlur  = 24;
-      ctx.globalAlpha = pulse * 0.5;
-      ctx.strokeStyle = baseColor;
-      ctx.lineWidth   = 10;
-      ctx.beginPath();
-      ctx.ellipse(ecx, ecy, erx + 10, ery + 10, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Inner crisp ellipse
-      ctx.shadowBlur  = 8;
-      ctx.globalAlpha = pulse * 0.88;
-      ctx.lineWidth   = 2;
-      ctx.strokeStyle = PL.shBroken ? '#ffaa66' : '#cceeff';
-      ctx.beginPath();
-      ctx.ellipse(ecx, ecy, erx, ery, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.restore();
+      // Outer corona — wide, heavy jitter, translucent
+      drawCrackle(12, 10, 9, 8,  boltColor, pulse * 0.40);
+      // Mid arc — medium jitter
+      drawCrackle(4,  3,  5, 3,  boltColor, pulse * 0.70);
+      // Inner core — tight, bright
+      drawCrackle(0,  0,  2, 1.2,coreColor, pulse * 0.90);
 
       // Shield pip bar above player's head
       const pipW = 10, pipH = 7, pipGap = 4;
@@ -2141,6 +2139,44 @@
         ctx.fillRect(PL.x, wy - 22, barW, 3);
         ctx.restore();
       }
+    }
+
+    // Active ability cooldown arc — below player feet
+    if(gs.activeItem){
+      const cdFrac  = PL.itemCd / Math.max(1, PL.itemCdMax);
+      const ready   = PL.itemCd === 0;
+      const arcX    = PL.cx;
+      const arcY    = wy + PL.h + 14;
+      const arcR    = 9;
+      ctx.save();
+      // Background ring
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth   = 3;
+      ctx.beginPath(); ctx.arc(arcX, arcY, arcR, 0, Math.PI * 2); ctx.stroke();
+      // Progress/ready arc
+      if(ready){
+        ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 10;
+        ctx.strokeStyle = '#ffcc00';
+        ctx.lineWidth   = 3;
+        ctx.beginPath(); ctx.arc(arcX, arcY, arcR, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#aa44ff';
+        ctx.lineWidth   = 3;
+        ctx.beginPath();
+        ctx.arc(arcX, arcY, arcR, -Math.PI/2, -Math.PI/2 + (1 - cdFrac) * Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur  = 0;
+      ctx.fillStyle   = ready ? '#ffcc00' : '#999';
+      ctx.font        = 'bold 7px monospace';
+      ctx.textAlign   = 'center';
+      ctx.fillText(ready ? 'READY' : Math.ceil(PL.itemCd / 60) + 's', arcX, arcY + arcR + 8);
+      const shortName = gs.activeItem.abilityName.split(' ')[0];
+      ctx.fillStyle   = '#666';
+      ctx.font        = '7px monospace';
+      ctx.fillText('[S] ' + shortName, arcX, arcY + arcR + 16);
+      ctx.textAlign   = 'left';
+      ctx.restore();
     }
 
     // "BLOCKED!" feedback
