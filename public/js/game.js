@@ -1302,11 +1302,13 @@
           }
         }
 
-        // Contact damage with cooldown — prevents instant-kill on overlap
+        // Contact damage with cooldown — row proximity + horizontal overlap
+        // (pixel-perfect Y check misses player standing 1 row above boss)
         if (e.meleeCd > 0) e.meleeCd--;
-        const plHb = {x:PL.x+12, y:ROW_Y[PL.row]+10, w:PL.w-24, h:PL.h-16};
-        const bossCx = {x:e.x+def.w*0.3, y:e.y+def.h*0.25, w:def.w*0.4, h:def.h*0.5};
-        if (e.meleeCd === 0 && ov(bossCx, plHb)) {
+        const rowDist   = Math.abs(PL.row - e.row);
+        const horizOvlp = PL.x + PL.w - 10 > e.x + def.w * 0.2 &&
+                          PL.x + 10       < e.x + def.w * 0.8;
+        if (e.meleeCd === 0 && rowDist <= 1 && horizOvlp) {
           hurtPlayer(def.dmg * 0.5, true);
           e.meleeCd = 60;
         }
@@ -1845,47 +1847,30 @@
       const baseColor   = PL.shBroken ? brokenColor : '#55bbff';
       const glowColor   = PL.shBroken ? '#ff4400'   : '#4499ff';
 
+      const ecx = PL.cx;
+      const ecy = wy + PL.h * 0.5;
+      const erx = PL.w * 0.72;   // horizontal radius — slightly wider than player
+      const ery = PL.h * 0.62;   // vertical radius   — slightly taller than player
+
       ctx.save();
 
-      // Outer glow halo
+      // Outer glow ellipse
       ctx.shadowColor = glowColor;
-      ctx.shadowBlur  = 22;
-      ctx.globalAlpha = pulse * 0.55;
+      ctx.shadowBlur  = 24;
+      ctx.globalAlpha = pulse * 0.5;
       ctx.strokeStyle = baseColor;
       ctx.lineWidth   = 10;
-      const rx = PL.x - 8, ry = wy - 8, rw = PL.w + 16, rh = PL.h + 16;
-      const cr = 12; // corner radius
       ctx.beginPath();
-      ctx.moveTo(rx + cr, ry);
-      ctx.lineTo(rx + rw - cr, ry);
-      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + cr);
-      ctx.lineTo(rx + rw, ry + rh - cr);
-      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - cr, ry + rh);
-      ctx.lineTo(rx + cr, ry + rh);
-      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - cr);
-      ctx.lineTo(rx, ry + cr);
-      ctx.quadraticCurveTo(rx, ry, rx + cr, ry);
-      ctx.closePath();
+      ctx.ellipse(ecx, ecy, erx + 10, ery + 10, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Inner crisp edge
+      // Inner crisp ellipse
       ctx.shadowBlur  = 8;
-      ctx.globalAlpha = pulse * 0.85;
+      ctx.globalAlpha = pulse * 0.88;
       ctx.lineWidth   = 2;
       ctx.strokeStyle = PL.shBroken ? '#ffaa66' : '#cceeff';
-      const ir = 4;
-      const ix = PL.x - 3, iy = wy - 3, iw = PL.w + 6, ih = PL.h + 6;
       ctx.beginPath();
-      ctx.moveTo(ix + ir, iy);
-      ctx.lineTo(ix + iw - ir, iy);
-      ctx.quadraticCurveTo(ix + iw, iy, ix + iw, iy + ir);
-      ctx.lineTo(ix + iw, iy + ih - ir);
-      ctx.quadraticCurveTo(ix + iw, iy + ih, ix + iw - ir, iy + ih);
-      ctx.lineTo(ix + ir, iy + ih);
-      ctx.quadraticCurveTo(ix, iy + ih, ix, iy + ih - ir);
-      ctx.lineTo(ix, iy + ir);
-      ctx.quadraticCurveTo(ix, iy, ix + ir, iy);
-      ctx.closePath();
+      ctx.ellipse(ecx, ecy, erx, ery, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.restore();
