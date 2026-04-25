@@ -426,12 +426,12 @@
     // ── BOSSES ──
     spider: {
       drawFn: drawSpiderSprite, w: SPIDER_W, h: SPIDER_H,
-      hp: 750, speed: 0.6, shootCd: 110, dmg: 18, score: 1200,
+      hp: 500, speed: 0.6, shootCd: 110, dmg: 18, score: 1200,
       dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
     lich: {
       drawFn: drawLichSprite, w: LICH_W, h: LICH_H,
-      hp: 600, speed: 0.4, shootCd: 90, dmg: 22, score: 1800,
+      hp: 500, speed: 0.4, shootCd: 90, dmg: 22, score: 1800,
       dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
     apocalyptic: {
@@ -477,6 +477,7 @@
     thornActive: false,
     explodeShieldActive: false,
     bloodlustT: 0,
+    webbed: 0,
     get w()  { return WD_W; },
     get h()  { return WD_H; },
     get cx() { return this.x + this.w/2; },
@@ -499,6 +500,7 @@
 
   // ─── entity lists ─────────────────────────────────────────────────────────
   let enemies=[], projs=[], parts=[], drops=[], obstacles=[];
+  let webZones=[], shockwaves=[], darknessT=0;
 
   // ─── particles ────────────────────────────────────────────────────────────
   function burst(x,y,col,n,spd){
@@ -590,6 +592,10 @@
         attackIdx: 0,                  // position in attack pattern cycle
         meleeCd: 0,                    // cooldown between contact hits
         lungeT: 0,                     // spider lunge timer
+        diveT: 0,          // spider ceiling-drop timer
+        diveRow: 0,        // spider ceiling-drop target row
+        soulPullT: 0,      // lich soul-vortex duration
+        quakeWindupT: 0,   // apoc shockwave windup
       });
     } else {
       const row  = Math.floor(Math.random()*ROWS);
@@ -895,7 +901,7 @@
       if(eat('Digit1')) applyItemReward(0);
       if(eat('Digit2')) applyItemReward(1);
       if(eat('Digit3')) applyItemReward(2);
-      if(eat('Enter')||eat('KeyZ')) applyItemReward(gs.rewardItemChoice);
+      if(eat('KeyW')||eat('KeyZ')) applyItemReward(gs.rewardItemChoice);
       return;
     }
     if(gs.screen==='reward'){
@@ -904,7 +910,7 @@
       if(eat('Digit1')) applyReward(0);
       if(eat('Digit2')) applyReward(1);
       if(eat('Digit3')) applyReward(2);
-      if(eat('Enter')||eat('KeyZ')) applyReward(gs.rewardChoice);
+      if(eat('KeyW')||eat('KeyZ')) applyReward(gs.rewardChoice);
       return;
     }
     if(gs.screen!=='playing') return;
@@ -914,14 +920,14 @@
     if(eat('ArrowDown') && PL.row>0)      PL.row--;
     if(K['ArrowLeft'])  {
       PL.facing=-1;
-      const nx=PL.x-PL.speed;
+      const nx=PL.x-(PL.webbed>0 ? PL.speed*0.4 : PL.speed);
       const curOverlap=obstacles.filter(o=>o.row===PL.row).reduce((s,o)=>s+xOverlap(PL.x,PL.w,o.x,o.w),0);
       const newOverlap=obstacles.filter(o=>o.row===PL.row).reduce((s,o)=>s+xOverlap(nx,PL.w,o.x,o.w),0);
       if(!obstacles.some(o=>o.row===PL.row&&nx<o.x+o.w&&nx+PL.w>o.x)||newOverlap<curOverlap) PL.x=nx;
     }
     if(K['ArrowRight']) {
       PL.facing=1;
-      const nx=PL.x+PL.speed;
+      const nx=PL.x+(PL.webbed>0 ? PL.speed*0.4 : PL.speed);
       const curOverlap=obstacles.filter(o=>o.row===PL.row).reduce((s,o)=>s+xOverlap(PL.x,PL.w,o.x,o.w),0);
       const newOverlap=obstacles.filter(o=>o.row===PL.row).reduce((s,o)=>s+xOverlap(nx,PL.w,o.x,o.w),0);
       if(!obstacles.some(o=>o.row===PL.row&&nx<o.x+o.w&&nx+PL.w>o.x)||newOverlap<curOverlap) PL.x=nx;
@@ -946,9 +952,9 @@
     // ── Boss attack patterns & firing helper ─────────────────────────────────
     // Each boss cycles through a fixed pattern — players can memorise it.
     const BOSS_PATTERNS = {
-      spider:      ['spread','spread','lunge','web','spread','burst','lunge','web'],
-      lich:        ['orbs','wave','orbs','curse','orbs','voidpull','orbs','wave'],
-      apocalyptic: ['beam','focused','beam','nova','slam','beam','summon','focused','nova','slam'],
+      spider:      ['spread','spread','lunge','web','dive','spread','burst','lunge','webzone','spread'],
+      lich:        ['orbs','wave','orbs','darkness','orbs','curse','soulpull','orbs','voidpull','wave'],
+      apocalyptic: ['beam','focused','quake','nova','slam','beam','focused','quake','summon','nova'],
     };
 
     function fireBossAttack(e, def, atkType) {
@@ -1095,6 +1101,48 @@
           burst(cx, cy, '#aa0000', 18, 6);
           break;
         }
+        /* ── SPIDER new ──────────────────────────────────────────── */
+        case 'webzone': {
+          // Drop sticky web across 2 rows near player — slows on contact
+          const rows = [PL.row, Math.max(0, PL.row-1)];
+          rows.forEach(r => {
+            webZones.push({ row:r, life:240, maxLife:240 });
+            burst(W/2, ROW_Y[r]+40, '#ccccaa', 14, 4);
+          });
+          e.atkAnim = 40;
+          break;
+        }
+        case 'dive': {
+          // Spider disappears briefly, telegraphs crash-down on player's row
+          e.diveT = 70;
+          e.diveRow = PL.row;
+          e.atkAnim = 50;
+          burst(cx, cy, '#ff4400', 10, 5);
+          break;
+        }
+        /* ── LICH new ────────────────────────────────────────────── */
+        case 'darkness': {
+          // Brief darkness overlay — screen dims, lich nearly invisible for 90 frames
+          darknessT = 90;
+          e.atkAnim = 50;
+          burst(cx, cy, '#110022', 20, 6);
+          break;
+        }
+        case 'soulpull': {
+          // Vortex pulls player toward lich for 120 frames
+          e.soulPullT = 120;
+          e.atkAnim = 60;
+          burst(cx, cy, '#aa00ff', 30, 8);
+          break;
+        }
+        /* ── APOC new ────────────────────────────────────────────── */
+        case 'quake': {
+          // Telegraph then fire a shockwave that sweeps the full screen width
+          e.quakeWindupT = 50;
+          e.atkAnim = 60;
+          burst(cx, cy, '#cc4400', 20, 6);
+          break;
+        }
       }
     }
 
@@ -1123,6 +1171,36 @@
         const spd = def.speed * (1 + (e.bossPhase - 1) * 0.4);
 
         if (e.type === 'spider') {
+          // Ceiling dive
+          if (e.diveT > 0) {
+            e.diveT--;
+            if (e.diveT > 30) {
+              // hiding phase — move off top of screen
+              e.y = Math.max(e.y - 8, -def.h - 10);
+            } else if (e.diveT === 30) {
+              // start dropping onto target row
+              e.y = -def.h;
+              e.x = Math.max(W*0.1, Math.min(W - def.w - 8,
+                PL.x + PL.w/2 - def.w/2));
+            } else {
+              // crashing down
+              e.y += 18;
+              const landY = ROW_Y[e.diveRow];
+              if (e.y >= landY) {
+                e.y = landY;
+                // Area damage on landing row
+                if (PL.row === e.diveRow) {
+                  const impactBox = {x: e.x - 30, y: landY - 10, w: def.w + 60, h: def.h + 20};
+                  if (ov(impactBox, PL.hb)) hurtPlayer(def.dmg * 1.4, true);
+                }
+                burst(e.x + def.w/2, landY, '#ff6600', 30, 9);
+                e.diveT = 0;
+                e.shootT = Math.max(55, def.shootCd - e.bossPhase*15);
+              }
+            }
+            e.shootT--;
+            return; // skip normal spider movement while diving
+          }
           // Lunge state: rush toward player at high speed
           if (e.lungeT > 0) {
             e.lungeT--;
@@ -1170,6 +1248,14 @@
           } else {
             e.x = Math.max(W*0.35, Math.min(W - def.w - 8, e.x + dirToPlayer * spd * 0.35));
           }
+          // Soul vortex pull
+          if (e.soulPullT > 0) {
+            e.soulPullT--;
+            // Pull player slightly toward lich
+            const pullDir = eCX > PL.cx ? 1 : -1;
+            const pullStrength = 0.6;
+            PL.x = Math.max(0, Math.min(W - PL.w, PL.x + pullDir * pullStrength));
+          }
           e.shootT--;
           if (e.shootT <= 0) {
             const pat = BOSS_PATTERNS.lich;
@@ -1182,6 +1268,27 @@
         } else if (e.type === 'apocalyptic') {
           // Slowly advance toward player from either side
           e.x = Math.max(W*0.2, Math.min(W - def.w - 5, e.x + dirToPlayer * spd));
+          // Shockwave windup + fire
+          if (e.quakeWindupT > 0) {
+            e.quakeWindupT--;
+            if (e.quakeWindupT % 8 === 0) {
+              burst(e.x + def.w/2, e.y + def.h, '#cc4400', 8, 4);
+            }
+            if (e.quakeWindupT === 0) {
+              // Fire the shockwave from apoc's side
+              const swDir = e.facing; // toward player
+              shockwaves.push({
+                x: swDir > 0 ? e.x + def.w : e.x,
+                vx: swDir * 7,
+                life: 130,
+                dmg: def.dmg * 1.3,
+                isBoss: true,
+              });
+              burst(e.x + def.w/2, e.y + def.h/2, '#ff4400', 25, 10);
+            }
+            e.enrageT++;
+            return; // pause normal apoc movement during windup
+          }
           e.enrageT++;
           const chargeTime = Math.max(70, 140 - e.bossPhase * 25);
           if (e.enrageT >= chargeTime) {
@@ -1353,6 +1460,29 @@
     // particles
     parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.18; p.life--; });
     parts=parts.filter(p=>p.life>0);
+
+    // shockwaves
+    shockwaves.forEach(sw => {
+      sw.x += sw.vx;
+      sw.life--;
+      // Hit player if shockwave sweeps through their x position on any row
+      if (sw.life > 0) {
+        const swLeft = Math.min(sw.x, sw.x - sw.vx);
+        const swRight = Math.max(sw.x, sw.x - sw.vx);
+        if (PL.x < swRight + 12 && PL.x + PL.w > swLeft - 12) {
+          hurtPlayer(sw.dmg, sw.isBoss);
+        }
+      }
+    });
+    shockwaves = shockwaves.filter(sw => sw.life > 0 && sw.x > -60 && sw.x < W + 60);
+
+    // web zones — slow player if on same row
+    if (PL.webbed > 0) PL.webbed--;
+    webZones.forEach(wz => {
+      wz.life--;
+      if (wz.row === PL.row) PL.webbed = Math.max(PL.webbed, 4); // keep refreshing while on row
+    });
+    webZones = webZones.filter(wz => wz.life > 0);
 
     // wave complete
     if(!cleared&&spawnQueue.length===0&&enemies.length===0){
@@ -1832,6 +1962,134 @@
         ctx.stroke();
         ctx.restore();
       }
+      // Spider dive target marker
+      if (e.type === 'spider' && e.diveT > 30) {
+        const ry = ROW_Y[e.diveRow];
+        const pulse = Math.floor(Date.now() / 80) % 2 === 0;
+        ctx.save();
+        ctx.globalAlpha = pulse ? 0.9 : 0.4;
+        ctx.strokeStyle = '#ff3300';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(e.x - 10, ry, def.w + 20, def.h);
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ff3300';
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠', e.x + def.w/2, ry - 8);
+        ctx.textAlign = 'left';
+        ctx.restore();
+      }
+      // Lich soul vortex
+      if (e.type === 'lich' && e.soulPullT > 0) {
+        const vcx = e.x + def.w/2, vcy = e.y + def.h/2;
+        const t = Date.now() / 200;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, e.soulPullT / 30) * 0.7;
+        for (let i = 0; i < 3; i++) {
+          const r = 35 + i * 22;
+          const gr = ctx.createRadialGradient(vcx, vcy, 2, vcx, vcy, r);
+          gr.addColorStop(0, 'rgba(180,0,255,0.8)');
+          gr.addColorStop(1, 'rgba(80,0,160,0)');
+          ctx.fillStyle = gr;
+          ctx.beginPath();
+          ctx.arc(vcx, vcy, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Spiral arms
+        ctx.strokeStyle = '#cc44ff';
+        ctx.lineWidth = 2;
+        for (let arm = 0; arm < 3; arm++) {
+          ctx.beginPath();
+          for (let step = 0; step < 30; step++) {
+            const angle = (arm * Math.PI * 2 / 3) + step * 0.25 + t;
+            const rad = step * 2.5;
+            const px2 = vcx + Math.cos(angle) * rad;
+            const py2 = vcy + Math.sin(angle) * rad;
+            step === 0 ? ctx.moveTo(px2, py2) : ctx.lineTo(px2, py2);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // Apoc quake windup
+      if (e.type === 'apocalyptic' && e.quakeWindupT > 0) {
+        const pulse = Math.floor(e.quakeWindupT / 5) % 2 === 0;
+        ctx.save();
+        ctx.globalAlpha = pulse ? 0.95 : 0.4;
+        ctx.fillStyle = '#ff4400';
+        ctx.font = 'bold 22px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('QUAKE!', e.x + def.w/2, e.y - 16);
+        ctx.textAlign = 'left';
+        // Ground crack preview
+        ctx.strokeStyle = '#ff6600';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([12, 8]);
+        const crackDir = e.facing > 0 ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(e.x + def.w/2, ROW_Y[0] + WD_H);
+        ctx.lineTo(e.x + def.w/2 + crackDir * 300, ROW_Y[ROWS-1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    });
+  }
+
+  function drawWebZones() {
+    webZones.forEach(wz => {
+      const alpha = (wz.life / wz.maxLife) * 0.55;
+      const ry = ROW_Y[wz.row];
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Silky web fill
+      ctx.fillStyle = '#ccccaa';
+      ctx.fillRect(0, ry + 20, W, 50);
+      // Web strand lines
+      ctx.strokeStyle = '#ddddbb';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, ry + 20);
+        ctx.lineTo(x + 20, ry + 50);
+        ctx.lineTo(x + 40, ry + 20);
+        ctx.stroke();
+      }
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, ry + 35);
+        ctx.lineTo(x + 40, ry + 35);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+    // Web slow indicator on player
+    if ((PL.webbed || 0) > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#ccddaa';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('WEB', PL.cx, ROW_Y[PL.row] - 14);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+  }
+
+  function drawShockwaves() {
+    shockwaves.forEach(sw => {
+      const alpha = Math.min(1, sw.life / 20) * 0.9;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Glowing vertical bar
+      const grd = ctx.createLinearGradient(sw.x - 20, 0, sw.x + 20, 0);
+      grd.addColorStop(0, 'rgba(255,80,0,0)');
+      grd.addColorStop(0.5, 'rgba(255,180,50,0.95)');
+      grd.addColorStop(1, 'rgba(255,80,0,0)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(sw.x - 20, ROW_Y[ROWS-1] - 10, 40, ROW_Y[0] - ROW_Y[ROWS-1] + WD_H + 20);
+      ctx.restore();
     });
   }
 
@@ -1957,6 +2215,8 @@
     PL.mirrorActive=false; PL.thornActive=false; PL.explodeShieldActive=false;
     PL.bloodlustT=0;
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; bgOff=0;
+    webZones=[]; shockwaves=[]; darknessT=0;
+    PL.webbed=0;
     startWave();
   }
 
@@ -1965,24 +2225,28 @@
     ctx.clearRect(0,0,W,H);
     if(gs.screen==='title'){
       drawTitle();
-      if(eat('Enter')||eat('Space')) reset();
+      if(eat('KeyW')||eat('Space')) reset();
     } else if(gs.screen==='gameover'){
-      drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();
+      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
       drawPlayer(); drawParts(); drawHUD(); drawGameOver();
-      if(eat('Enter')||eat('Space')) reset();
+      if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
+      if(eat('KeyW')||eat('Space')) reset();
     } else if(gs.screen==='reward'){
       update();
-      drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();
+      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
       drawPlayer(); drawParts(); drawHUD(); drawReward();
+      if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     } else if(gs.screen==='itemreward'){
       update();
-      drawBG(); drawItemReward();
+      drawBG(); drawWebZones(); drawShockwaves(); drawItemReward();
+      if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     } else if(gs.screen==='victory'){
       drawBG(); drawVictory();
     } else {
       update();
-      drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();
+      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
       drawPlayer(); drawParts(); drawWaveMsg(); drawHUD();
+      if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     }
     requestAnimationFrame(frame);
   }

@@ -84,7 +84,7 @@
       <span class="ctrl-sep">|</span>
       <span class="ctrl-key">Hold C</span><span class="ctrl-label">Block</span>
       <span class="ctrl-sep">|</span>
-      <span class="ctrl-key">Enter</span><span class="ctrl-label">Start / Confirm</span>
+      <span class="ctrl-key">W</span><span class="ctrl-label">Start / Confirm</span>
       <span class="ctrl-sep">|</span>
       <span class="ctrl-key">S</span><span class="ctrl-label">Active Ability</span>
     </div>
@@ -120,6 +120,7 @@
           (document.exitFullscreen || document.webkitExitFullscreen).call(document);
           btn.textContent = '⛶';
         }
+        btn.blur(); // prevent Enter from re-clicking button
       });
       document.addEventListener('fullscreenchange', function(){
         if (!document.fullscreenElement) btn.textContent = '⛶';
@@ -127,13 +128,6 @@
       document.addEventListener('webkitfullscreenchange', function(){
         if (!document.webkitFullscreenElement) btn.textContent = '⛶';
       });
-      // Prevent Enter/Space from exiting fullscreen (browser default)
-      window.addEventListener('keydown', function(e){
-        if ((e.code === 'Enter' || e.code === 'Space') &&
-            (document.fullscreenElement || document.webkitFullscreenElement)) {
-          e.preventDefault();
-        }
-      }, true);
     })();
   </script>
 </body>
