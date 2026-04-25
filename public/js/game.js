@@ -426,7 +426,7 @@
     // ── BOSSES ──
     spider: {
       drawFn: drawSpiderSprite, w: SPIDER_W, h: SPIDER_H,
-      hp: 500, speed: 0.6, shootCd: 110, dmg: 18, score: 1200,
+      hp: 625, speed: 0.6, shootCd: 110, dmg: 18, score: 1200,
       dropRate: 1.0, spellDrop: 1.0, isBoss: true,
     },
     lich: {
