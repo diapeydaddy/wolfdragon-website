@@ -30,10 +30,17 @@
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  const ROWS     = 3;
+  const ROWS     = 5;
   const GROUND_Y = H - 22;
   const SC2      = 3;   // scale for pixel-art projectile/shield/health sprites
-  const ROW_Y    = [GROUND_Y - 88, GROUND_Y - 178, GROUND_Y - 268];
+  const ROW_Y    = [
+    GROUND_Y - 88,
+    GROUND_Y - 88 - 72,
+    GROUND_Y - 88 - 144,
+    GROUND_Y - 88 - 216,
+    GROUND_Y - 88 - 288,
+  ];
+  const CENTER_ROW = Math.floor(ROWS / 2); // = 2
 
   // ─── pixel renderer (projectiles, shield, health drops only) ─────────────
   function spr(grid, x, y, scale, flipX) {
@@ -554,9 +561,9 @@
 
     if (def.isBoss) {
       // Boss enters from the right, targets the middle row vertically centred
-      const row = 1;
-      const totalH = ROW_Y[0] - ROW_Y[2] + GRUNT_H;  // full arena height
-      const arenaTop = ROW_Y[2];
+      const row = CENTER_ROW;
+      const totalH = ROW_Y[0] - ROW_Y[ROWS-1] + GRUNT_H;  // full arena height
+      const arenaTop = ROW_Y[ROWS-1];
       const targetY = arenaTop + (totalH - def.h) / 2;
       const bossHp = def.hp + gs.level * 60;
       enemies.push({
@@ -819,7 +826,7 @@
       }
       case 'whirlwind': {
         enemies.forEach(e=>{
-          if(e.row!==1){ e.row=1; e.y=ROW_Y[1]; e.targetY=ROW_Y[1]; }
+          if(e.row!==CENTER_ROW){ e.row=CENTER_ROW; e.y=ROW_Y[CENTER_ROW]; e.targetY=ROW_Y[CENTER_ROW]; }
           e.frozen=(e.frozen||0)+60;
         });
         burst(W/2,H/2,'#88ffff',30,10);
@@ -920,7 +927,7 @@
 
     if(eat('KeyZ')||eat('Space')) doAttack();
     if(eat('KeyX')) doSpell();
-    if(eat('KeyV') && PL.itemAbility && PL.itemCd===0) doItemAbility();
+    if(eat('KeyS') && PL.itemAbility && PL.itemCd===0) doItemAbility();
 
     if(PL.atkTimer  > 0) PL.atkTimer--;
     if(PL.slashTimer > 0) PL.slashTimer--;
@@ -954,7 +961,7 @@
           for (let i=0;i<n;i++){
             const vy = (i-(n-1)/2)*0.7;
             projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
-              vx:dir*4, vy, row:1, dmg:def.dmg, owner:'enemy',
+              vx:dir*4, vy, row:CENTER_ROW, dmg:def.dmg, owner:'enemy',
               spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
           burst(cx, cy, '#ff4400', 8);
@@ -1063,7 +1070,7 @@
             const angle = (i/count)*Math.PI*2;
             projs.push({x:cx-FB_W/2, y:cy-FB_H/2,
               vx:Math.cos(angle)*4, vy:Math.sin(angle)*3,
-              row:1, dmg:def.dmg*0.8, owner:'enemy',
+              row:CENTER_ROW, dmg:def.dmg*0.8, owner:'enemy',
               spr:SPR_FB, w:FB_W, h:FB_H, life:250});
           }
           burst(cx, cy, '#ff8800', 30, 10);
@@ -1151,7 +1158,7 @@
             e.flashT = 15;
             e.atkAnim = 0;
           }
-          const targY = e.targetY !== undefined ? e.targetY : ROW_Y[1];
+          const targY = e.targetY !== undefined ? e.targetY : ROW_Y[CENTER_ROW];
           e.y += (targY - e.y) * 0.04;
           // Chase player but maintain a safe melee distance
           const playerDist = Math.abs(eCX - (PL.x + PL.w/2));
@@ -1366,7 +1373,7 @@
         if(gs.level > 3){
           msg='★ WOLFDRAGON VICTORIOUS ★'; msgT=220;
           burst(W/2,H/2,'#ffcc00',60,12);
-          setTimeout(()=>{ gs.screen='victory'; }, 3000);
+          setTimeout(()=>{ gs.screen='victory'; setTimeout(()=>{ gs.screen='title'; }, 7000); }, 3000);
         } else {
           setTimeout(()=>{ gs.screen='reward'; gs.rewardChoice=0; }, 2800);
         }
@@ -1428,7 +1435,7 @@
 
     ROW_Y.forEach((ry,i)=>{
       ctx.fillStyle=i%2===0?th.rowA:th.rowB;
-      ctx.fillRect(0,ry,W,BRUTE_H+10);
+      ctx.fillRect(0,ry,W,68);
     });
 
     const t=Date.now()/1000;
@@ -1542,9 +1549,6 @@
     drawWDSprite(W/2 - WD_W/2, 290, false, false);
     ctx.fillStyle='#888'; ctx.font='13px monospace';
     ctx.fillText(`FINAL SCORE: ${gs.score}`, W/2, 420);
-    const blink = Math.floor(t*2)%2===0;
-    ctx.fillStyle = blink?'#ffcc00':'#886600';
-    ctx.fillText('PRESS ENTER TO PLAY AGAIN', W/2, 450);
     ctx.textAlign='left';
   }
 
@@ -1664,7 +1668,7 @@
       const vReady=PL.itemCd===0;
       ctx.fillStyle=vReady?'#ffcc00':'#666';
       ctx.font='bold 10px monospace'; ctx.textAlign='right';
-      ctx.fillText(`V: ${gs.activeItem.abilityName}${vReady?' ✓':' ('+(Math.ceil(PL.itemCd/60))+'s)'}`,W-12,38);
+      ctx.fillText(`S: ${gs.activeItem.abilityName}${vReady?' ✓':' ('+(Math.ceil(PL.itemCd/60))+'s)'}`,W-12,38);
       if(!vReady){
         ctx.fillStyle='#333'; ctx.fillRect(W-120,28,100,4);
         ctx.fillStyle='#aa44ff'; ctx.fillRect(W-120,28,Math.round(100*(1-cdFrac)),4);
@@ -1964,7 +1968,6 @@
       drawBG(); drawItemReward();
     } else if(gs.screen==='victory'){
       drawBG(); drawVictory();
-      if(eat('Enter')||eat('Space')) reset();
     } else {
       update();
       drawBG(); drawObstacles(); drawDrops(); drawEnemies(); drawProjs();

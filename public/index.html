@@ -86,10 +86,11 @@
       <span class="ctrl-sep">|</span>
       <span class="ctrl-key">Enter</span><span class="ctrl-label">Start / Confirm</span>
       <span class="ctrl-sep">|</span>
-      <span class="ctrl-key">V</span><span class="ctrl-label">Item Ability</span>
+      <span class="ctrl-key">S</span><span class="ctrl-label">Active Ability</span>
     </div>
 
     <div class="game-canvas-wrap">
+      <button id="fullscreen-btn" title="Fullscreen">⛶</button>
       <canvas id="game-canvas" width="800" height="480">
         Your browser does not support canvas.
       </canvas>
@@ -107,5 +108,26 @@
 
   <script src="js/player.js"></script>
   <script src="js/game.js"></script>
+  <script>
+    (function(){
+      const btn  = document.getElementById('fullscreen-btn');
+      const wrap = document.querySelector('.game-canvas-wrap');
+      btn.addEventListener('click', function(){
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          (wrap.requestFullscreen || wrap.webkitRequestFullscreen).call(wrap);
+          btn.textContent = '✕';
+        } else {
+          (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+          btn.textContent = '⛶';
+        }
+      });
+      document.addEventListener('fullscreenchange', function(){
+        if (!document.fullscreenElement) btn.textContent = '⛶';
+      });
+      document.addEventListener('webkitfullscreenchange', function(){
+        if (!document.webkitFullscreenElement) btn.textContent = '⛶';
+      });
+    })();
+  </script>
 </body>
 </html>
