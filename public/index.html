@@ -127,6 +127,13 @@
       document.addEventListener('webkitfullscreenchange', function(){
         if (!document.webkitFullscreenElement) btn.textContent = '⛶';
       });
+      // Prevent Enter/Space from exiting fullscreen (browser default)
+      window.addEventListener('keydown', function(e){
+        if ((e.code === 'Enter' || e.code === 'Space') &&
+            (document.fullscreenElement || document.webkitFullscreenElement)) {
+          e.preventDefault();
+        }
+      }, true);
     })();
   </script>
 </body>

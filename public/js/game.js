@@ -470,6 +470,7 @@
     itemCd: 0,
     itemCdMax: 0,
     shBroken: false,
+    shHp: 3, shMaxHp: 3,
     soulDrainActive: false,
     deathMarkActive: false,
     mirrorActive: false,
@@ -672,11 +673,13 @@
 
   let blockMsg = 0;
 
-  function hurtPlayer(dmg) {
+  function hurtPlayer(dmg, isBoss) {
     if(PL.sh) {
-      burst(PL.cx, PL.cy, SB, 18, 6);
+      const cost = isBoss ? 2 : 1;
+      PL.shHp = Math.max(0, PL.shHp - cost);
+      burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
       blockMsg = 40;
-      PL.shBroken=true;
+      if(PL.shHp <= 0) PL.shBroken = true;
       if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,80)); burst(PL.cx,PL.cy,'#44ff44',20); }
       if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,150)); burst(W/2,H/2,'#ff8800',50,14); }
       return;
@@ -935,7 +938,7 @@
     if(blockMsg     > 0) blockMsg--;
     if(PL.itemCd    > 0) PL.itemCd--;
     if(PL.bloodlustT> 0) PL.bloodlustT--;
-    if(!K['KeyC']) PL.shBroken=false;
+    if(!K['KeyC']){ PL.shBroken=false; PL.shHp=PL.shMaxHp; }
 
     // spawn
     if(spawnQueue.length>0){ spawnT++; if(spawnT>=spawnRate){spawnT=0;spawnEnemy();} }
@@ -961,7 +964,7 @@
           for (let i=0;i<n;i++){
             const vy = (i-(n-1)/2)*0.7;
             projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
-              vx:dir*4, vy, row:CENTER_ROW, dmg:def.dmg, owner:'enemy',
+              vx:dir*4, vy, row:CENTER_ROW, dmg:def.dmg, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
           burst(cx, cy, '#ff4400', 8);
@@ -975,7 +978,7 @@
         case 'web': {
           for (let r=Math.max(0,PL.row-1); r<=Math.min(ROWS-1,PL.row+1); r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
-              vx:dir*2.2, vy:0, row:r, dmg:def.dmg*1.4, owner:'enemy',
+              vx:dir*2.2, vy:0, row:r, dmg:def.dmg*1.4, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W*2, h:FB_H, life:420});
           }
           burst(cx, cy, '#884400', 10);
@@ -987,7 +990,7 @@
               if(gs.screen!=='playing') return;
               projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
                 vx:dir*(4+i*0.5), vy:(Math.random()-0.5)*0.4, row:PL.row, dmg:def.dmg*0.7,
-                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:280});
+                owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:280});
             }, i*80);
           }
           burst(cx, cy, '#ff6600', 12);
@@ -1000,7 +1003,7 @@
             const targetVY = (ROW_Y[PL.row] - cy) * 0.015;
             projs.push({x:dir<0?e.x:e.x+def.w, y:cy-SP_H/2,
               vx:dir*(3.5+i*0.5), vy:targetVY+(i-Math.floor(shots/2))*0.4,
-              row:e.row, dmg:def.dmg, owner:'enemy',
+              row:e.row, dmg:def.dmg, owner:'enemy', isBoss:true,
               spr:SPR_SPELL, w:SP_W, h:SP_H, life:320});
           }
           burst(cx, cy, '#8800cc', 10);
@@ -1009,7 +1012,7 @@
         case 'wave': {
           for (let r=0;r<ROWS;r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-SP_H/2,
-              vx:dir*3.5, vy:0, row:r, dmg:def.dmg*0.8, owner:'enemy',
+              vx:dir*3.5, vy:0, row:r, dmg:def.dmg*0.8, owner:'enemy', isBoss:true,
               spr:SPR_SPELL, w:SP_W, h:SP_H, life:300});
           }
           burst(cx, cy, '#6600aa', 14);
@@ -1020,7 +1023,7 @@
           for (let r=0;r<ROWS;r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-SP_H/2,
               vx:dir*1.8, vy:0, row:r, dmg:def.dmg*1.3,
-              owner:'enemy', spr:SPR_SPELL, w:Math.round(SP_W*1.4), h:Math.round(SP_H*1.4), life:400});
+              owner:'enemy', isBoss:true, spr:SPR_SPELL, w:Math.round(SP_W*1.4), h:Math.round(SP_H*1.4), life:400});
           }
           burst(cx, cy, '#4400ff', 16);
           break;
@@ -1033,7 +1036,7 @@
               const vY = (ROW_Y[PL.row] - cy) * 0.018;
               projs.push({x:dir<0?e.x:e.x+def.w, y:cy-SP_H/2,
                 vx:dir*(4+i*0.3), vy:vY,
-                row:e.row, dmg:def.dmg, owner:'enemy',
+                row:e.row, dmg:def.dmg, owner:'enemy', isBoss:true,
                 spr:SPR_SPELL, w:SP_W, h:SP_H, life:300});
             }, i*65);
           }
@@ -1044,7 +1047,7 @@
         case 'beam': {
           for (let r=0;r<ROWS;r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
-              vx:dir*5, vy:0, row:r, dmg:def.dmg, owner:'enemy',
+              vx:dir*5, vy:0, row:r, dmg:def.dmg, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
           burst(cx, cy, '#cc0000', 20, 8);
@@ -1057,7 +1060,7 @@
               if(gs.screen!=='playing') return;
               projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
                 vx:dir*(5.5+i*0.3), vy:0, row:PL.row, dmg:def.dmg*0.8,
-                owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:280});
+                owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:280});
             }, i*60);
           }
           burst(cx, cy, '#ff2200', 16, 5);
@@ -1070,7 +1073,7 @@
             const angle = (i/count)*Math.PI*2;
             projs.push({x:cx-FB_W/2, y:cy-FB_H/2,
               vx:Math.cos(angle)*4, vy:Math.sin(angle)*3,
-              row:CENTER_ROW, dmg:def.dmg*0.8, owner:'enemy',
+              row:CENTER_ROW, dmg:def.dmg*0.8, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W, h:FB_H, life:250});
           }
           burst(cx, cy, '#ff8800', 30, 10);
@@ -1087,7 +1090,7 @@
             const vyTarget = (ROW_Y[r]+GRUNT_H/2 - cy) * 0.025;
             projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
               vx:dir*4.5, vy:vyTarget, row:r, dmg:def.dmg*1.1,
-              owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:300});
+              owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
           burst(cx, cy, '#aa0000', 18, 6);
           break;
@@ -1195,7 +1198,7 @@
         const plHb = {x:PL.x+12, y:ROW_Y[PL.row]+10, w:PL.w-24, h:PL.h-16};
         const bossCx = {x:e.x+def.w*0.3, y:e.y+def.h*0.25, w:def.w*0.4, h:def.h*0.5};
         if (e.meleeCd === 0 && ov(bossCx, plHb)) {
-          hurtPlayer(def.dmg * 0.5);
+          hurtPlayer(def.dmg * 0.5, true);
           e.meleeCd = 60;
         }
         return;
@@ -1218,7 +1221,7 @@
           e.swingT--;
           const swX = e.facing > 0 ? e.x + def.w - 10 : e.x - 130;
           if (e.row === PL.row && ov({x:swX,y:ROW_Y[e.row]-10,w:150,h:def.h+20}, PL.hb)) {
-            hurtPlayer(def.dmg * 1.6);
+            hurtPlayer(def.dmg * 1.6, false);
           }
           if (e.swingT === 0) { e.swingCd = 260; burst(e.x+def.w/2,e.y+def.h/2,'#cc4400',18,6); }
           e.shootT--;
@@ -1272,7 +1275,7 @@
 
       // melee touch — ONLY hurts player, never damages enemy
       if(e.row===PL.row && ov(ehb(e), PL.hb)){
-        hurtPlayer(def.dmg);
+        hurtPlayer(def.dmg, false);
       }
     });
 
@@ -1310,7 +1313,7 @@
           return;
         }
         if(hitRow===PL.row && ov({x:p.x,y:p.y,w:p.w,h:p.h}, PL.hb)){
-          hurtPlayer(p.dmg); p.life=0;
+          hurtPlayer(p.dmg, !!p.isBoss); p.life=0;
         }
       }
     });
@@ -1649,11 +1652,19 @@
     }
     ctx.fillStyle='#773399'; ctx.font='9px monospace';
     ctx.fillText('SP',12+gs.maxSpell*17+3,37);
-    if(PL.sh){
-      ctx.fillStyle='rgba(68,153,255,0.25)'; ctx.fillRect(12+gs.maxSpell*17+22,25,36,12);
-      ctx.strokeStyle='#4499ff'; ctx.lineWidth=1; ctx.strokeRect(12+gs.maxSpell*17+22,25,36,12);
-      ctx.fillStyle='#aaddff'; ctx.font='bold 9px monospace';
-      ctx.fillText('🛡 ON',12+gs.maxSpell*17+24,34);
+    if(K['KeyC']){
+      // Shield bar: 3 pips
+      const shX = 12+gs.maxSpell*17+22;
+      for(let i=0;i<PL.shMaxHp;i++){
+        const filled = i < PL.shHp;
+        ctx.fillStyle = filled ? (PL.shBroken ? '#884422' : '#4499ff') : '#1a1a2a';
+        ctx.fillRect(shX+i*14, 26, 11, 9);
+        ctx.strokeStyle = filled ? (PL.shBroken ? '#cc6633' : '#aaddff') : '#333';
+        ctx.lineWidth=1; ctx.strokeRect(shX+i*14, 26, 11, 9);
+      }
+      ctx.fillStyle = PL.shBroken ? '#cc4400' : '#aaddff';
+      ctx.font='bold 8px monospace';
+      ctx.fillText(PL.shBroken ? '🛡✗' : '🛡', shX+PL.shMaxHp*14+3, 34);
     }
     ctx.fillStyle='#cc0000'; ctx.font='bold 13px monospace';
     ctx.textAlign='center'; ctx.fillText('SCORE '+String(gs.score).padStart(7,'0'),W/2,22);
@@ -1942,7 +1953,7 @@
     PL.weapon.dmg=25; PL.atkRange=100;
     PL.spell.dmg=60;
     PL.itemAbility=null; PL.itemCd=0; PL.itemCdMax=0;
-    PL.shBroken=false; PL.soulDrainActive=false; PL.deathMarkActive=false;
+    PL.shBroken=false; PL.shHp=PL.shMaxHp; PL.soulDrainActive=false; PL.deathMarkActive=false;
     PL.mirrorActive=false; PL.thornActive=false; PL.explodeShieldActive=false;
     PL.bloodlustT=0;
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; bgOff=0;
