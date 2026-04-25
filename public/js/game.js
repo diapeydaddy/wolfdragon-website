@@ -463,7 +463,7 @@
     slashTimer: 0,
     shTimer: 0, shDur: 999,
     iframes: 0,
-    weapon: { name:'Dragon Claws', dmg: 25 },
+    weapon: { name:'Dragon Claws', dmg: 25, slashColor:'#c8b8e8', slashStyle:'sweep' },
     spell:  { name:'Fire Breath',  dmg: 60 },
     shield: { name:'Scale Shield', block: 50 },
     itemAbility: null,
@@ -712,23 +712,23 @@
   const ITEM_POOLS = {
     weapon: [
       // tier 0
-      { name:"Dragon's Fang",    icon:'🗡', desc:'+6 dmg / +10 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, stat(){ PL.weapon.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
-      { name:"Soul Reaper",       icon:'💀', desc:'+5 dmg / +1 spell slot',  abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, stat(){ PL.weapon.dmg+=5; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Sundering Axe",     icon:'🪓', desc:'+8 dmg / +15% range',     abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, stat(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.15)); } },
-      { name:"Warblade",          icon:'⚔', desc:'+6 dmg / +15 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, stat(){ PL.weapon.dmg+=6; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Hexfang",           icon:'🐍', desc:'+7 dmg / +1 spell slot',  abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Dragon's Fang",    icon:'🗡', desc:'+6 dmg / +10 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, slashColor:'#cc88ff', slashStyle:'sweep', stat(){ PL.weapon.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
+      { name:"Soul Reaper",       icon:'💀', desc:'+5 dmg / +1 spell slot',  abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, slashColor:'#880033', slashStyle:'blade', stat(){ PL.weapon.dmg+=5; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Sundering Axe",     icon:'🪓', desc:'+8 dmg / +15% range',     abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, slashColor:'#ff8800', slashStyle:'blade', stat(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.15)); } },
+      { name:"Warblade",          icon:'⚔', desc:'+6 dmg / +15 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, slashColor:'#ffcc44', slashStyle:'blade', stat(){ PL.weapon.dmg+=6; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Hexfang",           icon:'🐍', desc:'+7 dmg / +1 spell slot',  abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, slashColor:'#aa44ff', slashStyle:'void',  stat(){ PL.weapon.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
       // tier 1
-      { name:"Thunderstrike",     icon:'⚡', desc:'+12 dmg / +15 max HP',    abilityName:'Chain Lightning',abDesc:'S: Lightning all enemies', ability:'lightning',  cdMax:480, stat(){ PL.weapon.dmg+=12; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Bloodfang Blade",   icon:'🩸', desc:'+10 dmg / +2 spell slots',abilityName:'Bloodlust',    abDesc:'S: Rapid strikes 5s',       ability:'bloodlust',  cdMax:600, stat(){ PL.weapon.dmg+=10; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Voidblade",         icon:'🌑', desc:'+14 dmg / +20% range',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=14; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.2)); } },
-      { name:"Soulbreaker",       icon:'👁', desc:'+12 dmg / +1 spell slot', abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, stat(){ PL.weapon.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Crimson Edge",      icon:'🔥', desc:'+13 dmg / +20 max HP',    abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, stat(){ PL.weapon.dmg+=13; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+25); } },
+      { name:"Thunderstrike",     icon:'⚡', desc:'+12 dmg / +15 max HP',    abilityName:'Chain Lightning',abDesc:'S: Lightning all enemies', ability:'lightning',  cdMax:480, slashColor:'#ffff44', slashStyle:'thunder', stat(){ PL.weapon.dmg+=12; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Bloodfang Blade",   icon:'🩸', desc:'+10 dmg / +2 spell slots',abilityName:'Bloodlust',    abDesc:'S: Rapid strikes 5s',       ability:'bloodlust',  cdMax:600, slashColor:'#cc0033', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=10; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Voidblade",         icon:'🌑', desc:'+14 dmg / +20% range',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, slashColor:'#6600cc', slashStyle:'void',    stat(){ PL.weapon.dmg+=14; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.2)); } },
+      { name:"Soulbreaker",       icon:'👁', desc:'+12 dmg / +1 spell slot', abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, slashColor:'#550077', slashStyle:'void',    stat(){ PL.weapon.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Crimson Edge",      icon:'🔥', desc:'+13 dmg / +20 max HP',    abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, slashColor:'#ff4400', slashStyle:'blade',   stat(){ PL.weapon.dmg+=13; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+25); } },
       // tier 2
-      { name:"Dragonfang Ancient",icon:'🐉', desc:'+20 dmg / +25 max HP',    abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.weapon.dmg+=20; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
-      { name:"Reaper's Scythe",   icon:'⚰', desc:'+18 dmg / +2 spell slots',abilityName:'Death Mark',   abDesc:'S: Marked kill explodes',   ability:'deathmark',  cdMax:540, stat(){ PL.weapon.dmg+=18; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Worldbreaker",      icon:'💥', desc:'+22 dmg / +25% range',    abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',    ability:'lightning',  cdMax:480, stat(){ PL.weapon.dmg+=22; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
-      { name:"Abyss Blade",       icon:'🕳', desc:'+20 dmg / +20 max HP',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, stat(){ PL.weapon.dmg+=20; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
-      { name:"Godslayer",         icon:'👑', desc:'+25 dmg / +3 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.weapon.dmg+=25; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Dragonfang Ancient",icon:'🐉', desc:'+20 dmg / +25 max HP',    abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, slashColor:'#ff9900', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=20; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
+      { name:"Reaper's Scythe",   icon:'⚰', desc:'+18 dmg / +2 spell slots',abilityName:'Death Mark',   abDesc:'S: Marked kill explodes',   ability:'deathmark',  cdMax:540, slashColor:'#330000', slashStyle:'blade',   stat(){ PL.weapon.dmg+=18; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Worldbreaker",      icon:'💥', desc:'+22 dmg / +25% range',    abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',    ability:'lightning',  cdMax:480, slashColor:'#ffee00', slashStyle:'thunder', stat(){ PL.weapon.dmg+=22; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
+      { name:"Abyss Blade",       icon:'🕳', desc:'+20 dmg / +20 max HP',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, slashColor:'#220066', slashStyle:'void',    stat(){ PL.weapon.dmg+=20; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
+      { name:"Godslayer",         icon:'👑', desc:'+25 dmg / +3 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, slashColor:'#ffaa00', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=25; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
     ],
     spell: [
       // tier 0
@@ -883,6 +883,7 @@
     PL.itemAbility=item.ability;
     PL.itemCd=0;
     PL.itemCdMax=item.cdMax;
+    if(item.slashColor){ PL.weapon.slashColor=item.slashColor; PL.weapon.slashStyle=item.slashStyle||'sweep'; }
     gs.activeItem=item;
     gs.itemTier++;
     gs.screen='playing';
@@ -1868,39 +1869,126 @@
     if(PL.iframes>0 && Math.floor(PL.iframes/4)%2===0) return;
     drawWDSprite(PL.x, wy, PL.facing < 0, PL.atk);
 
-    // Claw slash arc
+    // Weapon slash arc — style varies by PL.weapon.slashStyle
     if(PL.slashTimer > 0){
-      const prog = 1 - (PL.slashTimer / PL.atkDur);
-      const slashX  = PL.facing > 0 ? PL.x + PL.w - 6 : PL.x - PL.atkRange + 6;
-      const slashCX = slashX + PL.atkRange/2;
-      const slashCY = wy + PL.h * 0.45;
-      const radius  = PL.atkRange * 0.55 * (0.4 + prog*0.6);
+      const prog     = 1 - (PL.slashTimer / PL.atkDur);
+      const alpha    = Math.max(0, 1 - prog * 1.4);
+      const slashX   = PL.facing > 0 ? PL.x + PL.w - 6 : PL.x - PL.atkRange + 6;
+      const slashCX  = slashX + PL.atkRange / 2;
+      const slashCY  = wy + PL.h * 0.45;
+      const baseR    = PL.atkRange * 0.55 * (0.4 + prog * 0.6);
+      const startA   = PL.facing > 0 ? -Math.PI * 0.65 : -Math.PI * 0.35;
+      const endA     = PL.facing > 0 ?  Math.PI * 0.25 : Math.PI + Math.PI * 0.65;
+      const ccw      = PL.facing < 0;
+      const SC       = PL.weapon.slashColor || '#c8b8e8';
+      const style    = PL.weapon.slashStyle  || 'sweep';
 
       ctx.save();
-      ctx.globalAlpha = Math.max(0, 1 - prog * 1.4);
-      ctx.strokeStyle = '#c8b8e8';
-      ctx.lineWidth   = 4;
-      const startAngle = PL.facing > 0 ? -Math.PI*0.65 : -Math.PI*0.35;
-      const endAngle   = PL.facing > 0 ? Math.PI*0.25  : Math.PI + Math.PI*0.65;
-      ctx.beginPath();
-      ctx.arc(slashCX, slashCY, radius, startAngle, endAngle, PL.facing < 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha *= 0.7;
-      ctx.stroke();
+
+      if(style === 'sweep'){
+        // Wide claw sweep — thick primary arc + thin white inner arc
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = SC;
+        ctx.lineWidth   = 5;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR, startA, endA, ccw); ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = 2;
+        ctx.globalAlpha = alpha * 0.65;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR * 0.82, startA, endA, ccw); ctx.stroke();
+
+      } else if(style === 'blade'){
+        // Sharp dual-line blade — two thin arcs + bright leading-edge flash
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = SC;
+        ctx.lineWidth   = 2;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR,     startA, endA, ccw); ctx.stroke();
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR + 7, startA, endA, ccw); ctx.stroke();
+        // bright white flash at the leading edge, fades as swing ends
+        ctx.globalAlpha = alpha * (1 - prog) * 1.2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = 3;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR + 3, startA, endA, ccw); ctx.stroke();
+
+      } else if(style === 'thunder'){
+        // Glowing arc + 3 jagged lightning bolts radiating outward
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = SC;
+        ctx.shadowBlur  = 14;
+        ctx.strokeStyle = SC;
+        ctx.lineWidth   = 3;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR, startA, endA, ccw); ctx.stroke();
+        ctx.shadowBlur  = 0;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = 1;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, baseR, startA, endA, ccw); ctx.stroke();
+        // lightning bolts (deterministic via prog to avoid flicker each frame)
+        const seed = Math.floor(prog * 8);
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.strokeStyle = SC;
+        ctx.lineWidth   = 1.5;
+        for(let li = 0; li < 3; li++){
+          const ang = startA + (endA - startA) * ((li + 0.5) / 3);
+          const ex  = slashCX + Math.cos(ang) * baseR;
+          const ey  = slashCY + Math.sin(ang) * baseR;
+          const jx  = (slashCX + ex) / 2 + ((seed * 7 + li * 13) % 30 - 15);
+          const jy  = (slashCY + ey) / 2 + ((seed * 11 + li * 17) % 30 - 15);
+          ctx.beginPath();
+          ctx.moveTo(slashCX, slashCY);
+          ctx.lineTo(jx, jy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+        }
+
+      } else if(style === 'void'){
+        // Wide dark void slash — extra-thick outer glow + ghost reverse arc
+        const voidR = baseR * 1.3;
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.strokeStyle = SC;
+        ctx.lineWidth   = 7;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, voidR, startA, endA, ccw); ctx.stroke();
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.strokeStyle = '#aa00ff';
+        ctx.lineWidth   = 14;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, voidR * 1.12, startA, endA, ccw); ctx.stroke();
+        // thin white core
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.strokeStyle = '#ddbbff';
+        ctx.lineWidth   = 1;
+        ctx.beginPath(); ctx.arc(slashCX, slashCY, voidR * 0.88, startA, endA, ccw); ctx.stroke();
+      }
+
       ctx.restore();
     }
 
-    // Soul drain skull indicator
-    if(PL.soulDrainActive){
-      const pulse = 0.7 + Math.sin(Date.now()/150)*0.3;
-      ctx.globalAlpha = pulse;
-      ctx.font        = '18px serif';
-      ctx.textAlign   = 'center';
-      ctx.fillText('💀', PL.cx, wy - 16);
-      ctx.textAlign   = 'left';
-      ctx.globalAlpha = 1;
+    // Armed-ability + timed-ability indicators (stacked icons above head)
+    {
+      const inds = [];
+      if(PL.soulDrainActive)     inds.push('💀');
+      if(PL.deathMarkActive)     inds.push('☠');
+      if(PL.mirrorActive)        inds.push('🔵');
+      if(PL.thornActive)         inds.push('🌿');
+      if(PL.explodeShieldActive) inds.push('💣');
+      if(PL.bloodlustT > 0)      inds.push('🩸');
+      if(inds.length > 0){
+        const pulse   = 0.7 + Math.sin(Date.now()/150)*0.3;
+        const spacing = 20;
+        const startX  = PL.cx - (inds.length - 1) * spacing / 2;
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.font        = '15px serif';
+        ctx.textAlign   = 'center';
+        inds.forEach((ic, i) => ctx.fillText(ic, startX + i * spacing, wy - 14));
+        ctx.restore();
+      }
+      // Bloodlust timer bar under indicator row
+      if(PL.bloodlustT > 0){
+        const barW = PL.w * (PL.bloodlustT / 300);
+        ctx.save();
+        ctx.fillStyle   = '#ff0044';
+        ctx.globalAlpha = 0.75;
+        ctx.fillRect(PL.x, wy - 7, barW, 3);
+        ctx.restore();
+      }
     }
 
     // "BLOCKED!" feedback
