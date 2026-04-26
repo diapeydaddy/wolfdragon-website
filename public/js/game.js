@@ -1397,9 +1397,8 @@
       return;
     }
     if(gs.screen!=='playing') return;
-    if(gs.friendCutscene) { /* drain key events during cutscene so nothing queues up */
-      Object.keys(J).forEach(k=>{ J[k]=false; }); return; }
 
+    if(!gs.friendCutscene) {
     // movement
     if(eat('ArrowUp')   && PL.row<ROWS-1) PL.row++;
     if(eat('ArrowDown') && PL.row>0)      PL.row--;
@@ -1448,6 +1447,7 @@
     if(PL.itemCd    > 0) PL.itemCd--;
     if(PL.bloodlustT> 0) PL.bloodlustT--;
     if(!K['KeyC']){ PL.shBroken=false; PL.shHp=PL.shMaxHp; }
+    } else { Object.keys(J).forEach(k=>{ J[k]=false; }); } // drain queued keys during cutscene
 
     // spawn
     if(spawnQueue.length>0){ spawnT++; if(spawnT>=spawnRate){spawnT=0;spawnEnemy();} }
