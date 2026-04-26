@@ -686,7 +686,7 @@
     friendThrowRate: 180,       // frames between throws (~3 s)
     totemHp: 240,              // Apoc corner totem HP (≈ brute)
     totemDmg: 20,              // damage per totem fireball
-    totemShootRate: 300,        // frames between shots (5 s)
+    totemShootRate: 150,        // frames between alternating shots (2.5 s straight → 2.5 s diagonal → …)
   };
   const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
   const CFG = Object.assign({}, WD_DEFAULTS, _wdSaved);
@@ -913,11 +913,13 @@
     // Corner positions: bottom row (0) and top row (ROWS-1)
     // Aim diagonally toward opposite corner
     const margin = 8;
+    // Each totem alternates: straight (across its row) then diagonal (toward opposite corner)
+    // vx/vy = straight shot direction; dvx/dvy = diagonal shot direction
     const corners = [
-      { id:'bl', x:margin,               row:0,        vx: 5, vy:0 }, // bottom-left → fires right across row 0
-      { id:'br', x:W-TOTEM_W-margin,     row:0,        vx:-5, vy:0 }, // bottom-right → fires left across row 0
-      { id:'tl', x:margin,               row:ROWS-1,   vx: 5, vy:0 }, // top-left → fires right across row 4
-      { id:'tr', x:W-TOTEM_W-margin,     row:ROWS-1,   vx:-5, vy:0 }, // top-right → fires left across row 4
+      { id:'bl', x:margin,           row:0,      vx: 5, vy:0,  dvx: 4.5, dvy:-1.8 }, // BL: right / up-right
+      { id:'br', x:W-TOTEM_W-margin, row:0,      vx:-5, vy:0,  dvx:-4.5, dvy:-1.8 }, // BR: left / up-left
+      { id:'tl', x:margin,           row:ROWS-1, vx: 5, vy:0,  dvx: 4.5, dvy: 1.8 }, // TL: right / down-right
+      { id:'tr', x:W-TOTEM_W-margin, row:ROWS-1, vx:-5, vy:0,  dvx:-4.5, dvy: 1.8 }, // TR: left / down-left
     ];
     corners.forEach(c => {
       totems.push({
@@ -927,7 +929,9 @@
         hp: CFG.totemHp, maxHp: CFG.totemHp,
         flashT: 0,
         shootT: CFG.totemShootRate + Math.random()*60|0, // stagger initial shots
+        shotPhase: 0,   // 0 = next shot is straight, 1 = next shot is diagonal
         vx: c.vx, vy: c.vy,
+        dvx: c.dvx, dvy: c.dvy,
       });
     });
     burst(margin + TOTEM_W/2, ROW_Y[0] + TOTEM_H/2, '#cc4400', 12, 5);
@@ -2333,14 +2337,17 @@
           if (t.flashT > 0) t.flashT--;
           t.shootT--;
           if (t.shootT <= 0) {
-            t.shootT = CFG.totemShootRate;
-            // Fire from center of totem
+            t.shootT = CFG.totemShootRate; // 2.5 s between each shot (straight and diagonal alternate)
             const fx = t.x + TOTEM_W/2 - 4;
             const fy = t.y + TOTEM_H * 0.35;
-            projs.push({ x:fx, y:fy, vx:t.vx, vy:t.vy, row:t.row,
+            const isDiag = t.shotPhase === 1;
+            const fvx = isDiag ? t.dvx : t.vx;
+            const fvy = isDiag ? t.dvy : t.vy;
+            projs.push({ x:fx, y:fy, vx:fvx, vy:fvy, row:t.row,
               dmg:CFG.totemDmg, owner:'enemy', isBoss:false, isTotemFireball:true,
-              fromTotemId:t.id, spr:SPR_FB, w:FB_W, h:FB_H, life:360 });
-            burst(fx, fy, '#cc4400', 6, 3);
+              fromTotemId:t.id, spr:SPR_FB, w:FB_W, h:FB_H, life:420 });
+            burst(fx, fy, isDiag ? '#ff8800' : '#cc4400', 6, 3);
+            t.shotPhase = 1 - t.shotPhase; // toggle straight ↔ diagonal
           }
         });
       }
