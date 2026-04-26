@@ -209,6 +209,7 @@
   const SPIDER_W= 210, SPIDER_H= 170;  // spans ~2 rows
   const LICH_W  = 150, LICH_H  = 210;  // tall ghost, spans ~2.5 rows
   const APOC_W  = 230, APOC_H  = 260;  // massive, fills the arena
+  const TOTEM_W = 44,  TOTEM_H = 80;   // corner totem poles (Apoc fight)
   const FRIEND_H = 88;                    // draw height (matches Wolfdragon)
   // Per-frame draw widths (aspect-correct at FRIEND_H=88)
   const FR_RUN_DW  = [28, 35, 49, 39];  // running frames 1-4
@@ -683,6 +684,9 @@
     friendCocktailDmgPct: 2,   // % of apoc total HP per tiki hit
     friendMinionDmgPct: 40,    // % of minion HP per tiki hit (post-Apoc)
     friendThrowRate: 180,       // frames between throws (~3 s)
+    totemHp: 240,              // Apoc corner totem HP (≈ brute)
+    totemDmg: 20,              // damage per totem fireball
+    totemShootRate: 300,        // frames between shots (5 s)
   };
   const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
   const CFG = Object.assign({}, WD_DEFAULTS, _wdSaved);
@@ -848,7 +852,7 @@
   function skipToBoss(type, wave, level) {
     // Clear all active entities and jump straight to a boss wave
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[];
-    webZones=[]; shockwaves=[]; darknessT=0;
+    webZones=[]; shockwaves=[]; darknessT=0; totems=[];
     gs.wave=wave; gs.level=level;
     gs.friendTriggered=false; gs.friendCutscene=false; gs.friendCutsceneT=0; friendAlly=null;
     cleared=false; spawnQueue=[];
@@ -861,6 +865,7 @@
   // ─── entity lists ─────────────────────────────────────────────────────────
   let enemies=[], projs=[], parts=[], drops=[], obstacles=[], flameshields=[];
   let webZones=[], shockwaves=[], darknessT=0;
+  let totems=[];   // corner totem poles during Apoc fight
 
   // ─── particles ────────────────────────────────────────────────────────────
   function burst(x,y,col,n,spd){
@@ -901,6 +906,34 @@
       }
     }
     leftToSpawn = spawnQueue.length;
+  }
+
+  // Apoc totem poles — spawn at the four screen corners when Apoc lands
+  function spawnApocTotems() {
+    // Corner positions: bottom row (0) and top row (ROWS-1)
+    // Aim diagonally toward opposite corner
+    const margin = 8;
+    const corners = [
+      { id:'bl', x:margin,               row:0,        vx: 4.5, vy:-1.8 }, // bottom-left → top-right
+      { id:'br', x:W-TOTEM_W-margin,     row:0,        vx:-4.5, vy:-1.8 }, // bottom-right → top-left
+      { id:'tl', x:margin,               row:ROWS-1,   vx: 4.5, vy: 1.8 }, // top-left → bottom-right
+      { id:'tr', x:W-TOTEM_W-margin,     row:ROWS-1,   vx:-4.5, vy: 1.8 }, // top-right → bottom-left
+    ];
+    corners.forEach(c => {
+      totems.push({
+        id: c.id,
+        x: c.x, y: ROW_Y[c.row],
+        row: c.row,
+        hp: CFG.totemHp, maxHp: CFG.totemHp,
+        flashT: 0,
+        shootT: CFG.totemShootRate + Math.random()*60|0, // stagger initial shots
+        vx: c.vx, vy: c.vy,
+      });
+    });
+    burst(margin + TOTEM_W/2, ROW_Y[0] + TOTEM_H/2, '#cc4400', 12, 5);
+    burst(W-margin-TOTEM_W/2, ROW_Y[0] + TOTEM_H/2, '#cc4400', 12, 5);
+    burst(margin + TOTEM_W/2, ROW_Y[ROWS-1] + TOTEM_H/2, '#cc4400', 12, 5);
+    burst(W-margin-TOTEM_W/2, ROW_Y[ROWS-1] + TOTEM_H/2, '#cc4400', 12, 5);
   }
 
   function startWave() {
@@ -1017,6 +1050,11 @@
       }
       if(ov(box, ehb(e))) hitEnemy(e, PL.weapon.dmg);
     });
+    // Melee also hits corner totems (must be on totem's row)
+    totems.forEach(t => {
+      if (t.row !== PL.row) return;
+      if (ov(box, { x:t.x, y:t.y, w:TOTEM_W, h:TOTEM_H })) hitTotem(t, PL.weapon.dmg);
+    });
   }
 
   function doSpell() {
@@ -1069,6 +1107,19 @@
     burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#ff4422', 9);
     if(PL.soulDrainActive){ PL.soulDrainActive=false; gs.hp=Math.min(gs.maxHp,gs.hp+CFG.healSouldrain); burst(PL.cx,PL.cy,'#8800ff',10); }
     if(e.hp<=0) killEnemy(e);
+  }
+
+  function hitTotem(t, dmg) {
+    SFX.enemyHit();
+    t.hp -= dmg; t.flashT = 9;
+    burst(t.x + TOTEM_W/2, t.y + TOTEM_H/2, '#ff6600', 8, 3);
+    if (t.hp <= 0) {
+      t.hp = 0;
+      burst(t.x + TOTEM_W/2, t.y + TOTEM_H/2, '#cc4400', 20, 6);
+      // Remove any totem fireballs from this totem
+      projs = projs.filter(p => p.fromTotemId !== t.id);
+      totems = totems.filter(tt => tt !== t);
+    }
   }
 
   function killEnemy(e) {
@@ -1685,13 +1736,35 @@
     enemies.forEach(e=>{
       if(e.flashT>0) e.flashT--;
       if(e.atkAnim>0) e.atkAnim--;
-      if(gs.friendCutscene) return;   // freeze everyone during friend entrance
+      if(gs.friendCutscene) {
+        // During cutscene, only process Apoc knockback
+        if(e.type==='apocalyptic' && (e.knockbackT||0)>0){
+          e.knockbackT--;
+          const kDx = e.knockbackTargetX - e.x;
+          e.x += kDx * 0.18;
+          e.knockbackOffY = -Math.sin((1 - e.knockbackT/45) * Math.PI) * 70;
+          if(e.knockbackT===0){
+            e.x = e.knockbackTargetX; e.knockbackOffY=0;
+            // Signal friend to end cutscene
+            if(friendAlly && friendAlly.state==='cutscene_wait'){
+              gs.friendCutscene=false; gs.friendCutsceneT=0;
+              friendAlly.state='idle'; friendAlly.wanderT=80;
+              friendAlly.targetX = Math.min(friendAlly.x, W-FRIEND_W-60);
+            }
+          }
+        }
+        return;
+      }
       if((e.frozen||0)>0){ e.frozen--; return; }
       const def = ENEMY_TYPES[e.type];
 
       if(e.phase==='drop'){
         e.y+=e.dropSpd;
-        if(e.y>=e.targetY){ e.y=e.targetY; e.phase='charge'; burst(e.x+def.w/2,e.y,'#ff4422',10,4); }
+        if(e.y>=e.targetY){
+          e.y=e.targetY; e.phase='charge'; burst(e.x+def.w/2,e.y,'#ff4422',10,4);
+          // Spawn corner totem poles when Apoc lands
+          if(e.type==='apocalyptic' && totems.length===0) spawnApocTotems();
+        }
         return;
       }
 
@@ -1809,6 +1882,7 @@
           }
 
         } else if (e.type === 'apocalyptic') {
+          if((e.knockbackT||0)>0) return; // mid-knockback — skip normal AI
           // Slowly advance toward player from either side
           e.x = Math.max(W*0.2, Math.min(W - def.w - 5, e.x + dirToPlayer * spd));
           // Shockwave windup + fire
@@ -1998,22 +2072,58 @@
           fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.12;
           fa.row = fa.targetRow;
         } else {
-          // Phase 2: standing next to Wolfdragon — face the boss, hold for 60 frames
+          // Phase 2: standing next to Wolfdragon — face boss, then throw
           fa.x = cutsceneTargetX;
           fa.facing = apocCX < fa.x ? -1 : 1;
           gs.friendCutsceneT++;
           if (gs.friendCutsceneT === 1) {
-            // Little sparkle burst when they arrive
             burst(fa.x + FRIEND_W/2, fa.y + FRIEND_H/2, '#ffcc44', 20, 6);
           }
-          if (gs.friendCutsceneT >= 60) {
-            // Cutscene over — release freeze, transition to normal idle wander
-            gs.friendCutscene  = false;
+          if (gs.friendCutsceneT >= 20) {
+            // Launch throw — transitions to 'cutscene_throw' handled below
+            fa.state = 'cutscene_throw'; fa.throwFrame = 0; fa.frameTimer = 0;
             gs.friendCutsceneT = 0;
-            fa.state   = 'idle';
-            fa.targetX = cutsceneTargetX;
-            fa.wanderT = 80;
           }
+        }
+
+      } else if (fa.state === 'cutscene_throw') {
+        // Throw animation, then fire the big cutscene cocktail
+        if (fa.frameTimer % 7 === 0) {
+          fa.throwFrame++;
+          if (fa.throwFrame === 2) {
+            // Launch the cutscene tiki
+            const throwFacing = apocCX < fa.x ? -1 : 1;
+            fa.facing = throwFacing;
+            const ckX = throwFacing < 0 ? fa.x - TIKI_W : fa.x + FR_THR_DW[2];
+            const ckY = fa.y + FRIEND_H * 0.28;
+            projs.push({
+              x: ckX, y: ckY, vx: throwFacing * 9, vy: 0,
+              row: fa.row, dmg: 0, owner: 'friend',
+              isTiki: true, isCutsceneTiki: true,
+              tkFrame: 0, tkTimer: 0, tkBreaking: false, tkBreakTimer: 0,
+              w: TIKI_W, h: TIKI_H, life: 500,
+            });
+          }
+          if (fa.throwFrame >= 4) {
+            // Throw anim done — wait for the cocktail to hit (state → cutscene_wait)
+            // If it somehow never hits (Apoc dead), just end cutscene
+            if (!apocE) {
+              gs.friendCutscene = false; gs.friendCutsceneT = 0;
+              fa.state = 'idle'; fa.wanderT = 60; fa.targetX = fa.x;
+            } else {
+              fa.state = 'cutscene_wait'; // handled by knockback completion
+            }
+          }
+        }
+
+      } else if (fa.state === 'cutscene_wait') {
+        // Waiting for Apoc knockback to finish — handled in enemy AI
+        // Safety valve: if cutscene gets stuck >180 frames, force-end it
+        gs.friendCutsceneT++;
+        if (gs.friendCutsceneT > 180) {
+          gs.friendCutscene = false; gs.friendCutsceneT = 0;
+          fa.state = 'idle'; fa.wanderT = 80;
+          fa.targetX = Math.min(fa.x, W - FRIEND_W - 60);
         }
 
       } else if (fa.state === 'entering') {
@@ -2209,9 +2319,36 @@
       if (fa.x > W + FRIEND_W + 20) friendAlly = null;
     }
 
+    // ── Totem pole update ─────────────────────────────────────────────────────
+    if (totems.length > 0) {
+      const apocAlive = enemies.some(e => e.type === 'apocalyptic') || enemies.length > 0;
+      if (!apocAlive) {
+        // Apoc and all minions gone — totems go silent, clear their fireballs
+        if (totems.length > 0) {
+          projs = projs.filter(p => !p.isTotemFireball);
+          totems = [];
+        }
+      } else if (!gs.friendCutscene) {
+        totems.forEach(t => {
+          if (t.flashT > 0) t.flashT--;
+          t.shootT--;
+          if (t.shootT <= 0) {
+            t.shootT = CFG.totemShootRate;
+            // Fire from center of totem
+            const fx = t.x + TOTEM_W/2 - 4;
+            const fy = t.y + TOTEM_H * 0.35;
+            projs.push({ x:fx, y:fy, vx:t.vx, vy:t.vy, row:t.row,
+              dmg:CFG.totemDmg, owner:'enemy', isBoss:false, isTotemFireball:true,
+              fromTotemId:t.id, spr:SPR_FB, w:FB_W, h:FB_H, life:360 });
+            burst(fx, fy, '#cc4400', 6, 3);
+          }
+        });
+      }
+    }
+
     // projectiles
     projs.forEach(p=>{
-      if(gs.friendCutscene){ p.life--; return; } // freeze position during cutscene
+      if(gs.friendCutscene && !p.isCutsceneTiki){ p.life--; return; } // freeze during cutscene
       p.x+=p.vx; p.y+=p.vy; p.life--;
 
       // Tiki cocktail — friend ally projectile
@@ -2230,10 +2367,23 @@
           const hitbox = { x: apocTarget.x + 10, y: apocTarget.y + 8,
                            w: APOC_W - 20, h: APOC_H - 16 };
           if (ov({ x: p.x, y: p.y, w: p.w, h: p.h }, hitbox)) {
-            hitEnemy(apocTarget, p.dmg);
-            burst(p.x + p.w/2, p.y + p.h/2, '#cc4400', 16, 5);
-            p.tkBreaking = true; p.vx = 0; p.vy = 0;
-            p.x -= TIKI_W / 2; p.y -= TIKI_H / 2;
+            if (p.isCutsceneTiki) {
+              // Cutscene shot — big impact, trigger knockback to opposite side
+              burst(p.x + p.w/2, p.y + p.h/2, '#ff9900', 30, 8);
+              burst(apocTarget.x + APOC_W/2, apocTarget.y + APOC_H/2, '#ff4400', 40, 10);
+              const goLeft = apocTarget.x > W/2;
+              apocTarget.knockbackT = 45;
+              apocTarget.knockbackTargetX = goLeft ? 20 : W - APOC_W - 20;
+              apocTarget.knockbackOffY = 0;
+              p.life = 0;
+              // Tell friend to wait for knockback
+              if (friendAlly) friendAlly.state = 'cutscene_wait';
+            } else {
+              hitEnemy(apocTarget, p.dmg);
+              burst(p.x + p.w/2, p.y + p.h/2, '#cc4400', 16, 5);
+              p.tkBreaking = true; p.vx = 0; p.vy = 0;
+              p.x -= TIKI_W / 2; p.y -= TIKI_H / 2;
+            }
           }
         } else if (p.isTikiMinion) {
           // Post-Apoc: hit any enemy in the same row
@@ -2249,6 +2399,17 @@
           }
         }
         return; // skip regular projectile collision for tiki
+      }
+
+      if(p.owner==='player' && !p.axe && !p.isTiki){
+        // Player projectiles can destroy corner totems
+        totems.forEach(t => {
+          if(p.life <= 0) return;
+          if(ov({x:p.x,y:p.y,w:p.w,h:p.h},{x:t.x,y:t.y,w:TOTEM_W,h:TOTEM_H})){
+            hitTotem(t, p.dmg);
+            if(!p.pierce) p.life=0;
+          }
+        });
       }
 
       if(p.owner==='player' && !p.axe){
@@ -3120,12 +3281,13 @@
       const def=ENEMY_TYPES[e.type];
       ctx.globalAlpha=(e.flashT>0&&Math.floor(e.flashT/2)%2===0)?0.2:1;
       // flipX=true when enemy faces LEFT (toward player who is on left)
-      def.drawFn(e.x, e.y, e.facing < 0, e.atkAnim > 0);
+      const drawY = e.y + (e.knockbackOffY||0);
+      def.drawFn(e.x, drawY, e.facing < 0, e.atkAnim > 0);
       ctx.globalAlpha=1;
       if(e.hp<e.maxHp){
-        ctx.fillStyle='#2a0000'; ctx.fillRect(e.x,e.y-6,def.w,3);
+        ctx.fillStyle='#2a0000'; ctx.fillRect(e.x,drawY-6,def.w,3);
         ctx.fillStyle=e.type==='brute'?'#ff8800':e.type==='archer'?'#4466ff':'#cc2200';
-        ctx.fillRect(e.x,e.y-6,Math.floor(def.w*e.hp/e.maxHp),3);
+        ctx.fillRect(e.x,drawY-6,Math.floor(def.w*e.hp/e.maxHp),3);
       }
       if(e.phase==='drop'){
         ctx.fillStyle='rgba(255,40,0,0.7)'; ctx.font='11px monospace'; ctx.textAlign='center';
@@ -3405,6 +3567,79 @@
     });
   }
 
+  function drawTotems() {
+    if (!totems.length) return;
+    totems.forEach(t => {
+      const flash = t.flashT > 0 && Math.floor(t.flashT/2)%2===0;
+      ctx.globalAlpha = flash ? 0.25 : 1;
+
+      // Base / plinth
+      ctx.fillStyle = '#1a0800';
+      ctx.fillRect(t.x + 2, t.y + TOTEM_H - 14, TOTEM_W - 4, 14);
+
+      // Main shaft
+      ctx.fillStyle = '#3a1800';
+      ctx.fillRect(t.x + 8, t.y + 16, TOTEM_W - 16, TOTEM_H - 28);
+
+      // Top cap (wider headdress)
+      ctx.fillStyle = '#4a2200';
+      ctx.fillRect(t.x, t.y, TOTEM_W, 18);
+      // headdress spikes
+      ctx.fillStyle = '#5a2a00';
+      for (let i = 0; i < 5; i++) {
+        const sx = t.x + 3 + i * 8;
+        ctx.fillRect(sx, t.y - 6, 5, 8);
+      }
+
+      // Face section — carved dark recess
+      ctx.fillStyle = '#220c00';
+      ctx.fillRect(t.x + 6, t.y + 20, TOTEM_W - 12, 34);
+
+      // Glowing eyes — pulse with time
+      const pulse = Math.sin(performance.now() * 0.004) * 0.5 + 0.5;
+      const eyeR = Math.floor(200 + pulse * 55);
+      const eyeA = 0.7 + pulse * 0.3;
+      ctx.globalAlpha = flash ? 0.1 : eyeA;
+      ctx.fillStyle = `rgb(${eyeR},${Math.floor(pulse*60)},0)`;
+      ctx.beginPath(); ctx.arc(t.x + 14, t.y + 33, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(t.x + TOTEM_W - 14, t.y + 33, 5, 0, Math.PI*2); ctx.fill();
+      // Eye glow halos
+      ctx.globalAlpha = flash ? 0.05 : eyeA * 0.3;
+      ctx.fillStyle = `rgb(${eyeR},80,0)`;
+      ctx.beginPath(); ctx.arc(t.x + 14, t.y + 33, 9, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(t.x + TOTEM_W - 14, t.y + 33, 9, 0, Math.PI*2); ctx.fill();
+
+      // Mouth snarl
+      ctx.globalAlpha = flash ? 0.1 : 0.8;
+      ctx.fillStyle = '#1a0800';
+      ctx.fillRect(t.x + 10, t.y + 44, TOTEM_W - 20, 6);
+      ctx.fillStyle = '#cc2200';
+      for (let i = 0; i < 4; i++) ctx.fillRect(t.x + 11 + i * 6, t.y + 42, 3, 5);
+
+      // Shoot-timer glow ring (shows how close to firing)
+      ctx.globalAlpha = flash ? 0 : (1 - t.shootT / CFG.totemShootRate) * 0.5;
+      ctx.strokeStyle = '#ff6600';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(t.x + TOTEM_W/2, t.y + 33, 14,
+        -Math.PI/2,
+        -Math.PI/2 + (1 - t.shootT/CFG.totemShootRate) * Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+
+      // Health bar (only when damaged)
+      if (t.hp < t.maxHp) {
+        ctx.fillStyle = '#1a0000';
+        ctx.fillRect(t.x, t.y - 8, TOTEM_W, 4);
+        ctx.fillStyle = '#cc6600';
+        ctx.fillRect(t.x, t.y - 8, Math.floor(TOTEM_W * t.hp / t.maxHp), 4);
+      }
+    });
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+  }
+
   function drawParts(){
     parts.forEach(p=>{
       ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
@@ -3474,7 +3709,7 @@
     godMode=false; babyMode=false; godCheatBuf=''; deact67Buf=''; godCheatDeadline = performance.now() + 10000;
     reloadCFG('wolfdragon_config'); // restore normal config (in case baby mode was active)
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[]; bgOff=0;
-    webZones=[]; shockwaves=[]; darknessT=0;
+    webZones=[]; shockwaves=[]; darknessT=0; totems=[];
     PL.webbed=0;
     friendAlly = null;
     victoryCarX = W + 20;  // just off right edge — appears within ~0.1s
@@ -3495,7 +3730,7 @@
       if(eat('KeyW')||eat('Space')) reset();
     } else if(gs.screen==='reward'){
       update();
-      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
+      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawTotems(); drawEnemies(); drawShockwaves(); drawProjs();
       drawPlayer(); drawFriendAlly(); drawParts(); drawHUD(); drawReward();
       if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     } else if(gs.screen==='itemreward'){
@@ -3507,7 +3742,7 @@
       if(eat('KeyW')||eat('Space')) reset();
     } else {
       update();
-      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
+      drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawTotems(); drawEnemies(); drawShockwaves(); drawProjs();
       drawFlameshields(); drawPlayer(); drawFriendAlly(); drawParts(); drawWaveMsg(); drawHUD();
       if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     }
