@@ -1090,11 +1090,11 @@
         get desc(){
           const t=gs.spellUpgrades||0;
           const hint=[
-            `✦ Next: +Spray (side fireballs at ${Math.round(CFG.sprayDmgPct*100)}% dmg)`,
-            `✦ Next: ${CFG.flameshieldOrbs} orbiting fireballs at ${Math.round(CFG.flameshieldDmgPct*100)}% dmg each`,
-            `✦ Next: Full nova burst (all rows, ${Math.round(CFG.novaDmgPct*100)}% dmg)`,
+            `✦ Unlocks: Spray (${Math.round(CFG.sprayDmgPct*100)}% side fire)`,
+            `✦ Unlocks: Flameshield (${CFG.flameshieldOrbs} orbs)`,
+            `✦ Unlocks: Nova burst all rows`,
           ];
-          return '+1 spell charge  +10 spell dmg\n(max 6 charges)'+(t<hint.length?'\n'+hint[t]:'');
+          return '+1 charge  +10 spell dmg\n(max 6 charges)'+(t<hint.length?'\n'+hint[t]:'');
         },
         fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; PL.spell.dmg+=10; gs.spellUpgrades=(gs.spellUpgrades||0)+1; } },
       { icon:'🛡', label:'FORTIFY',
@@ -2396,13 +2396,30 @@
       // Icon
       ctx.font=`38px sans-serif`;
       ctx.fillText(r.icon,cx+cardW/2,cy+70);
+      // Clip card contents
+      ctx.save();
+      ctx.beginPath(); ctx.rect(cx+1,cy+1,cardW-2,cardH-2); ctx.clip();
+
       // Label
       ctx.fillStyle=sel?'#ffffff':'#cccccc'; ctx.font=`bold 15px monospace`;
       ctx.fillText(r.label,cx+cardW/2,cy+102);
-      // Desc (two lines)
-      ctx.fillStyle='#999'; ctx.font=`11px monospace`;
-      const lines=r.desc.split('\n');
-      lines.forEach((ln,li)=>ctx.fillText(ln,cx+cardW/2,cy+122+li*16));
+      // Desc — word-wrap each \n-separated chunk so nothing escapes the card
+      ctx.fillStyle='#999'; ctx.font=`10px monospace`;
+      const descMaxW = cardW - 20;
+      let dy = cy + 122;
+      r.desc.split('\n').forEach(chunk => {
+        const words = chunk.split(' ');
+        let line = '';
+        words.forEach(w => {
+          const test = line ? line + ' ' + w : w;
+          if (ctx.measureText(test).width > descMaxW && line) {
+            ctx.fillText(line, cx+cardW/2, dy); dy += 13; line = w;
+          } else { line = test; }
+        });
+        if (line) { ctx.fillText(line, cx+cardW/2, dy); dy += 13; }
+      });
+
+      ctx.restore();
     });
     ctx.textAlign='left';
   }
