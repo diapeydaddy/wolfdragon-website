@@ -1936,7 +1936,7 @@
       if (apocE.hp <= apocE.maxHp * 0.5) {
         gs.friendTriggered = true;
         // Enter from right side
-        friendAlly = { x: W + FRIEND_W + 10, y: ROW_Y[0], row: 0,
+        friendAlly = { x: W + FRIEND_W + 10, y: ROW_Y[0], row: 0, targetRow: 0,
           state: 'entering', runFrame: 0, throwFrame: 0, frameTimer: 0,
           throwTimer: CFG.friendThrowRate, targetX: W - 140,
           facing: -1,  // starts running left
@@ -1950,10 +1950,12 @@
       const fa = friendAlly;
       fa.frameTimer++;
 
-      const apocCX  = apocE.x + APOC_W / 2;
-      const targetY = ROW_Y[apocE.row];
-      fa.row = apocE.row;
-      fa.y  += (targetY - fa.y) * 0.08;
+      const apocCX = apocE.x + APOC_W / 2;
+      // Friend picks its own target row (defaults to apocE.row if unset)
+      if (fa.targetRow === undefined) fa.targetRow = apocE.row;
+      // Smoothly slide y toward target row
+      fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.08;
+      fa.row = fa.targetRow;
 
       if (fa.state === 'entering') {
         // Run left onto screen toward initial position
@@ -1999,13 +2001,28 @@
             fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
             // timer reset happens when throw ENDS so idle wait = exactly friendThrowRate frames
           } else {
-            // Obstacle in the way — reposition to the other side and try again soon
-            fa.throwTimer = 40;
-            const apocOnLeft = apocCX < W / 2;
-            fa.targetX = apocOnLeft
-              ? Math.round(W * 0.55) + Math.random() * (W * 0.35)
-              : 50 + Math.random() * (W * 0.35);
-            fa.wanderT = 20 + Math.random() * 20 | 0;
+            // Obstacle in the way — try a different row with a clear shot
+            const throwMinX = Math.min(fa.x, apocCX);
+            const throwMaxX = Math.max(fa.x, apocCX);
+            const clearRows = [];
+            for (let r = 0; r < ROWS; r++) {
+              if (!obstacles.some(o => o.row === r && o.x < throwMaxX && o.x + o.w > throwMinX)) {
+                clearRows.push(r);
+              }
+            }
+            if (clearRows.length > 0) {
+              // Switch to a clear row immediately
+              fa.targetRow = clearRows[Math.floor(Math.random() * clearRows.length)];
+              fa.throwTimer = 30; // short wait to finish sliding to new row
+            } else {
+              // All rows blocked — reposition x and try again soon
+              const apocOnLeft = apocCX < W / 2;
+              fa.targetX = apocOnLeft
+                ? Math.round(W * 0.55) + Math.random() * (W * 0.35)
+                : 50 + Math.random() * (W * 0.35);
+              fa.wanderT = 20 + Math.random() * 20 | 0;
+              fa.throwTimer = 40;
+            }
           }
         }
 
