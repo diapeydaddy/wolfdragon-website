@@ -778,9 +778,12 @@
   function eat(c){ if(J[c]){J[c]=false;return true;} return false; }
 
   // ─── cheat codes ──────────────────────────────────────────────────────────
-  // "bryan" within first 10s → god mode (invincible)
-  // "baby"  within first 10s → baby mode (loads wolfdragon_config_baby settings)
-  // "67"    any time during play → deactivates all active codes
+  // "bryan"   within first 10s → god mode (invincible)
+  // "baby"    within first 10s → baby mode (loads wolfdragon_config_baby settings)
+  // "simon"   within first 10s → skip to Spider boss
+  // "bea"     within first 10s → skip to Lich boss
+  // "cecilia" within first 10s → skip to Apocalyptic boss
+  // "67"      any time during play → deactivates all active codes
   let friendAlly = null;   // active friend state object, or null
   let victoryCarX = 0;     // x position of car on victory screen
   let godMode  = false;
@@ -808,7 +811,7 @@
 
     // ── Timed cheats (within first 10s of game start) ───────────────────────
     if(performance.now() > godCheatDeadline) { godCheatBuf = ''; return; }
-    godCheatBuf = (godCheatBuf + ch).slice(-5); // keep last 5 chars (max code length)
+    godCheatBuf = (godCheatBuf + ch).slice(-7); // keep last 7 chars (max code length = "cecilia")
     if(godCheatBuf.endsWith('bryan')) {
       godMode = true; godCheatBuf = '';
       burst(PL.cx, PL.cy, '#ffdd00', 40, 10);
@@ -818,8 +821,27 @@
       reloadCFG('wolfdragon_config_baby');
       burst(PL.cx, PL.cy, '#66ccff', 35, 8);
       msg = '🍼 BABY MODE'; msgT = 180;
+    } else if(godCheatBuf.endsWith('simon')) {
+      godCheatBuf = ''; skipToBoss('spider', 3, 1);
+    } else if(godCheatBuf.endsWith('bea')) {
+      godCheatBuf = ''; skipToBoss('lich', 6, 2);
+    } else if(godCheatBuf.endsWith('cecilia')) {
+      godCheatBuf = ''; skipToBoss('apocalyptic', 9, 3);
     }
   });
+
+  function skipToBoss(type, wave, level) {
+    // Clear all active entities and jump straight to a boss wave
+    enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[];
+    webZones=[]; shockwaves=[]; darknessT=0;
+    gs.wave=wave; gs.level=level;
+    gs.friendTriggered=false; friendAlly=null;
+    cleared=false; spawnQueue=[];
+    startWave();
+    const name = type.toUpperCase();
+    burst(W/2, H/2, '#ff4400', 50, 12);
+    msg = `⚡ SKIP → ${name}`; msgT = 180;
+  }
 
   // ─── entity lists ─────────────────────────────────────────────────────────
   let enemies=[], projs=[], parts=[], drops=[], obstacles=[], flameshields=[];
