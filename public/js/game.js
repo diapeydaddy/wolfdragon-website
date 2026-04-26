@@ -914,10 +914,10 @@
     // Aim diagonally toward opposite corner
     const margin = 8;
     const corners = [
-      { id:'bl', x:margin,               row:0,        vx: 4.5, vy:-1.8 }, // bottom-left → top-right
-      { id:'br', x:W-TOTEM_W-margin,     row:0,        vx:-4.5, vy:-1.8 }, // bottom-right → top-left
-      { id:'tl', x:margin,               row:ROWS-1,   vx: 4.5, vy: 1.8 }, // top-left → bottom-right
-      { id:'tr', x:W-TOTEM_W-margin,     row:ROWS-1,   vx:-4.5, vy: 1.8 }, // top-right → bottom-left
+      { id:'bl', x:margin,               row:0,        vx: 5, vy:0 }, // bottom-left → fires right across row 0
+      { id:'br', x:W-TOTEM_W-margin,     row:0,        vx:-5, vy:0 }, // bottom-right → fires left across row 0
+      { id:'tl', x:margin,               row:ROWS-1,   vx: 5, vy:0 }, // top-left → fires right across row 4
+      { id:'tr', x:W-TOTEM_W-margin,     row:ROWS-1,   vx:-5, vy:0 }, // top-right → fires left across row 4
     ];
     corners.forEach(c => {
       totems.push({
