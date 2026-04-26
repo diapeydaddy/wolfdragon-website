@@ -3,5 +3,6 @@ node_modules/
 *.log
 .DS_Store
 public/audio/*.mp3
+!public/audio/Rise_VideoGame_V1.mp3
 public/audio/*.wav
 public/audio/*.ogg
