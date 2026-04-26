@@ -32,6 +32,7 @@
   window.addEventListener('keydown', e=>{ if(e.code==='KeyM') toggleMusic(); });
   window.addEventListener('keydown',tryStartMusic);
   canvas.addEventListener('click',tryStartMusic);
+  document.addEventListener('touchstart', tryStartMusic, {passive:true});
 
   // ─── SFX Engine (Web Audio synthesis — no files needed) ───────────────────
   const SFX = (function(){
@@ -213,11 +214,11 @@
   const FR_RUN_DW  = [28, 35, 49, 39];  // running frames 1-4
   const FR_THR_DW  = [54, 51, 59, 53];  // throwing frames 1-4
   const FRIEND_W   = 60;                 // logical width for positioning
-  // Tiki cocktail – per-frame widths at TIKI_H=48
-  const TIKI_H = 48;
-  const TK_DW  = [31, 35, 32, 23, 30, 37]; // spin frames 1-6
-  const TIKI_W = 32;                    // logical width for hitbox
-  const TIKI_BREAK_H = 64, TIKI_BREAK_W = 99;
+  // Tiki cocktail – per-frame widths at TIKI_H=41 (−15% from original 48)
+  const TIKI_H = 41;
+  const TK_DW  = [26, 30, 27, 20, 26, 31]; // spin frames 1-6 (−15%)
+  const TIKI_W = 27;                    // logical width for hitbox (−15%)
+  const TIKI_BREAK_H = 48, TIKI_BREAK_W = 74; // splat −25%
   const CAR_W    = 280, CAR_H    = 104;  // scaled for canvas
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
@@ -1567,8 +1568,9 @@
         /* ── APOC ───────────────────────────────────────────── */
         case 'beam': {
           SFX.apocAttack();
+          const beamX = safeSpawnX(dir<0?e.x:e.x+def.w, dir, 160);
           for (let r=0;r<ROWS;r++){
-            projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
+            projs.push({x:beamX, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
               vx:dir*5, vy:0, row:r, dmg:def.dmg, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
@@ -1577,11 +1579,12 @@
         }
         case 'focused': {
           SFX.apocAttack();
-          // 5 rapid shots locked to player's row
+          // 5 rapid shots locked to player's row, always start far side from player
+          const focX = safeSpawnX(dir<0?e.x:e.x+def.w, dir, 160);
           for (let i=0;i<5;i++){
             setTimeout(()=>{
               if(gs.screen!=='playing') return;
-              projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
+              projs.push({x:focX, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
                 vx:dir*(5.5+i*0.3), vy:0, row:PL.row, dmg:def.dmg*0.8,
                 owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:280});
             }, i*60);
@@ -1608,10 +1611,11 @@
           break;
         }
         case 'slam': {
-          // V-shape: one shot per row angled to converge toward player
+          // V-shape: one shot per row angled to converge toward player, always starts far side
+          const slamX = safeSpawnX(dir<0?e.x:e.x+def.w, dir, 160);
           for (let r=0;r<ROWS;r++){
             const vyTarget = (ROW_Y[r]+GRUNT_H/2 - cy) * 0.025;
-            projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
+            projs.push({x:slamX, y:cy-FB_H/2,
               vx:dir*4.5, vy:vyTarget, row:r, dmg:def.dmg*1.1,
               owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
@@ -1985,7 +1989,7 @@
         if (fa.throwTimer <= 0) {
           fa.facing = apocCX < fa.x ? -1 : 1;  // face boss for throw
           fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
-          fa.throwTimer = CFG.friendThrowRate;
+          // timer reset happens when throw ENDS so idle wait = exactly friendThrowRate frames
         }
 
       } else if (fa.state === 'throwing') {
@@ -2008,6 +2012,7 @@
           }
           if (fa.throwFrame >= 4) {
             fa.throwFrame = 0; fa.state = 'idle'; fa.frameTimer = 0;
+            fa.throwTimer = CFG.friendThrowRate; // reset 3s countdown after throw completes
             // Pick new wander target after throw
             fa.targetX = 60 + Math.random() * (W - 180);
             fa.wanderT = 40 + Math.random() * 40 | 0;
@@ -2015,8 +2020,27 @@
         }
       }
 
-    } else if (friendAlly && !apocE) {
-      // Apoc defeated — friend runs off to the right
+    } else if (friendAlly && !apocE && enemies.length > 0) {
+      // Apoc dead but minions remain — keep wandering until all cleared
+      const fa = friendAlly;
+      fa.frameTimer++;
+      fa.state = 'idle';
+      const dx = fa.targetX - fa.x;
+      if (Math.abs(dx) > 4) {
+        fa.x += dx > 0 ? 2.8 : -2.8;
+        fa.facing = dx > 0 ? 1 : -1;
+        if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+      } else {
+        fa.x = fa.targetX;
+        if (fa.frameTimer % 28 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+      }
+      fa.wanderT--;
+      if (fa.wanderT <= 0) {
+        fa.targetX = 60 + Math.random() * (W - 180);
+        fa.wanderT = 70 + Math.random() * 60 | 0;
+      }
+    } else if (friendAlly && !apocE && enemies.length === 0) {
+      // All enemies cleared — friend runs off to the right
       const fa = friendAlly;
       fa.facing = 1;
       fa.x += 4;
@@ -3280,8 +3304,8 @@
     webZones=[]; shockwaves=[]; darknessT=0;
     PL.webbed=0;
     friendAlly = null;
-    victoryCarX = W + CAR_W;
-    victoryCarDelay = 60; // ~1 second before car starts moving
+    victoryCarX = W + 20;  // just off right edge — appears within ~0.1s
+    victoryCarDelay = 0;   // no delay
     startWave();
   }
 
