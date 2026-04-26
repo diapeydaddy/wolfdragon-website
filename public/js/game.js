@@ -1951,8 +1951,26 @@
       fa.frameTimer++;
 
       const apocCX = apocE.x + APOC_W / 2;
-      // Friend picks its own target row (defaults to apocE.row if unset)
-      if (fa.targetRow === undefined) fa.targetRow = apocE.row;
+
+      // Rows where a thrown cocktail will actually land on Apoc's hitbox
+      const apocHitTop = apocE.y + 8;
+      const apocHitBot = apocE.y + APOC_H - 16;
+      const validRows = [];
+      for (let r = 0; r < ROWS; r++) {
+        const ckY    = ROW_Y[r] + FRIEND_H * 0.28;
+        const ckBot  = ckY + TIKI_H;
+        if (ckBot > apocHitTop && ckY < apocHitBot) validRows.push(r);
+      }
+      const safeValidRows = validRows.length > 0 ? validRows : [apocE.row];
+
+      // Ensure targetRow is always inside a valid row; re-anchor if it drifted out
+      if (fa.targetRow === undefined || !safeValidRows.includes(fa.targetRow)) {
+        // Pick the valid row closest to the current one
+        fa.targetRow = safeValidRows.reduce((best, r) =>
+          Math.abs(r - (fa.targetRow ?? apocE.row)) < Math.abs(best - (fa.targetRow ?? apocE.row)) ? r : best
+        , safeValidRows[0]);
+      }
+
       // Smoothly slide y toward target row
       fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.08;
       fa.row = fa.targetRow;
@@ -2001,11 +2019,11 @@
             fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
             // timer reset happens when throw ENDS so idle wait = exactly friendThrowRate frames
           } else {
-            // Obstacle in the way — try a different row with a clear shot
+            // Obstacle in the way — try a different valid row with a clear shot
             const throwMinX = Math.min(fa.x, apocCX);
             const throwMaxX = Math.max(fa.x, apocCX);
             const clearRows = [];
-            for (let r = 0; r < ROWS; r++) {
+            for (const r of safeValidRows) {
               if (!obstacles.some(o => o.row === r && o.x < throwMaxX && o.x + o.w > throwMinX)) {
                 clearRows.push(r);
               }
@@ -2055,37 +2073,65 @@
       }
 
     } else if (friendAlly && !apocE && enemies.length > 0) {
-      // Apoc dead but minions remain — track toward a minion's row and wander
+      // Apoc dead but minions remain — throw at nearest enemy, track its row
       const fa = friendAlly;
       fa.frameTimer++;
-      fa.state = 'idle';
 
-      // Slide to match the nearest enemy's row
-      if (fa.frameTimer % 40 === 0) {
-        // Pick the closest enemy by x distance
-        let closest = enemies[0];
-        for (const en of enemies) {
-          if (Math.abs(en.x - fa.x) < Math.abs(closest.x - fa.x)) closest = en;
-        }
-        fa.targetRow = closest.row;
+      // Find closest enemy as the throw target
+      let minionTarget = enemies[0];
+      for (const en of enemies) {
+        if (Math.abs(en.x - fa.x) < Math.abs(minionTarget.x - fa.x)) minionTarget = en;
       }
-      if (fa.targetRow === undefined) fa.targetRow = 0;
+      const minionCX = minionTarget.x + ENEMY_TYPES[minionTarget.type].w / 2;
+
+      // Stay in the target's row
+      fa.targetRow = minionTarget.row;
       fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.08;
       fa.row = fa.targetRow;
 
-      const dx = fa.targetX - fa.x;
-      if (Math.abs(dx) > 4) {
-        fa.x += dx > 0 ? 2.8 : -2.8;
-        fa.facing = dx > 0 ? 1 : -1;
-        if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+      if (fa.state === 'throwing') {
+        if (fa.frameTimer % 7 === 0) {
+          fa.throwFrame++;
+          if (fa.throwFrame === 2) {
+            // Deal 40% of the minion's actual HP per throw
+            const dmg = minionTarget.maxHp * 0.4;
+            const throwDW = FR_THR_DW[2];
+            const ckX = fa.facing < 0 ? fa.x - TIKI_W : fa.x + throwDW;
+            const ckY = fa.y + FRIEND_H * 0.28;
+            projs.push({
+              x: ckX, y: ckY, vx: fa.facing < 0 ? -7 : 7, vy: 0,
+              row: fa.row, dmg, owner: 'friend', isTiki: true, isTikiMinion: true,
+              tkFrame: 0, tkTimer: 0, tkBreaking: false, tkBreakTimer: 0,
+              w: TIKI_W, h: TIKI_H, life: 500
+            });
+          }
+          if (fa.throwFrame >= 4) {
+            fa.throwFrame = 0; fa.state = 'idle'; fa.frameTimer = 0;
+            fa.throwTimer = CFG.friendThrowRate;
+          }
+        }
       } else {
-        fa.x = fa.targetX;
-        if (fa.frameTimer % 28 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
-      }
-      fa.wanderT--;
-      if (fa.wanderT <= 0) {
-        fa.targetX = 60 + Math.random() * (W - 180);
-        fa.wanderT = 70 + Math.random() * 60 | 0;
+        fa.state = 'idle';
+        const dx = fa.targetX - fa.x;
+        if (Math.abs(dx) > 4) {
+          fa.x += dx > 0 ? 2.8 : -2.8;
+          fa.facing = dx > 0 ? 1 : -1;
+          if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+        } else {
+          fa.x = fa.targetX;
+          fa.facing = minionCX < fa.x ? -1 : 1;
+          if (fa.frameTimer % 28 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+        }
+        fa.wanderT--;
+        if (fa.wanderT <= 0) {
+          fa.targetX = 60 + Math.random() * (W - 180);
+          fa.wanderT = 60 + Math.random() * 40 | 0;
+        }
+        fa.throwTimer--;
+        if (fa.throwTimer <= 0) {
+          fa.facing = minionCX < fa.x ? -1 : 1;
+          fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
+        }
       }
     } else if (friendAlly && !apocE && enemies.length === 0) {
       // All enemies cleared — friend runs off to the right
@@ -2111,7 +2157,7 @@
           if (p.tkBreakTimer > 20) p.life = 0;
           return; // no movement while breaking
         }
-        // Check hit vs apocalyptic only
+        // Check hit vs Apoc (priority) or any enemy for minion-phase tikis
         const apocTarget = enemies.find(e => e.type === 'apocalyptic' && e.phase === 'charge');
         if (apocTarget) {
           const hitbox = { x: apocTarget.x + 10, y: apocTarget.y + 8,
@@ -2120,7 +2166,19 @@
             hitEnemy(apocTarget, p.dmg);
             burst(p.x + p.w/2, p.y + p.h/2, '#cc4400', 16, 5);
             p.tkBreaking = true; p.vx = 0; p.vy = 0;
-            p.x -= TIKI_W / 2; p.y -= TIKI_H / 2; // center the larger break frame
+            p.x -= TIKI_W / 2; p.y -= TIKI_H / 2;
+          }
+        } else if (p.isTikiMinion) {
+          // Post-Apoc: hit any enemy in the same row
+          for (const e of enemies) {
+            if (e.phase !== 'charge') continue;
+            if (ov({ x: p.x, y: p.y, w: p.w, h: p.h }, ehb(e))) {
+              hitEnemy(e, p.dmg);
+              burst(p.x + p.w/2, p.y + p.h/2, '#ff8800', 14, 5);
+              p.tkBreaking = true; p.vx = 0; p.vy = 0;
+              p.x -= TIKI_W / 2; p.y -= TIKI_H / 2;
+              break;
+            }
           }
         }
         return; // skip regular projectile collision for tiki
