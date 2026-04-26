@@ -208,6 +208,9 @@
   const SPIDER_W= 210, SPIDER_H= 170;  // spans ~2 rows
   const LICH_W  = 150, LICH_H  = 210;  // tall ghost, spans ~2.5 rows
   const APOC_W  = 230, APOC_H  = 260;  // massive, fills the arena
+  const FRIEND_W = 88,  FRIEND_H = 88;   // same size as Wolfdragon
+  const TIKI_W   = 36,  TIKI_H   = 44;   // drink projectile
+  const CAR_W    = 280, CAR_H    = 104;  // scaled for canvas
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
   const SP_W    = SPR_SPELL[0].length * SC2;
@@ -246,6 +249,28 @@
     // Crop starts at y=80 (sprite begins ~here); sy=0 maps to crop origin
     APOC_FRONT:   { sh:'AP', sx:13,  sy:43,  sw:499, sh_:490 },
     APOC_SIDE:    { sh:'AP', sx:512, sy:26,  sw:491, sh_:510 },
+    // Friend ally — running frames (sheet 'FR')
+    FR_RUN_0: { sh:'FR', sx:0,   sy:0, sw:186, sh_:368 },
+    FR_RUN_1: { sh:'FR', sx:186, sy:0, sw:186, sh_:368 },
+    FR_RUN_2: { sh:'FR', sx:372, sy:0, sw:186, sh_:368 },
+    FR_RUN_3: { sh:'FR', sx:558, sy:0, sw:185, sh_:368 },
+    // Friend ally — throwing frames (sheet 'FT')
+    FR_THR_0: { sh:'FT', sx:0,    sy:0, sw:350, sh_:579 },
+    FR_THR_1: { sh:'FT', sx:350,  sy:0, sw:350, sh_:579 },
+    FR_THR_2: { sh:'FT', sx:700,  sy:0, sw:350, sh_:579 },
+    FR_THR_3: { sh:'FT', sx:1050, sy:0, sw:350, sh_:579 },
+    // Tiki cocktail spin frames (sheet 'TK'), 3×3 grid of 341×341 cells
+    TK_0: { sh:'TK', sx:0,   sy:0,   sw:341, sh_:341 },
+    TK_1: { sh:'TK', sx:341, sy:0,   sw:341, sh_:341 },
+    TK_2: { sh:'TK', sx:682, sy:0,   sw:342, sh_:341 },
+    TK_3: { sh:'TK', sx:0,   sy:341, sw:341, sh_:341 },
+    TK_4: { sh:'TK', sx:341, sy:341, sw:341, sh_:341 },
+    TK_5: { sh:'TK', sx:682, sy:341, sw:342, sh_:341 },
+    TK_6: { sh:'TK', sx:0,   sy:682, sw:341, sh_:341 },
+    TK_7: { sh:'TK', sx:341, sy:682, sw:341, sh_:341 },
+    TK_BREAK: { sh:'TK', sx:682, sy:682, sw:342, sh_:342 }, // splash on impact
+    // Car (sheet 'CR')
+    CAR: { sh:'CR', sx:0, sy:0, sw:513, sh_:191 },
   };
 
   // ── Background-removal helpers ────────────────────────────────────────────
@@ -462,7 +487,7 @@
 
   function loadSprites(cb) {
     let n = 0;
-    const total = 7;
+    const total = 11;
     function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
 
     // Sheet WD — WolfDragon side profile, white bg
@@ -518,6 +543,30 @@
     };
     imgAP.onerror = done;
     imgAP.src = '/images/boss-apoc.png';
+
+    // Sheet FR — Friend ally running
+    const imgFR = new Image();
+    imgFR.onload = () => { SHEETS.FR = cropToCanvas(imgFR, 0, 0, imgFR.naturalWidth, imgFR.naturalHeight); done(); };
+    imgFR.onerror = done;
+    imgFR.src = '/images/friend-running.png';
+
+    // Sheet FT — Friend ally throwing
+    const imgFT = new Image();
+    imgFT.onload = () => { SHEETS.FT = cropToCanvas(imgFT, 0, 0, imgFT.naturalWidth, imgFT.naturalHeight); done(); };
+    imgFT.onerror = done;
+    imgFT.src = '/images/friend-throwing.png';
+
+    // Sheet TK — Tiki cocktail
+    const imgTK = new Image();
+    imgTK.onload = () => { SHEETS.TK = cropToCanvas(imgTK, 0, 0, imgTK.naturalWidth, imgTK.naturalHeight); done(); };
+    imgTK.onerror = done;
+    imgTK.src = '/images/tiki-cocktail.png';
+
+    // Sheet CR — Victory car
+    const imgCR = new Image();
+    imgCR.onload = () => { SHEETS.CR = cropToCanvas(imgCR, 0, 0, imgCR.naturalWidth, imgCR.naturalHeight); done(); };
+    imgCR.onerror = done;
+    imgCR.src = '/images/driving-off.png';
   }
 
   // ── Core draw helper ──────────────────────────────────────────────────────
@@ -573,6 +622,32 @@
     drawSpr(atk ? SRECTS.APOC_SIDE : SRECTS.APOC_FRONT, ox, oy, APOC_W, APOC_H, atk ? !flipX : flipX);
   }
 
+  // ─── friend ally sprite draw ──────────────────────────────────────────────
+  const FR_RUN_SRECTS = [SRECTS.FR_RUN_0, SRECTS.FR_RUN_1, SRECTS.FR_RUN_2, SRECTS.FR_RUN_3];
+  const FR_THR_SRECTS = [SRECTS.FR_THR_0, SRECTS.FR_THR_1, SRECTS.FR_THR_2, SRECTS.FR_THR_3];
+  const TK_SPIN_SRECTS = [SRECTS.TK_0,SRECTS.TK_1,SRECTS.TK_2,SRECTS.TK_3,
+                          SRECTS.TK_4,SRECTS.TK_5,SRECTS.TK_6,SRECTS.TK_7];
+
+  function drawFriendSprite(state, runFrame, throwFrame, ox, oy) {
+    if (state === 'throwing') {
+      const frame = Math.min(throwFrame, 3);
+      drawSpr(FR_THR_SRECTS[frame], ox, oy, FRIEND_W, FRIEND_H, false);
+    } else {
+      // running or idle — use running frames
+      drawSpr(FR_RUN_SRECTS[runFrame % 4], ox, oy, FRIEND_W, FRIEND_H, false);
+    }
+  }
+
+  function drawTikiProj(p) {
+    if (!SHEETS.TK) return;
+    if (p.tkBreaking) {
+      drawSpr(SRECTS.TK_BREAK, p.x, p.y, TIKI_W * 2, TIKI_H * 2, false);
+    } else {
+      const frame = TK_SPIN_SRECTS[p.tkFrame % 8];
+      drawSpr(frame, p.x, p.y, TIKI_W, TIKI_H, false);
+    }
+  }
+
   // ─── admin config ─────────────────────────────────────────────────────────
   const WD_DEFAULTS = {
     playerHp:140, playerSpeed:4, weaponDmg:25, spellDmg:60, atkRange:100, shMaxHp:3,
@@ -597,6 +672,8 @@
     sprayDmgPct:0.45, novaDmgPct:0.28,
     mirrorDmgMult:2.0,
     shieldPipT1:1, shieldPipT2:2,
+    friendCocktailDmgPct: 2,   // % of apoc total HP per tiki hit
+    friendThrowRate: 180,       // frames between throws (~3 s)
   };
   const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
   const CFG = Object.assign({}, WD_DEFAULTS, _wdSaved);
@@ -704,6 +781,8 @@
   // "bryan" within first 10s → god mode (invincible)
   // "baby"  within first 10s → baby mode (loads wolfdragon_config_baby settings)
   // "67"    any time during play → deactivates all active codes
+  let friendAlly = null;   // active friend state object, or null
+  let victoryCarX = 0;     // x position of car on victory screen
   let godMode  = false;
   let babyMode = false;
   let godCheatBuf = '';
@@ -970,13 +1049,13 @@
 
   let blockMsg = 0;
 
-  function hurtPlayer(dmg, isBoss) {
+  function hurtPlayer(dmg, isBoss, shieldCost) {
     if(godMode) return; // invincible
     if(PL.sh || PL.iframes > 0 && PL.shBroken) {
       // Shield is active OR shield just broke this volley (iframes grace period).
       // Either way: fully absorb — no HP damage.
       if(PL.sh) {
-        const cost = isBoss ? 2 : 1;
+        const cost = shieldCost !== undefined ? shieldCost : (isBoss ? 2 : 1);
         PL.shHp = Math.max(0, PL.shHp - cost);
         burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
         SFX.block();
@@ -1414,7 +1493,7 @@
             const targetVY = (ROW_Y[PL.row] - cy) * 0.015;
             projs.push({x:dir<0?e.x:e.x+def.w, y:cy-SP_H/2,
               vx:dir*(3.5+i*0.5), vy:targetVY+(i-Math.floor(shots/2))*0.4,
-              row:e.row, dmg:def.dmg, owner:'enemy', isBoss:true,
+              row:e.row, dmg:def.dmg, owner:'enemy', isBoss:true, shieldCost:3,
               spr:SPR_SPELL, w:SP_W, h:SP_H, life:320});
           }
           burst(cx, cy, '#8800cc', 10);
@@ -1423,7 +1502,7 @@
         case 'wave': {
           for (let r=0;r<ROWS;r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-SP_H/2,
-              vx:dir*3.5, vy:0, row:r, dmg:def.dmg*0.8, owner:'enemy', isBoss:true,
+              vx:dir*3.5, vy:0, row:r, dmg:def.dmg*0.8, owner:'enemy', isBoss:true, shieldCost:3,
               spr:SPR_SPELL, w:SP_W, h:SP_H, life:300});
           }
           burst(cx, cy, '#6600aa', 14);
@@ -1434,7 +1513,8 @@
           for (let r=0;r<ROWS;r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-SP_H/2,
               vx:dir*1.8, vy:0, row:r, dmg:def.dmg*1.3,
-              owner:'enemy', isBoss:true, spr:SPR_SPELL, w:Math.round(SP_W*1.4), h:Math.round(SP_H*1.4), life:400});
+              owner:'enemy', isBoss:true, shieldCost:3,
+              spr:SPR_SPELL, w:SP_W, h:SP_H, life:400});
           }
           burst(cx, cy, '#4400ff', 16);
           break;
@@ -1447,7 +1527,7 @@
               const vY = (ROW_Y[PL.row] - cy) * 0.018;
               projs.push({x:dir<0?e.x:e.x+def.w, y:cy-SP_H/2,
                 vx:dir*(4+i*0.3), vy:vY,
-                row:e.row, dmg:def.dmg, owner:'enemy', isBoss:true,
+                row:e.row, dmg:def.dmg, owner:'enemy', isBoss:true, shieldCost:3,
                 spr:SPR_SPELL, w:SP_W, h:SP_H, life:300});
             }, i*65);
           }
@@ -1816,9 +1896,101 @@
 
     enemies = enemies.filter(e=>e.hp>0 && e.x>-80 && e.x<W+120);
 
+    // ─── friend ally ─────────────────────────────────────────────────────────
+    const apocE = enemies.find(e => e.type === 'apocalyptic');
+    if (apocE && !gs.friendTriggered && apocE.phase === 'charge') {
+      if (apocE.hp <= apocE.maxHp * 0.5) {
+        gs.friendTriggered = true;
+        friendAlly = { x: W + FRIEND_W + 10, y: ROW_Y[0], row: 0,
+          state: 'entering', runFrame: 0, throwFrame: 0, frameTimer: 0,
+          throwTimer: CFG.friendThrowRate, targetX: W - 130 };
+        msg = '✦ A FRIEND ARRIVES! ✦'; msgT = 160;
+        burst(W - 60, ROW_Y[0] + FRIEND_H/2, '#ff9900', 24, 7);
+      }
+    }
+
+    if (friendAlly && apocE) {
+      const fa = friendAlly;
+      fa.frameTimer++;
+
+      // Track apoc's row to stay aligned for straight throws
+      const apocRow = apocE.row;
+      const targetY  = ROW_Y[apocRow];
+
+      if (fa.state === 'entering') {
+        fa.x -= 3.5;
+        fa.y += (targetY - fa.y) * 0.07;
+        if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+        if (fa.x <= fa.targetX) { fa.x = fa.targetX; fa.state = 'idle'; }
+      } else if (fa.state === 'idle') {
+        fa.y += (targetY - fa.y) * 0.08;
+        fa.row = apocRow;
+        if (fa.frameTimer % 25 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+        fa.throwTimer--;
+        if (fa.throwTimer <= 0) {
+          fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
+          fa.throwTimer = CFG.friendThrowRate;
+        }
+      } else if (fa.state === 'throwing') {
+        // Advance one throw frame every 7 game frames
+        if (fa.frameTimer % 7 === 0) {
+          fa.throwFrame++;
+          // Frame 2 = arm fully extended = launch cocktail
+          if (fa.throwFrame === 2) {
+            const apocHpTotal = apocE.maxHp;
+            const dmg = apocHpTotal * (CFG.friendCocktailDmgPct / 100);
+            const ckX = fa.x - TIKI_W;
+            const ckY = fa.y + FRIEND_H * 0.30;
+            projs.push({
+              x: ckX, y: ckY, vx: -7, vy: 0,
+              row: apocRow, dmg, owner: 'friend', isTiki: true,
+              tkFrame: 0, tkTimer: 0, tkBreaking: false, tkBreakTimer: 0,
+              w: TIKI_W, h: TIKI_H, life: 500
+            });
+          }
+          if (fa.throwFrame >= 4) {
+            fa.throwFrame = 0; fa.state = 'idle'; fa.frameTimer = 0;
+          }
+        }
+      }
+    } else if (friendAlly && !apocE) {
+      // Apoc defeated — friend runs off screen right
+      const fa = friendAlly;
+      fa.x += 4;
+      if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+      fa.frameTimer++;
+      if (fa.x > W + FRIEND_W + 20) friendAlly = null;
+    }
+
     // projectiles
     projs.forEach(p=>{
       p.x+=p.vx; p.y+=p.vy; p.life--;
+
+      // Tiki cocktail — friend ally projectile
+      if (p.isTiki) {
+        // Animate spin frames
+        p.tkTimer++;
+        if (p.tkTimer % 5 === 0) p.tkFrame = (p.tkFrame + 1) % 8;
+        if (p.tkBreaking) {
+          p.tkBreakTimer++;
+          if (p.tkBreakTimer > 20) p.life = 0;
+          return; // no movement while breaking
+        }
+        // Check hit vs apocalyptic only
+        const apocTarget = enemies.find(e => e.type === 'apocalyptic' && e.phase === 'charge');
+        if (apocTarget) {
+          const hitbox = { x: apocTarget.x + 10, y: apocTarget.y + 8,
+                           w: APOC_W - 20, h: APOC_H - 16 };
+          if (ov({ x: p.x, y: p.y, w: p.w, h: p.h }, hitbox)) {
+            hitEnemy(apocTarget, p.dmg);
+            burst(p.x + p.w/2, p.y + p.h/2, '#cc4400', 16, 5);
+            p.tkBreaking = true; p.vx = 0; p.vy = 0;
+            p.x -= TIKI_W / 2; p.y -= TIKI_H / 2; // center the larger break frame
+          }
+        }
+        return; // skip regular projectile collision for tiki
+      }
+
       if(p.owner==='player' && !p.axe){
         enemies.forEach(e=>{
           if(e.phase!=='charge') return;
@@ -1860,7 +2032,7 @@
           return;
         }
         if(hitRow===PL.row && ov({x:p.x,y:p.y,w:p.w,h:p.h}, PL.hb)){
-          hurtPlayer(p.dmg, !!p.isBoss); p.life=0;
+          hurtPlayer(p.dmg, !!p.isBoss, p.shieldCost); p.life=0;
         }
       }
     });
@@ -2120,7 +2292,15 @@
     ctx.fillText('You have slain the demon army.', W/2, 220);
     ctx.fillStyle='#ffaa00'; ctx.font='bold 22px monospace';
     ctx.fillText('Bask in the glory of Wolfdragon!', W/2, 262);
-    drawWDSprite(W/2 - WD_W/2, 290, false, false);
+    // Car drives across at Wolfdragon's position; WD shown only after car has passed
+    const carY = 290;
+    const carOnScreen = SHEETS.CR && victoryCarX > -CAR_W - 10;
+    if (carOnScreen) {
+      victoryCarX -= 2.5;
+      drawSpr(SRECTS.CAR, victoryCarX, carY, CAR_W, CAR_H, false);
+    } else {
+      drawWDSprite(W/2 - WD_W/2, carY, false, false);
+    }
     ctx.fillStyle='#888'; ctx.font='13px monospace';
     ctx.fillText(`FINAL SCORE: ${gs.score}`, W/2, 420);
     const blink = Math.floor(Date.now()/600)%2===0;
@@ -2313,6 +2493,12 @@
       ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     });
+  }
+
+  function drawFriendAlly() {
+    if (!friendAlly || !SHEETS.FR) return;
+    const fa = friendAlly;
+    drawFriendSprite(fa.state, fa.runFrame, fa.throwFrame, fa.x, fa.y);
   }
 
   // ─── draw player ──────────────────────────────────────────────────────────
@@ -2839,6 +3025,7 @@
 
   function drawProjs(){
     projs.forEach(p=>{
+      if(p.isTiki) { drawTikiProj(p); return; }
       if(p.pierce){
         // Void Ball: glowing purple sphere that pierces enemies
         const cx = p.x + p.w/2, cy = p.y + p.h/2, r = p.w * 0.55;
@@ -2993,7 +3180,8 @@
     Object.assign(gs,{screen:'playing',score:0,level:1,wave:1,
       hp:CFG.playerHp,maxHp:CFG.playerHp,spellUses:3,maxSpell:3,spellUpgrades:0,rewardChoice:0,
       itemTier:0,activeItem:null,rewardItemChoices:[],rewardItemChoice:0,
-      shieldPipUpgrades:0,rewardChoices:null});
+      shieldPipUpgrades:0,rewardChoices:null,
+      friendTriggered:false});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
     PL.weapon.dmg=CFG.weaponDmg; PL.atkRange=CFG.atkRange;
@@ -3009,6 +3197,8 @@
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[]; bgOff=0;
     webZones=[]; shockwaves=[]; darknessT=0;
     PL.webbed=0;
+    friendAlly = null;
+    victoryCarX = W + CAR_W;
     startWave();
   }
 
@@ -3026,7 +3216,7 @@
     } else if(gs.screen==='reward'){
       update();
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
-      drawPlayer(); drawParts(); drawHUD(); drawReward();
+      drawPlayer(); drawFriendAlly(); drawParts(); drawHUD(); drawReward();
       if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     } else if(gs.screen==='itemreward'){
       update();
@@ -3038,7 +3228,7 @@
     } else {
       update();
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
-      drawFlameshields(); drawPlayer(); drawParts(); drawWaveMsg(); drawHUD();
+      drawFlameshields(); drawPlayer(); drawFriendAlly(); drawParts(); drawWaveMsg(); drawHUD();
       if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     }
     requestAnimationFrame(frame);
