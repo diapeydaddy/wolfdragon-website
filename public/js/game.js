@@ -208,8 +208,16 @@
   const SPIDER_W= 210, SPIDER_H= 170;  // spans ~2 rows
   const LICH_W  = 150, LICH_H  = 210;  // tall ghost, spans ~2.5 rows
   const APOC_W  = 230, APOC_H  = 260;  // massive, fills the arena
-  const FRIEND_W = 88,  FRIEND_H = 88;   // same size as Wolfdragon
-  const TIKI_W   = 36,  TIKI_H   = 44;   // drink projectile
+  const FRIEND_H = 88;                    // draw height (matches Wolfdragon)
+  // Per-frame draw widths (aspect-correct at FRIEND_H=88)
+  const FR_RUN_DW  = [28, 35, 49, 39];  // running frames 1-4
+  const FR_THR_DW  = [54, 51, 59, 53];  // throwing frames 1-4
+  const FRIEND_W   = 60;                 // logical width for positioning
+  // Tiki cocktail – per-frame widths at TIKI_H=48
+  const TIKI_H = 48;
+  const TK_DW  = [31, 35, 32, 23, 30, 37]; // spin frames 1-6
+  const TIKI_W = 32;                    // logical width for hitbox
+  const TIKI_BREAK_H = 64, TIKI_BREAK_W = 99;
   const CAR_W    = 280, CAR_H    = 104;  // scaled for canvas
   const FB_W    = SPR_FB[0].length    * SC2;
   const FB_H    = SPR_FB.length       * SC2;
@@ -250,25 +258,24 @@
     APOC_FRONT:   { sh:'AP', sx:13,  sy:43,  sw:499, sh_:490 },
     APOC_SIDE:    { sh:'AP', sx:512, sy:26,  sw:491, sh_:510 },
     // Friend ally — running frames (sheet 'FR')
-    FR_RUN_0: { sh:'FR', sx:0,   sy:0, sw:186, sh_:368 },
-    FR_RUN_1: { sh:'FR', sx:186, sy:0, sw:186, sh_:368 },
-    FR_RUN_2: { sh:'FR', sx:372, sy:0, sw:186, sh_:368 },
-    FR_RUN_3: { sh:'FR', sx:558, sy:0, sw:185, sh_:368 },
-    // Friend ally — throwing frames (sheet 'FT')
-    FR_THR_0: { sh:'FT', sx:0,    sy:0, sw:350, sh_:579 },
-    FR_THR_1: { sh:'FT', sx:350,  sy:0, sw:350, sh_:579 },
-    FR_THR_2: { sh:'FT', sx:700,  sy:0, sw:350, sh_:579 },
-    FR_THR_3: { sh:'FT', sx:1050, sy:0, sw:350, sh_:579 },
-    // Tiki cocktail spin frames (sheet 'TK'), 3×3 grid of 341×341 cells
-    TK_0: { sh:'TK', sx:0,   sy:0,   sw:341, sh_:341 },
-    TK_1: { sh:'TK', sx:341, sy:0,   sw:341, sh_:341 },
-    TK_2: { sh:'TK', sx:682, sy:0,   sw:342, sh_:341 },
-    TK_3: { sh:'TK', sx:0,   sy:341, sw:341, sh_:341 },
-    TK_4: { sh:'TK', sx:341, sy:341, sw:341, sh_:341 },
-    TK_5: { sh:'TK', sx:682, sy:341, sw:342, sh_:341 },
-    TK_6: { sh:'TK', sx:0,   sy:682, sw:341, sh_:341 },
-    TK_7: { sh:'TK', sx:341, sy:682, sw:341, sh_:341 },
-    TK_BREAK: { sh:'TK', sx:682, sy:682, sw:342, sh_:342 }, // splash on impact
+    // Friend ally — running frames (individual sheets FR1-FR4, facing RIGHT → flip to face LEFT)
+    FR_RUN_0: { sh:'FR1', sx:0, sy:0, sw:115, sh_:356 },
+    FR_RUN_1: { sh:'FR2', sx:0, sy:0, sw:142, sh_:355 },
+    FR_RUN_2: { sh:'FR3', sx:0, sy:0, sw:198, sh_:354 },
+    FR_RUN_3: { sh:'FR4', sx:0, sy:0, sw:155, sh_:354 },
+    // Friend ally — throwing frames (individual sheets FT1-FT4)
+    FR_THR_0: { sh:'FT1', sx:0, sy:0, sw:204, sh_:330 },
+    FR_THR_1: { sh:'FT2', sx:0, sy:0, sw:191, sh_:330 },
+    FR_THR_2: { sh:'FT3', sx:0, sy:0, sw:222, sh_:330 },  // arm extended = launch frame
+    FR_THR_3: { sh:'FT4', sx:0, sy:0, sw:197, sh_:330 },
+    // Tiki cocktail — individual spin frames (TK1-TK6) + break frame (TKB)
+    TK_0: { sh:'TK1', sx:0, sy:0, sw:166, sh_:254 },
+    TK_1: { sh:'TK2', sx:0, sy:0, sw:178, sh_:248 },
+    TK_2: { sh:'TK3', sx:0, sy:0, sw:166, sh_:247 },
+    TK_3: { sh:'TK4', sx:0, sy:0, sw:109, sh_:233 },
+    TK_4: { sh:'TK5', sx:0, sy:0, sw:144, sh_:228 },
+    TK_5: { sh:'TK6', sx:0, sy:0, sw:178, sh_:234 },
+    TK_BREAK: { sh:'TKB', sx:0, sy:0, sw:379, sh_:245 }, // splash on impact
     // Car (sheet 'CR')
     CAR: { sh:'CR', sx:0, sy:0, sw:513, sh_:191 },
   };
@@ -487,7 +494,7 @@
 
   function loadSprites(cb) {
     let n = 0;
-    const total = 11;
+    const total = 23;
     function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
 
     // Sheet WD — WolfDragon side profile, white bg
@@ -544,23 +551,18 @@
     imgAP.onerror = done;
     imgAP.src = '/images/boss-apoc.png';
 
-    // Sheet FR — Friend ally running
-    const imgFR = new Image();
-    imgFR.onload = () => { SHEETS.FR = cropToCanvas(imgFR, 0, 0, imgFR.naturalWidth, imgFR.naturalHeight); done(); };
-    imgFR.onerror = done;
-    imgFR.src = '/images/friend-running.png';
-
-    // Sheet FT — Friend ally throwing
-    const imgFT = new Image();
-    imgFT.onload = () => { SHEETS.FT = cropToCanvas(imgFT, 0, 0, imgFT.naturalWidth, imgFT.naturalHeight); done(); };
-    imgFT.onerror = done;
-    imgFT.src = '/images/friend-throwing.png';
-
-    // Sheet TK — Tiki cocktail
-    const imgTK = new Image();
-    imgTK.onload = () => { SHEETS.TK = cropToCanvas(imgTK, 0, 0, imgTK.naturalWidth, imgTK.naturalHeight); done(); };
-    imgTK.onerror = done;
-    imgTK.src = '/images/tiki-cocktail.png';
+    // Friend ally — individual running frames (facing right in source; flipped in-game)
+    [['FR1','friend-run-1'],['FR2','friend-run-2'],['FR3','friend-run-3'],['FR4','friend-run-4'],
+     ['FT1','friend-throw-1'],['FT2','friend-throw-2'],['FT3','friend-throw-3'],['FT4','friend-throw-4'],
+     ['TK1','tiki-1'],['TK2','tiki-2'],['TK3','tiki-3'],
+     ['TK4','tiki-4'],['TK5','tiki-5'],['TK6','tiki-6'],
+     ['TKB','tiki-break'],
+    ].forEach(([key, file]) => {
+      const img = new Image();
+      img.onload = () => { SHEETS[key] = cropToCanvas(img, 0, 0, img.naturalWidth, img.naturalHeight); done(); };
+      img.onerror = done;
+      img.src = `/images/${file}.png`;
+    });
 
     // Sheet CR — Victory car
     const imgCR = new Image();
@@ -625,26 +627,31 @@
   // ─── friend ally sprite draw ──────────────────────────────────────────────
   const FR_RUN_SRECTS = [SRECTS.FR_RUN_0, SRECTS.FR_RUN_1, SRECTS.FR_RUN_2, SRECTS.FR_RUN_3];
   const FR_THR_SRECTS = [SRECTS.FR_THR_0, SRECTS.FR_THR_1, SRECTS.FR_THR_2, SRECTS.FR_THR_3];
-  const TK_SPIN_SRECTS = [SRECTS.TK_0,SRECTS.TK_1,SRECTS.TK_2,SRECTS.TK_3,
-                          SRECTS.TK_4,SRECTS.TK_5,SRECTS.TK_6,SRECTS.TK_7];
+  const TK_SPIN_SRECTS = [SRECTS.TK_0,SRECTS.TK_1,SRECTS.TK_2,SRECTS.TK_3,SRECTS.TK_4,SRECTS.TK_5];
 
-  function drawFriendSprite(state, runFrame, throwFrame, ox, oy) {
+  // Sprites face RIGHT in source.
+  // flipX=true → faces left (toward boss on left). flipX=false → faces right.
+  // ox is the anchor: when flipX=true, sprite draws to the left of ox; when false, to the right.
+  function drawFriendSprite(state, runFrame, throwFrame, flipX, ox, oy) {
     if (state === 'throwing') {
-      const frame = Math.min(throwFrame, 3);
-      drawSpr(FR_THR_SRECTS[frame], ox, oy, FRIEND_W, FRIEND_H, false);
+      const fi = Math.min(throwFrame, 3);
+      const dw = FR_THR_DW[fi];
+      drawSpr(FR_THR_SRECTS[fi], flipX ? ox - dw : ox, oy, dw, FRIEND_H, flipX);
     } else {
-      // running or idle — use running frames
-      drawSpr(FR_RUN_SRECTS[runFrame % 4], ox, oy, FRIEND_W, FRIEND_H, false);
+      const fi = runFrame % 4;
+      const dw = FR_RUN_DW[fi];
+      drawSpr(FR_RUN_SRECTS[fi], flipX ? ox - dw : ox, oy, dw, FRIEND_H, flipX);
     }
   }
 
   function drawTikiProj(p) {
-    if (!SHEETS.TK) return;
     if (p.tkBreaking) {
-      drawSpr(SRECTS.TK_BREAK, p.x, p.y, TIKI_W * 2, TIKI_H * 2, false);
+      if (!SHEETS.TKB) return;
+      drawSpr(SRECTS.TK_BREAK, p.x, p.y, TIKI_BREAK_W, TIKI_BREAK_H, false);
     } else {
-      const frame = TK_SPIN_SRECTS[p.tkFrame % 8];
-      drawSpr(frame, p.x, p.y, TIKI_W, TIKI_H, false);
+      const fi = p.tkFrame % 6;
+      if (!SHEETS['TK'+(fi+1)]) return;
+      drawSpr(TK_SPIN_SRECTS[fi], p.x, p.y, TK_DW[fi], TIKI_H, false);
     }
   }
 
@@ -786,6 +793,7 @@
   // "67"      any time during play → deactivates all active codes
   let friendAlly = null;   // active friend state object, or null
   let victoryCarX = 0;     // x position of car on victory screen
+  let victoryCarDelay = 0; // countdown before car starts driving
   let godMode  = false;
   let babyMode = false;
   let godCheatBuf = '';
@@ -1923,9 +1931,12 @@
     if (apocE && !gs.friendTriggered && apocE.phase === 'charge') {
       if (apocE.hp <= apocE.maxHp * 0.5) {
         gs.friendTriggered = true;
+        // Enter from right side
         friendAlly = { x: W + FRIEND_W + 10, y: ROW_Y[0], row: 0,
           state: 'entering', runFrame: 0, throwFrame: 0, frameTimer: 0,
-          throwTimer: CFG.friendThrowRate, targetX: W - 130 };
+          throwTimer: CFG.friendThrowRate, targetX: W - 140,
+          facing: -1,  // starts running left
+          wanderT: 0 };
         msg = '✦ A FRIEND ARRIVES! ✦'; msgT = 160;
         burst(W - 60, ROW_Y[0] + FRIEND_H/2, '#ff9900', 24, 7);
       }
@@ -1935,49 +1946,79 @@
       const fa = friendAlly;
       fa.frameTimer++;
 
-      // Track apoc's row to stay aligned for straight throws
-      const apocRow = apocE.row;
-      const targetY  = ROW_Y[apocRow];
+      const apocCX  = apocE.x + APOC_W / 2;
+      const targetY = ROW_Y[apocE.row];
+      fa.row = apocE.row;
+      fa.y  += (targetY - fa.y) * 0.08;
 
       if (fa.state === 'entering') {
+        // Run left onto screen toward initial position
         fa.x -= 3.5;
-        fa.y += (targetY - fa.y) * 0.07;
+        fa.facing = -1;
         if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
-        if (fa.x <= fa.targetX) { fa.x = fa.targetX; fa.state = 'idle'; }
+        if (fa.x <= fa.targetX) { fa.x = fa.targetX; fa.state = 'idle'; fa.wanderT = 80; }
+
       } else if (fa.state === 'idle') {
-        fa.y += (targetY - fa.y) * 0.08;
-        fa.row = apocRow;
-        if (fa.frameTimer % 25 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+        // Move toward current targetX (wander)
+        const dx = fa.targetX - fa.x;
+        if (Math.abs(dx) > 4) {
+          const spd = 2.8;
+          fa.x += dx > 0 ? spd : -spd;
+          fa.facing = dx > 0 ? 1 : -1;           // face direction of movement
+          if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+        } else {
+          fa.x = fa.targetX;
+          fa.facing = apocCX < fa.x ? -1 : 1;   // face the boss while standing
+          if (fa.frameTimer % 28 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+          // Periodically pick a new random wander position
+          fa.wanderT--;
+          if (fa.wanderT <= 0) {
+            // Stay on the opposite side of the screen from Apoc when possible
+            const apocOnLeft = apocCX < W / 2;
+            const minX = apocOnLeft ? Math.round(W * 0.55) : 50;
+            const maxX = apocOnLeft ? W - 50 : Math.round(W * 0.45);
+            fa.targetX = minX + Math.random() * (maxX - minX);
+            fa.wanderT = 70 + Math.random() * 60 | 0;
+          }
+        }
         fa.throwTimer--;
         if (fa.throwTimer <= 0) {
+          fa.facing = apocCX < fa.x ? -1 : 1;  // face boss for throw
           fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
           fa.throwTimer = CFG.friendThrowRate;
         }
+
       } else if (fa.state === 'throwing') {
-        // Advance one throw frame every 7 game frames
         if (fa.frameTimer % 7 === 0) {
           fa.throwFrame++;
-          // Frame 2 = arm fully extended = launch cocktail
+          // Frame 2 = arm fully extended = launch
           if (fa.throwFrame === 2) {
-            const apocHpTotal = apocE.maxHp;
-            const dmg = apocHpTotal * (CFG.friendCocktailDmgPct / 100);
-            const ckX = fa.x - TIKI_W;
-            const ckY = fa.y + FRIEND_H * 0.30;
+            const dmg = apocE.maxHp * (CFG.friendCocktailDmgPct / 100);
+            const throwDW = FR_THR_DW[2];
+            // Facing left → arm exits on the left side of the sprite (flipX anchor = fa.x)
+            // Facing right → arm exits on the right side (fa.x + throwDW)
+            const ckX = fa.facing < 0 ? fa.x - TIKI_W : fa.x + throwDW;
+            const ckY = fa.y + FRIEND_H * 0.28;
             projs.push({
-              x: ckX, y: ckY, vx: -7, vy: 0,
-              row: apocRow, dmg, owner: 'friend', isTiki: true,
+              x: ckX, y: ckY, vx: fa.facing < 0 ? -7 : 7, vy: 0,
+              row: fa.row, dmg, owner: 'friend', isTiki: true,
               tkFrame: 0, tkTimer: 0, tkBreaking: false, tkBreakTimer: 0,
               w: TIKI_W, h: TIKI_H, life: 500
             });
           }
           if (fa.throwFrame >= 4) {
             fa.throwFrame = 0; fa.state = 'idle'; fa.frameTimer = 0;
+            // Pick new wander target after throw
+            fa.targetX = 60 + Math.random() * (W - 180);
+            fa.wanderT = 40 + Math.random() * 40 | 0;
           }
         }
       }
+
     } else if (friendAlly && !apocE) {
-      // Apoc defeated — friend runs off screen right
+      // Apoc defeated — friend runs off to the right
       const fa = friendAlly;
+      fa.facing = 1;
       fa.x += 4;
       if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
       fa.frameTimer++;
@@ -2318,7 +2359,8 @@
     const carY = 290;
     const carOnScreen = SHEETS.CR && victoryCarX > -CAR_W - 10;
     if (carOnScreen) {
-      victoryCarX -= 2.5;
+      if (victoryCarDelay > 0) { victoryCarDelay--; }
+      else { victoryCarX -= 2.5; }
       drawSpr(SRECTS.CAR, victoryCarX, carY, CAR_W, CAR_H, false);
     } else {
       drawWDSprite(W/2 - WD_W/2, carY, false, false);
@@ -2535,9 +2577,10 @@
   }
 
   function drawFriendAlly() {
-    if (!friendAlly || !SHEETS.FR) return;
+    if (!friendAlly || !SHEETS.FR1) return;
     const fa = friendAlly;
-    drawFriendSprite(fa.state, fa.runFrame, fa.throwFrame, fa.x, fa.y);
+    const flipX = (fa.facing || -1) < 0; // facing=-1 means left → flipX=true
+    drawFriendSprite(fa.state, fa.runFrame, fa.throwFrame, flipX, fa.x, fa.y);
   }
 
   // ─── draw player ──────────────────────────────────────────────────────────
@@ -3238,6 +3281,7 @@
     PL.webbed=0;
     friendAlly = null;
     victoryCarX = W + CAR_W;
+    victoryCarDelay = 60; // ~1 second before car starts moving
     startWave();
   }
 
