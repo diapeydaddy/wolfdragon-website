@@ -20,10 +20,95 @@
 
   const bgMusic=new Audio('audio/Rise_VideoGame_V1.mp3');
   bgMusic.loop=true; bgMusic.volume=0.45;
-  let musicStarted=false;
-  function tryStartMusic(){ if(musicStarted)return; musicStarted=true; bgMusic.play().catch(()=>{}); }
+  let musicStarted=false, musicMuted=false;
+  function tryStartMusic(){
+    if(musicStarted) return;
+    bgMusic.play().then(()=>{ musicStarted=true; }).catch(()=>{ /* will retry on next interaction */ });
+  }
+  function toggleMusic(){
+    musicMuted=!musicMuted;
+    if(musicMuted){ bgMusic.pause(); } else { bgMusic.play().catch(()=>{}); }
+  }
+  window.addEventListener('keydown', e=>{ if(e.code==='KeyM') toggleMusic(); });
   window.addEventListener('keydown',tryStartMusic);
   canvas.addEventListener('click',tryStartMusic);
+
+  // ─── SFX Engine (Web Audio synthesis — no files needed) ───────────────────
+  const SFX = (function(){
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const resume = ()=>{ if(ac.state==='suspended') ac.resume(); };
+    window.addEventListener('keydown', resume, {passive:true});
+    canvas.addEventListener('click', resume, {passive:true});
+    const mast = ac.createGain(); mast.gain.value = 0.48; mast.connect(ac.destination);
+
+    function osc(freq, type, dur, vol, freqEnd){
+      try {
+        const g=ac.createGain(); g.gain.setValueAtTime(Math.min(vol,1),ac.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);
+        const o=ac.createOscillator(); o.type=type; o.frequency.setValueAtTime(freq,ac.currentTime);
+        if(freqEnd) o.frequency.exponentialRampToValueAtTime(Math.max(freqEnd,10),ac.currentTime+dur);
+        o.connect(g); g.connect(mast); o.start(ac.currentTime); o.stop(ac.currentTime+dur);
+      } catch(e){}
+    }
+    function noise(dur, vol, bpFreq, bpFreqEnd, bpQ){
+      try {
+        const len=Math.ceil(ac.sampleRate*Math.min(dur,2));
+        const buf=ac.createBuffer(1,len,ac.sampleRate); const d=buf.getChannelData(0);
+        for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+        const src=ac.createBufferSource(); src.buffer=buf;
+        const f=ac.createBiquadFilter(); f.type='bandpass';
+        f.frequency.setValueAtTime(bpFreq,ac.currentTime);
+        if(bpFreqEnd) f.frequency.exponentialRampToValueAtTime(Math.max(bpFreqEnd,20),ac.currentTime+dur);
+        f.Q.value=bpQ||1;
+        const g=ac.createGain(); g.gain.setValueAtTime(Math.min(vol,1),ac.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);
+        src.connect(f); f.connect(g); g.connect(mast); src.start(ac.currentTime); src.stop(ac.currentTime+dur);
+      } catch(e){}
+    }
+    const at = (ms,fn)=>setTimeout(fn,ms);
+    return {
+      // Player
+      attack(){ noise(0.14,0.65,4500,800,0.35); osc(900,'sawtooth',0.10,0.5,120); at(30,()=>noise(0.08,0.4,3000,600,0.5)); },
+      block(){ osc(420,'square',0.10,0.6,900); osc(210,'square',0.14,0.5,420); noise(0.08,0.45,2200,4000,3); },
+      hurt(){ osc(160,'sawtooth',0.28,0.7,55); noise(0.14,0.4,450,150,1); },
+      spell(){ osc(240,'sawtooth',0.28,0.45,900); noise(0.22,0.3,1600,3000,1.2); },
+      pickup(){ osc(523,'sine',0.12,0.35,784); at(90,()=>osc(784,'sine',0.12,0.3,1047)); },
+      // Active abilities
+      lunge(){ noise(0.07,0.4,2500,500,0.4); at(75,()=>{ osc(90,'sawtooth',0.22,0.8,25); noise(0.14,0.5,500,200,1); }); },
+      souldrain(){ osc(110,'sawtooth',0.55,0.6,55); osc(220,'sine',0.45,0.35,110); noise(0.4,0.3,800,200,2); },
+      cleave(){ noise(0.28,0.6,1400,300,0.5); osc(280,'sawtooth',0.22,0.4,55); },
+      lightning(){ for(let i=0;i<6;i++) at(i*50,()=>{ noise(0.06,0.55,3500+Math.random()*2500,6000,0.25); osc(500+Math.random()*500,'square',0.05,0.4); }); },
+      bloodlust(){ osc(55,'sine',0.18,0.9,35); at(200,()=>osc(55,'sine',0.12,0.6,35)); noise(0.12,0.3,300,100,1); },
+      voidball(){ osc(70,'sawtooth',0.50,0.65,25); osc(380,'sine',0.32,0.3,750); noise(0.22,0.3,650,200,1.8); },
+      dragonfury(){ osc(55,'sawtooth',0.70,1.0,18); osc(165,'square',0.45,0.55,35); noise(0.40,0.65,700,200,0.5); },
+      icenova(){ for(let i=0;i<7;i++) at(i*38,()=>osc(1100+i*180,'sine',0.20,0.28,1600+i*90)); noise(0.32,0.25,5000,2000,3); },
+      firewall(){ noise(0.45,0.55,550,1800,0.6); osc(180,'sawtooth',0.38,0.45,600); },
+      deathmark(){ osc(95,'sawtooth',0.55,0.55,145); osc(48,'sine',0.65,0.45,75); },
+      whirlwind(){ for(let i=0;i<4;i++) at(i*80,()=>noise(0.22,0.4,600+i*250,900+i*150,0.5)); osc(260,'sine',0.55,0.35,80); },
+      mirrorshield(){ osc(880,'sine',0.25,0.45,1320); at(60,()=>osc(1100,'sine',0.20,0.35,1760)); },
+      thornwall(){ noise(0.14,0.4,1900,600,2); osc(380,'sawtooth',0.14,0.3,760); },
+      holybarrier(){ osc(523,'sine',0.65,0.55,1047); osc(659,'sine',0.55,0.4,1047); at(80,()=>osc(784,'sine',0.45,0.3,1047)); },
+      explodeshield(){ osc(75,'sawtooth',0.45,0.9,18); noise(0.45,0.75,380,100,0.4); at(110,()=>noise(0.22,0.5,200,80,0.3)); },
+      // Enemies
+      enemyHit(){ noise(0.07,0.28,900,400,1.2); },
+      enemyDie(){ noise(0.20,0.45,280,80,0.8); osc(200,'sawtooth',0.16,0.3,35); },
+      gruntShoot(){ osc(280,'sawtooth',0.08,0.35,80); noise(0.06,0.25,1200,400,1); },
+      archerShoot(){ osc(340,'sawtooth',0.09,0.38,90); noise(0.05,0.22,2400,900,2); },
+      bruteSwing(){ osc(75,'sawtooth',0.16,0.75,22); noise(0.20,0.55,380,150,0.7); },
+      gruntMelee(){ osc(110,'sine',0.10,0.5,38); noise(0.08,0.3,550,200,1); },
+      // Spider boss
+      spiderAttack(){ noise(0.28,0.5,2800,500,0.4); osc(750,'sawtooth',0.22,0.45,1100); },
+      spiderDive(){ osc(380,'sawtooth',0.35,0.55,850); noise(0.18,0.35,1200,400,1); },
+      spiderLunge(){ noise(0.10,0.45,2000,400,0.5); at(90,()=>{ osc(100,'sawtooth',0.25,0.8,28); noise(0.15,0.5,500,180,1); }); },
+      // Lich boss
+      lichAttack(){ osc(115,'sawtooth',0.55,0.65,55); osc(230,'sawtooth',0.42,0.4,80); noise(0.25,0.3,900,300,2); },
+      lichTeleport(){ osc(800,'sine',0.28,0.45,95); at(80,()=>osc(180,'sine',0.28,0.5,600)); },
+      lichSoulpull(){ osc(80,'sawtooth',0.6,0.55,40); noise(0.5,0.4,600,200,1.5); },
+      lichDarkness(){ osc(60,'sine',0.8,0.5,30); noise(0.6,0.35,400,100,2); },
+      // Apocalyptic boss
+      apocAttack(){ osc(38,'sawtooth',0.85,1.0,18); osc(75,'square',0.65,0.7,28); noise(0.55,0.65,280,80,0.3); },
+      apocQuake(){ osc(45,'sawtooth',0.55,0.9,20); noise(0.45,0.7,180,60,0.3); at(200,()=>{ osc(35,'sawtooth',0.35,0.8,15); noise(0.3,0.6,150,50,0.3); }); },
+      apocLunge(){ noise(0.12,0.5,2200,400,0.4); at(100,()=>{ osc(55,'sawtooth',0.3,0.9,18); noise(0.25,0.7,350,100,0.7); }); },
+    };
+  })();
 
   const W = 800, H = 480;
   canvas.width = W; canvas.height = H;
@@ -150,15 +235,15 @@
     // Brute — front view (new image 5, white bg)
     BRUTE:        { sh:'BR', sx:164, sy:144, sw:742, sh_:694 },
     // Spider boss — front + profile (new image 3)
-    // sy=177: skips title text band (row gap at y=124-176 confirms sprite starts at 177)
-    SPIDER_FRONT: { sh:'SP', sx:0,   sy:177, sw:509, sh_:620 },
-    SPIDER_SIDE:  { sh:'SP', sx:584, sy:177, sw:386, sh_:613 },
+    // Crop starts at y=160 (sprite begins at y=177 in original; 177-160=17)
+    SPIDER_FRONT: { sh:'SP', sx:0,   sy:17,  sw:509, sh_:620 },
+    SPIDER_SIDE:  { sh:'SP', sx:584, sy:17,  sw:386, sh_:613 },
     // Lich boss — front + profile (new image 2)
-    // sy=136: skips title text band (row gap at y=52-135 confirms sprite starts at 136)
-    LICH_FRONT:   { sh:'LI', sx:61,  sy:136, sw:430, sh_:543 },
-    LICH_SIDE:    { sh:'LI', sx:575, sy:136, sw:410, sh_:543 },
+    // Crop starts at y=120 (sprite begins at y=136 in original; 136-120=16)
+    LICH_FRONT:   { sh:'LI', sx:61,  sy:16,  sw:430, sh_:543 },
+    LICH_SIDE:    { sh:'LI', sx:575, sy:16,  sw:410, sh_:543 },
     // Apoc boss — front + profile (new image 1)
-    // sy=0: no clean row gap; nearBlack in removeBgCheckerboard handles the text pixels
+    // Crop starts at y=80 (sprite begins ~here); sy=0 maps to crop origin
     APOC_FRONT:   { sh:'AP', sx:0,   sy:0,   sw:514, sh_:612 },
     APOC_SIDE:    { sh:'AP', sx:575, sy:0,   sw:428, sh_:615 },
   };
@@ -255,11 +340,12 @@
   // All removals are gate-kept by a corner flood-fill so interior dark
   // pixels of the character that happen to match bg colours are protected.
   function removeBgCheckerboard(img, tolDark) {
+    const [NW, NH] = _srcDims(img);
     const oc = document.createElement('canvas');
-    oc.width = img.naturalWidth; oc.height = img.naturalHeight;
+    oc.width = NW; oc.height = NH;
     const ox = oc.getContext('2d');
     ox.drawImage(img, 0, 0);
-    const W2 = oc.width, H2 = oc.height;
+    const W2 = NW, H2 = NH;
     const id = ox.getImageData(0, 0, W2, H2);
     const d  = id.data;
     // Sample dark bg colour from top-left corner area
@@ -284,19 +370,75 @@
       const r=d[pi], g=d[pi+1], b=d[pi+2];
       const lum = r*0.3 + g*0.59 + b*0.11;
       const nearDark  = Math.max(Math.abs(r-br),Math.abs(g-bg2),Math.abs(b-bb2)) <= tolDark;
-      // Light checker squares are desaturated grey: medium luminance, R≈G≈B
-      const greyTile  = lum > 60 && lum < 190
+      // Light checker squares: desaturated grey, extended upper bound to catch near-white greys
+      const greyTile  = lum > 60 && lum < 200
                         && Math.abs(r-g) < 22 && Math.abs(r-b) < 28 && Math.abs(g-b) < 22;
-      const nearWhite = r>200 && g>200 && b>200;
-      // Near-black: catches black title/label text (lum≈0) left by the flood fill.
-      // Character outline pixels are dark-coloured (~lum 30+) so they're safe.
-      const nearBlack = lum < 10;
-      if(nearDark || greyTile || nearWhite || nearBlack || d[pi+3]===0){
+      // Near-black: raised to 30 to catch dark anti-aliased label/header fuzz
+      // that was slipping past the original lum<10 threshold.
+      const nearBlack = lum < 30;
+      if(nearDark || greyTile || nearBlack || d[pi+3]===0){
         d[pi+3]=0;
         const x=idx%W2, y=(idx/W2)|0;
         enq(x-1,y); enq(x+1,y); enq(x,y-1); enq(x,y+1);
       }
     }
+
+    // Pass 2 — pure-white sweep.
+    // Removes pixels that are literal uncoloured background white (R,G,B all ≥ 245).
+    // This catches enclosed white pockets the flood can't reach (e.g. spider's chest
+    // cavity) without touching cream skulls, off-white bones, or tinted teeth —
+    // all of which have at least one channel below 245.
+    for(let i = 0; i < d.length; i += 4){
+      if(d[i+3] === 0) continue;
+      if(d[i] >= 245 && d[i+1] >= 245 && d[i+2] >= 245) d[i+3] = 0;
+    }
+
+    ox.putImageData(id, 0, 0);
+    return oc;
+  }
+
+  // removeSmallClusters: connected-component analysis — removes any opaque island
+  // smaller than minSize pixels.  Handles multi-pixel dark scatter dots that
+  // survive per-pixel despeckle (they have internal neighbours but are isolated
+  // from the main character body).  O(N) BFS, runs once on load.
+  function removeSmallClusters(oc, minSize) {
+    const ox = oc.getContext('2d');
+    const W2 = oc.width, H2 = oc.height;
+    const id = ox.getImageData(0, 0, W2, H2);
+    const d  = id.data;
+    const label = new Int32Array(W2 * H2); // 0=unvisited opaque, -1=transparent
+    for(let i = 0; i < W2*H2; i++) label[i] = d[i*4+3] > 0 ? 0 : -1;
+
+    const bfsQ = new Int32Array(W2 * H2);
+    const comps = []; // each entry = array of pixel indices in that component
+
+    for(let seed = 0; seed < W2*H2; seed++){
+      if(label[seed] !== 0) continue;
+      const comp = [];
+      const cid  = comps.length + 1;
+      let head = 0, tail = 0;
+      bfsQ[tail++] = seed;
+      label[seed] = cid;
+      while(head < tail){
+        const idx = bfsQ[head++];
+        comp.push(idx);
+        const x = idx % W2, y = (idx / W2) | 0;
+        const nb = [x>0?idx-1:-1, x<W2-1?idx+1:-1, y>0?idx-W2:-1, y<H2-1?idx+W2:-1];
+        for(let k = 0; k < 4; k++){
+          const ni = nb[k];
+          if(ni < 0 || label[ni] !== 0) continue;
+          label[ni] = cid;
+          bfsQ[tail++] = ni;
+        }
+      }
+      comps.push(comp);
+    }
+
+    for(const comp of comps){
+      if(comp.length < minSize)
+        for(const idx of comp) d[idx*4+3] = 0;
+    }
+
     ox.putImageData(id, 0, 0);
     return oc;
   }
@@ -304,6 +446,19 @@
   // ── Sheet canvases (populated by loadSprites) ─────────────────────────────
   const SHEETS = { WD: null, SM: null, GR: null, BR: null, SP: null, LI: null, AP: null };
   let spritesReady = false;
+
+  // Crop a source image to a canvas containing only the specified rectangle.
+  // Used to discard small-sprite animation rows and title text before bg removal.
+  function cropToCanvas(img, sx, sy, sw, sh) {
+    const oc = document.createElement('canvas');
+    oc.width = sw; oc.height = sh;
+    oc.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    return oc;
+  }
+
+  // Allow removeBgCheckerboard to accept a pre-cropped canvas (has .width/.height)
+  // as well as a raw Image (has .naturalWidth/.naturalHeight).
+  function _srcDims(src){ return [src.naturalWidth||src.width, src.naturalHeight||src.height]; }
 
   function loadSprites(cb) {
     let n = 0;
@@ -334,21 +489,42 @@
     imgBR.onerror = done;
     imgBR.src = '/images/new image 5.png';
 
-    // Sheet SP — Spider/Insectoid boss (dark corners + white sprite area)
+    // Boss sheets: crop to large-sprite-only region BEFORE bg removal.
+    // This discards the small animation-sprite rows and label text at the bottom
+    // so the flood-fill and cluster algorithms only see the two large sprites.
+    // All three source images are 1024×1024; sprites split at x=512.
+    //   Spider: large sprites occupy y=0..800  (small rows start ~797)
+    //   Lich:   large sprites occupy y=0..620  (small rows start ~615)
+    //   Apoc:   large sprites occupy y=0..615  (small rows start ~612)
+    // SRECT sx/sy values below remain correct because we crop from (0,0).
+
+    // Sheet SP — Spider/Insectoid boss
     const imgSP = new Image();
-    imgSP.onload = () => { SHEETS.SP = removeBgCheckerboard(imgSP, 15); done(); };
+    imgSP.onload = () => {
+      const c = cropToCanvas(imgSP, 0, 160, 1024, 640);
+      SHEETS.SP = removeSmallClusters(removeBgCheckerboard(c, 15), 4);
+      done();
+    };
     imgSP.onerror = done;
     imgSP.src = '/images/new image 3.png';
 
-    // Sheet LI — Lich/Ghost boss (dark corners + white sprite area)
+    // Sheet LI — Lich/Ghost boss
     const imgLI = new Image();
-    imgLI.onload = () => { SHEETS.LI = removeBgCheckerboard(imgLI, 15); done(); };
+    imgLI.onload = () => {
+      const c = cropToCanvas(imgLI, 0, 120, 1024, 560);
+      SHEETS.LI = removeSmallClusters(removeBgCheckerboard(c, 15), 4);
+      done();
+    };
     imgLI.onerror = done;
     imgLI.src = '/images/new image 2.png';
 
-    // Sheet AP — Apoc boss (dark corners + white sprite area)
+    // Sheet AP — Apoc boss
     const imgAP = new Image();
-    imgAP.onload = () => { SHEETS.AP = removeBgCheckerboard(imgAP, 15); done(); };
+    imgAP.onload = () => {
+      const c = cropToCanvas(imgAP, 0, 80, 1024, 620);
+      SHEETS.AP = removeSmallClusters(removeBgCheckerboard(c, 15), 4);
+      done();
+    };
     imgAP.onerror = done;
     imgAP.src = '/images/new image 1.png';
   }
@@ -410,8 +586,8 @@
   const WD_DEFAULTS = {
     playerHp:140, playerSpeed:4, weaponDmg:25, spellDmg:60, atkRange:100, shMaxHp:3,
     spiderHp:625, spiderDmg:18, spiderSpeed:0.6, spiderCd:110,
-    lichHp:500,   lichDmg:22,   lichSpeed:0.4,  lichCd:90,
-    apocHp:1050,  apocDmg:30,   apocSpeed:0.25, apocCd:45,
+    lichHp:750,   lichDmg:22,   lichSpeed:0.4,  lichCd:90,
+    apocHp:1575,  apocDmg:38,   apocSpeed:0.25, apocCd:45,
     bossHpScaling:60,
     gruntHp:40,  gruntDmg:10, gruntSpeed:0.9,
     archerHp:25, archerDmg:8, archerSpeed:0.55,
@@ -419,13 +595,25 @@
     cdLunge:360, cdSouldrain:300, cdCleave:420, cdLightning:480, cdBloodlust:600,
     cdVoidslash:480, cdDragonfury:600, cdIcenova:480, cdFirewall:420, cdDeathmark:540,
     cdWhirlwind:540, cdMirrorshield:360, cdThornwall:480, cdHolybarrier:600, cdExplodeshield:540,
-    multLunge:1.2, multCleave:1.2, multLightning:0.8, multVoidslash:2.0,
+    multLunge:2.0, multCleave:1.2, multLightning:0.35, multVoidslash:2.0,
     multDragonfury:1.8, multFirewall:1.2,
-    healSouldrain:15, bloodlustDuration:300, dmgDeathmark:80,
-    dmgThornwall:35, dmgExplodeshield:60, freezeIcenova:90,
+    lungeIframes:120,
+    healSouldrain:15, bloodlustDuration:300, bloodlustAtkMult:0.38, dmgDeathmark:80,
+    dmgThornwall:35, dmgExplodeshield:60, freezeIcenova:180,
+    holyBarrierDur:180,
+    whirlwindHpPct:0.05, whirlwindFreeze:60,
+    flameshieldOrbs:4, flameshieldDmgPct:0.30,
+    sprayDmgPct:0.45, novaDmgPct:0.28,
+    mirrorDmgMult:2.0,
+    shieldPipT1:1, shieldPipT2:2,
   };
   const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
   const CFG = Object.assign({}, WD_DEFAULTS, _wdSaved);
+  // Reload CFG in-place (used by cheat codes to switch config presets)
+  function reloadCFG(key) {
+    const saved = JSON.parse(localStorage.getItem(key) || '{}');
+    Object.assign(CFG, WD_DEFAULTS, saved);
+  }
 
   const ENEMY_TYPES = {
     grunt: {
@@ -498,6 +686,7 @@
     thornActive: false,
     explodeShieldActive: false,
     bloodlustT: 0,
+    holyBarrierT: 0,
     webbed: 0,
     get w()  { return WD_W; },
     get h()  { return WD_H; },
@@ -511,6 +700,7 @@
 
   // ─── input ────────────────────────────────────────────────────────────────
   const K={}, J={};
+  window._WD_K = K; window._WD_J = J; // exposed for mobile touch controls
   window.addEventListener('keydown', e=>{
     if(!K[e.code]) J[e.code]=true;
     K[e.code]=true;
@@ -518,6 +708,48 @@
   });
   window.addEventListener('keyup', e=>{ K[e.code]=false; });
   function eat(c){ if(J[c]){J[c]=false;return true;} return false; }
+
+  // ─── cheat codes ──────────────────────────────────────────────────────────
+  // "bryan" within first 10s → god mode (invincible)
+  // "baby"  within first 10s → baby mode (loads wolfdragon_config_baby settings)
+  // "67"    any time during play → deactivates all active codes
+  let godMode  = false;
+  let babyMode = false;
+  let godCheatBuf = '';
+  let deact67Buf  = '';
+  let godCheatDeadline = 0; // performance.now() timestamp
+  window.addEventListener('keydown', e => {
+    if(gs.screen !== 'playing' && gs.screen !== 'reward' && gs.screen !== 'itemreward') return;
+    const ch = e.key.toLowerCase();
+    if(ch.length !== 1) return; // ignore shift, ctrl, arrows etc.
+
+    // ── 67 deactivate (always active, no deadline) ──────────────────────────
+    deact67Buf = (deact67Buf + ch).slice(-2);
+    if(deact67Buf === '67') {
+      deact67Buf = '';
+      if(godMode || babyMode) {
+        godMode = false;
+        if(babyMode) { babyMode = false; reloadCFG('wolfdragon_config'); }
+        burst(PL.cx, PL.cy, '#888888', 20, 5);
+        msg = '✕ CODES OFF'; msgT = 150;
+      }
+      return;
+    }
+
+    // ── Timed cheats (within first 10s of game start) ───────────────────────
+    if(performance.now() > godCheatDeadline) { godCheatBuf = ''; return; }
+    godCheatBuf = (godCheatBuf + ch).slice(-5); // keep last 5 chars (max code length)
+    if(godCheatBuf.endsWith('bryan')) {
+      godMode = true; godCheatBuf = '';
+      burst(PL.cx, PL.cy, '#ffdd00', 40, 10);
+      msg = '✦ BRYAN MODE ✦'; msgT = 180;
+    } else if(godCheatBuf.endsWith('baby')) {
+      babyMode = true; godCheatBuf = '';
+      reloadCFG('wolfdragon_config_baby');
+      burst(PL.cx, PL.cy, '#66ccff', 35, 8);
+      msg = '🍼 BABY MODE'; msgT = 180;
+    }
+  });
 
   // ─── entity lists ─────────────────────────────────────────────────────────
   let enemies=[], projs=[], parts=[], drops=[], obstacles=[], flameshields=[];
@@ -656,8 +888,10 @@
   // ─── combat ───────────────────────────────────────────────────────────────
   function doAttack() {
     if(PL.atk) return;
-    PL.atkTimer  = PL.atkDur;
-    PL.slashTimer = PL.atkDur;
+    const dur = PL.bloodlustT > 0 ? Math.ceil(PL.atkDur * CFG.bloodlustAtkMult) : PL.atkDur;
+    PL.atkTimer  = dur;
+    PL.slashTimer = dur;
+    SFX.attack();
     const box = {
       x: PL.facing>0 ? PL.x+PL.w-10 : PL.x-PL.atkRange+10,
       y: ROW_Y[PL.row]-6,
@@ -681,6 +915,7 @@
   function doSpell() {
     if(gs.spellUses<=0) return;
     gs.spellUses--;
+    SFX.spell();
     const tier = gs.spellUpgrades || 0;
     const spY  = ROW_Y[PL.row] + PL.h/2 - SP_H/2;
 
@@ -694,15 +929,16 @@
         const tr = Math.max(0, Math.min(ROWS-1, PL.row + off));
         projs.push({x:PL.cx, y:ROW_Y[tr]+PL.h/2-SP_H/2,
           vx:PL.facing*10, vy:off*1.5, row:tr,
-          dmg:Math.round(PL.spell.dmg*0.65), owner:'player',
+          dmg:Math.round(PL.spell.dmg*CFG.sprayDmgPct), owner:'player',
           spr:SPR_SPELL, w:SP_W, h:SP_H, life:140});
       });
     }
 
-    // Tier 2+: Flameshield — 4 orbiting fire orbs (don't stack)
+    // Tier 2+: Flameshield — orbiting fire orbs (don't stack)
     if(tier >= 2 && flameshields.length === 0){
-      for(let i=0;i<4;i++){
-        flameshields.push({angle:(i/4)*Math.PI*2, dmg:Math.round(PL.spell.dmg*0.5)});
+      const n = Math.max(1, Math.round(CFG.flameshieldOrbs));
+      for(let i=0;i<n;i++){
+        flameshields.push({angle:(i/n)*Math.PI*2, dmg:Math.round(PL.spell.dmg*CFG.flameshieldDmgPct)});
       }
     }
 
@@ -712,7 +948,7 @@
         if(r===PL.row) continue; // already fired above
         projs.push({x:PL.cx, y:ROW_Y[r]+PL.h/2-SP_H/2,
           vx:PL.facing*9, vy:0, row:r,
-          dmg:Math.round(PL.spell.dmg*0.5), owner:'player',
+          dmg:Math.round(PL.spell.dmg*CFG.novaDmgPct), owner:'player',
           spr:SPR_SPELL, w:SP_W, h:SP_H, life:150});
       }
     }
@@ -721,6 +957,7 @@
   }
 
   function hitEnemy(e,dmg) {
+    SFX.enemyHit();
     e.hp-=dmg; e.flashT=9;
     burst(e.x+ENEMY_TYPES[e.type].w/2, e.y+ENEMY_TYPES[e.type].h/2, '#ff4422', 9);
     if(PL.soulDrainActive){ PL.soulDrainActive=false; gs.hp=Math.min(gs.maxHp,gs.hp+CFG.healSouldrain); burst(PL.cx,PL.cy,'#8800ff',10); }
@@ -728,6 +965,7 @@
   }
 
   function killEnemy(e) {
+    SFX.enemyDie();
     if(PL.deathMarkActive){ PL.deathMarkActive=false; const kcx=e.x+ENEMY_TYPES[e.type].w/2,kcy=e.y+ENEMY_TYPES[e.type].h/2; enemies.forEach(e2=>{ if(e2!==e) hitEnemy(e2,CFG.dmgDeathmark); }); burst(kcx,kcy,'#ff8800',50,14); }
     e.hp=0; gs.score+=e.score;
     const def = ENEMY_TYPES[e.type];
@@ -742,100 +980,125 @@
   let blockMsg = 0;
 
   function hurtPlayer(dmg, isBoss) {
-    if(PL.sh) {
-      const cost = isBoss ? 2 : 1;
-      PL.shHp = Math.max(0, PL.shHp - cost);
-      burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
-      blockMsg = 40;
-      if(PL.shHp <= 0) PL.shBroken = true;
-      if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgThornwall)); burst(PL.cx,PL.cy,'#44ff44',20); }
-      if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgExplodeshield)); burst(W/2,H/2,'#ff8800',50,14); }
+    if(godMode) return; // invincible
+    if(PL.sh || PL.iframes > 0 && PL.shBroken) {
+      // Shield is active OR shield just broke this volley (iframes grace period).
+      // Either way: fully absorb — no HP damage.
+      if(PL.sh) {
+        const cost = isBoss ? 2 : 1;
+        PL.shHp = Math.max(0, PL.shHp - cost);
+        burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
+        SFX.block();
+        blockMsg = 40;
+        if(PL.shHp <= 0) PL.shBroken = true;
+        // Grace period: prevents the same volley dealing HP damage after shield breaks.
+        PL.iframes = Math.max(PL.iframes, 30);
+        if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgThornwall)); burst(PL.cx,PL.cy,'#44ff44',20); }
+        if(PL.explodeShieldActive){ PL.explodeShieldActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgExplodeshield)); burst(W/2,H/2,'#ff8800',50,14); }
+      }
       return;
     }
     if(PL.iframes>0) return;
     gs.hp=Math.max(0,gs.hp-dmg);
     PL.iframes=70;
+    SFX.hurt();
     burst(PL.cx,PL.cy,'#ff3333',12);
     if(gs.hp<=0) gs.screen='gameover';
   }
 
   // ─── reward screen input ──────────────────────────────────────────────────
-  function getRewards(){
+  // Build a fresh reward list — called once per wave end, stored in gs.rewardChoices.
+  function makeRewards(){
+    // Shield pip modifier on FORTIFY — randomly added when available (up to 2× per run)
+    const pipTier = gs.shieldPipUpgrades||0;
+    const fortifyHasPip = pipTier < 2 && Math.random() < 0.6;
+    const pipAmt = pipTier === 0 ? CFG.shieldPipT1 : CFG.shieldPipT2;
     return [
-      { icon:'⚔', label:'WEAPON UP',  desc:'+8 dmg  +25% range (max 300)',
+      { icon:'⚔', label:'WEAPON UP', desc:'+8 dmg  +25% range (max 300)',
         fn(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
       { icon:'✦', label:'+SPELL',
         get desc(){
           const t=gs.spellUpgrades||0;
-          const hint=['✦ Next: +Spray (side fireballs)','✦ Next: Flameshield orbs','✦ Next: Full nova burst'];
+          const hint=[
+            `✦ Next: +Spray (side fireballs at ${Math.round(CFG.sprayDmgPct*100)}% dmg)`,
+            `✦ Next: ${CFG.flameshieldOrbs} orbiting fireballs at ${Math.round(CFG.flameshieldDmgPct*100)}% dmg each`,
+            `✦ Next: Full nova burst (all rows, ${Math.round(CFG.novaDmgPct*100)}% dmg)`,
+          ];
           return '+1 spell charge  +10 spell dmg\n(max 6 charges)'+(t<hint.length?'\n'+hint[t]:'');
         },
         fn(){ gs.maxSpell=Math.min(6,gs.maxSpell+1); gs.spellUses=gs.maxSpell; PL.spell.dmg+=10; gs.spellUpgrades=(gs.spellUpgrades||0)+1; } },
-      { icon:'🛡', label:'FORTIFY',    desc:'+35 max HP\nFull heal',
-        fn(){ gs.maxHp+=35; gs.hp=gs.maxHp; } },
+      { icon:'🛡', label:'FORTIFY',
+        desc: fortifyHasPip
+          ? `+35 max HP  Full heal\n+${pipAmt} shield pip${pipAmt>1?'s':''}`
+          : '+35 max HP\nFull heal',
+        fn(){ gs.maxHp+=35; gs.hp=gs.maxHp;
+          if(fortifyHasPip){ PL.shMaxHp+=pipAmt; PL.shHp=PL.shMaxHp; gs.shieldPipUpgrades=(gs.shieldPipUpgrades||0)+1; }
+        } },
     ];
   }
+  // Returns the stored choices for the current reward screen (stable across draw calls).
+  function getRewards(){ return gs.rewardChoices || (gs.rewardChoices=makeRewards()); }
 
   const ITEM_POOLS = {
     weapon: [
       // tier 0
-      { name:"Dragon's Fang",    icon:'🗡', desc:'+6 dmg / +10 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, slashColor:'#cc88ff', slashStyle:'sweep', stat(){ PL.weapon.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
-      { name:"Soul Reaper",       icon:'💀', desc:'+5 dmg / +1 spell slot',  abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, slashColor:'#880033', slashStyle:'blade', stat(){ PL.weapon.dmg+=5; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Sundering Axe",     icon:'🪓', desc:'+8 dmg / +15% range',     abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, slashColor:'#ff8800', slashStyle:'blade', stat(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.15)); } },
-      { name:"Warblade",          icon:'⚔', desc:'+6 dmg / +15 max HP',     abilityName:'Lunge Strike', abDesc:'S: Dash+strike 1.5x dmg',   ability:'lunge',      cdMax:360, slashColor:'#ffcc44', slashStyle:'blade', stat(){ PL.weapon.dmg+=6; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Hexfang",           icon:'🐍', desc:'+7 dmg / +1 spell slot',  abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, slashColor:'#aa44ff', slashStyle:'void',  stat(){ PL.weapon.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Dragon's Fang",    icon:'🗡', desc:'+6 dmg / +10 max HP',     abilityName:'Lunge Strike',   abDesc:'S: Dash+strike 2× dmg, brief invuln',   ability:'lunge',      cdMax:360, slashColor:'#cc88ff', slashStyle:'sweep', stat(){ PL.weapon.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
+      { name:"Soul Reaper",       icon:'💀', desc:'+5 dmg / +1 spell slot',  abilityName:'Soul Drain',     abDesc:'S: Next hit heals HP',        ability:'souldrain',  cdMax:300, slashColor:'#880033', slashStyle:'blade', stat(){ PL.weapon.dmg+=5; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Sundering Axe",     icon:'🪓', desc:'+8 dmg / +15% range',     abilityName:'Cleave',         abDesc:'S: Axe hits all enemies on row',  ability:'cleave',     cdMax:420, slashColor:'#ff8800', slashStyle:'blade', stat(){ PL.weapon.dmg+=8; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.15)); } },
+      { name:"Warblade",          icon:'⚔', desc:'+6 dmg / +15 max HP',     abilityName:'Lunge Strike',   abDesc:'S: Dash+strike 2× dmg, brief invuln',   ability:'lunge',      cdMax:360, slashColor:'#ffcc44', slashStyle:'blade', stat(){ PL.weapon.dmg+=6; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Hexfang",           icon:'🐍', desc:'+7 dmg / +1 spell slot',  abilityName:'Void Ball',      abDesc:'S: Piercing purple orb, full row',   ability:'voidslash',  cdMax:480, slashColor:'#aa44ff', slashStyle:'void',  stat(){ PL.weapon.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
       // tier 1
-      { name:"Thunderstrike",     icon:'⚡', desc:'+12 dmg / +15 max HP',    abilityName:'Chain Lightning',abDesc:'S: Lightning all enemies', ability:'lightning',  cdMax:480, slashColor:'#ffff44', slashStyle:'thunder', stat(){ PL.weapon.dmg+=12; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Bloodfang Blade",   icon:'🩸', desc:'+10 dmg / +2 spell slots',abilityName:'Bloodlust',    abDesc:'S: Rapid strikes 5s',       ability:'bloodlust',  cdMax:600, slashColor:'#cc0033', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=10; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Voidblade",         icon:'🌑', desc:'+14 dmg / +20% range',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, slashColor:'#6600cc', slashStyle:'void',    stat(){ PL.weapon.dmg+=14; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.2)); } },
-      { name:"Soulbreaker",       icon:'👁', desc:'+12 dmg / +1 spell slot', abilityName:'Soul Drain',   abDesc:'S: Next hit heals 15 HP',   ability:'souldrain',  cdMax:300, slashColor:'#550077', slashStyle:'void',    stat(){ PL.weapon.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Crimson Edge",      icon:'🔥', desc:'+13 dmg / +20 max HP',    abilityName:'Cleave',       abDesc:'S: Hit all enemies on row', ability:'cleave',     cdMax:420, slashColor:'#ff4400', slashStyle:'blade',   stat(){ PL.weapon.dmg+=13; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+25); } },
+      { name:"Thunderstrike",     icon:'⚡', desc:'+12 dmg / +15 max HP',    abilityName:'Chain Lightning',abDesc:'S: Lightning zaps all enemies on screen', ability:'lightning',  cdMax:480, slashColor:'#ffff44', slashStyle:'thunder', stat(){ PL.weapon.dmg+=12; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Bloodfang Blade",   icon:'🩸', desc:'+10 dmg / +2 spell slots',abilityName:'Bloodlust',      abDesc:'S: Hold Z to rapid-attack (auto-swing)',  ability:'bloodlust',  cdMax:600, slashColor:'#cc0033', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=10; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Voidblade",         icon:'🌑', desc:'+14 dmg / +20% range',    abilityName:'Void Ball',      abDesc:'S: Piercing purple orb, full row',   ability:'voidslash',  cdMax:480, slashColor:'#6600cc', slashStyle:'void',    stat(){ PL.weapon.dmg+=14; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.2)); } },
+      { name:"Soulbreaker",       icon:'👁', desc:'+12 dmg / +1 spell slot', abilityName:'Soul Drain',     abDesc:'S: Next hit heals HP',        ability:'souldrain',  cdMax:300, slashColor:'#550077', slashStyle:'void',    stat(){ PL.weapon.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Crimson Edge",      icon:'🔥', desc:'+13 dmg / +20 max HP',    abilityName:'Cleave',         abDesc:'S: Axe hits all enemies on row', ability:'cleave',     cdMax:420, slashColor:'#ff4400', slashStyle:'blade',   stat(){ PL.weapon.dmg+=13; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+25); } },
       // tier 2
-      { name:"Dragonfang Ancient",icon:'🐉', desc:'+20 dmg / +25 max HP',    abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, slashColor:'#ff9900', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=20; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
-      { name:"Reaper's Scythe",   icon:'⚰', desc:'+18 dmg / +2 spell slots',abilityName:'Death Mark',   abDesc:'S: Marked kill explodes',   ability:'deathmark',  cdMax:540, slashColor:'#330000', slashStyle:'blade',   stat(){ PL.weapon.dmg+=18; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Worldbreaker",      icon:'💥', desc:'+22 dmg / +25% range',    abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',    ability:'lightning',  cdMax:480, slashColor:'#ffee00', slashStyle:'thunder', stat(){ PL.weapon.dmg+=22; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
-      { name:"Abyss Blade",       icon:'🕳', desc:'+20 dmg / +20 max HP',    abilityName:'Void Slash',   abDesc:'S: Cross-screen slash',     ability:'voidslash',  cdMax:480, slashColor:'#220066', slashStyle:'void',    stat(){ PL.weapon.dmg+=20; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
-      { name:"Godslayer",         icon:'👑', desc:'+25 dmg / +3 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, slashColor:'#ffaa00', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=25; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Dragonfang Ancient",icon:'🐉', desc:'+20 dmg / +25 max HP',    abilityName:'Dragon Fury',    abDesc:'S: Massive claw strike hits all rows',  ability:'dragonfury', cdMax:600, slashColor:'#ff9900', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=20; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
+      { name:"Reaper's Scythe",   icon:'⚰', desc:'+18 dmg / +2 spell slots',abilityName:'Death Mark',     abDesc:'S: Mark enemy — kill triggers explosion, hits all',  ability:'deathmark',  cdMax:540, slashColor:'#330000', slashStyle:'blade',   stat(){ PL.weapon.dmg+=18; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Worldbreaker",      icon:'💥', desc:'+22 dmg / +25% range',    abilityName:'Chain Lightning',abDesc:'S: Lightning zaps all enemies on screen', ability:'lightning',  cdMax:480, slashColor:'#ffee00', slashStyle:'thunder', stat(){ PL.weapon.dmg+=22; PL.atkRange=Math.min(300,Math.round(PL.atkRange*1.25)); } },
+      { name:"Abyss Blade",       icon:'🕳', desc:'+20 dmg / +20 max HP',    abilityName:'Void Ball',      abDesc:'S: Piercing purple orb, full row',   ability:'voidslash',  cdMax:480, slashColor:'#220066', slashStyle:'void',    stat(){ PL.weapon.dmg+=20; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
+      { name:"Godslayer",         icon:'👑', desc:'+25 dmg / +3 spell slots',abilityName:'Dragon Fury',    abDesc:'S: Massive claw strike hits all rows',  ability:'dragonfury', cdMax:600, slashColor:'#ffaa00', slashStyle:'sweep',   stat(){ PL.weapon.dmg+=25; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
     ],
     spell: [
       // tier 0
-      { name:"Frost Tome",        icon:'❄', desc:'+7 spell dmg / +1 slot',   abilityName:'Ice Nova',     abDesc:'S: Freeze all enemies 3s',  ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Firewall Scroll",   icon:'🔥', desc:'+6 spell dmg / +10 HP',    abilityName:'Firewall',     abDesc:'S: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
-      { name:"Tempest Rod",       icon:'🌪', desc:'+7 spell dmg / +1 slot',   abilityName:'Whirlwind',    abDesc:'S: Pull enemies to mid row',ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Shadow Grimoire",   icon:'📖', desc:'+7 spell dmg / +15 HP',    abilityName:'Ice Nova',     abDesc:'S: Freeze all enemies',     ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=7; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+15); } },
-      { name:"Spirit Wand",       icon:'✨', desc:'+6 spell dmg / +1 slot',   abilityName:'Whirlwind',    abDesc:'S: Pull enemies to mid',    ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=6; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Frost Tome",        icon:'❄', desc:'+7 spell dmg / +1 slot',   abilityName:'Ice Nova',       abDesc:'S: Freeze all enemies for 3s',  ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Firewall Scroll",   icon:'🔥', desc:'+6 spell dmg / +10 HP',    abilityName:'Firewall',       abDesc:'S: Fire spreads across all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=6; gs.maxHp+=10; gs.hp=Math.min(gs.maxHp,gs.hp+10); } },
+      { name:"Tempest Rod",       icon:'🌪', desc:'+7 spell dmg / +1 slot',   abilityName:'Whirlwind',      abDesc:'S: Pull all to center, 5% HP dmg, freeze 1s',ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=7; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Shadow Grimoire",   icon:'📖', desc:'+7 spell dmg / +15 HP',    abilityName:'Ice Nova',       abDesc:'S: Freeze all enemies for 3s',  ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=7; gs.maxHp+=15; gs.hp=Math.min(gs.maxHp,gs.hp+15); } },
+      { name:"Spirit Wand",       icon:'✨', desc:'+6 spell dmg / +1 slot',   abilityName:'Whirlwind',      abDesc:'S: Pull all to center, 5% HP dmg, freeze 1s', ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=6; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
       // tier 1
-      { name:"Storm Codex",       icon:'⛈', desc:'+12 spell dmg / +2 slots', abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',    ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Void Grimoire",     icon:'🌌', desc:'+10 spell dmg / +20 HP',   abilityName:'Firewall',     abDesc:'S: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=10; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
-      { name:"Cataclysm Tome",    icon:'💫', desc:'+13 spell dmg / +1 slot',  abilityName:'Ice Nova',     abDesc:'S: Freeze all enemies',     ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=13; gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Runic Staff",       icon:'🔮', desc:'+12 spell dmg / +2 slots', abilityName:'Whirlwind',    abDesc:'S: Pull enemies to mid',    ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=12; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Soulfire Orb",      icon:'🔴', desc:'+14 spell dmg / +20 HP',   abilityName:'Chain Lightning',abDesc:'S: Lightning hits all',   ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=14; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Storm Codex",       icon:'⛈', desc:'+8 spell dmg / +2 slots',  abilityName:'Chain Lightning',abDesc:'S: Lightning zaps all enemies on screen', ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=8;  gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Void Grimoire",     icon:'🌌', desc:'+8 spell dmg / +20 HP',    abilityName:'Firewall',       abDesc:'S: Fire spreads across all rows',  ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=8;  gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
+      { name:"Cataclysm Tome",    icon:'💫', desc:'+9 spell dmg / +1 slot',   abilityName:'Ice Nova',       abDesc:'S: Freeze all enemies for 3s',  ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=9;  gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Runic Staff",       icon:'🔮', desc:'+8 spell dmg / +2 slots',  abilityName:'Whirlwind',      abDesc:'S: Pull all to center, 5% HP dmg, freeze 1s', ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=8;  gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Soulfire Orb",      icon:'🔴', desc:'+10 spell dmg / +20 HP',   abilityName:'Chain Lightning',abDesc:'S: Lightning zaps all enemies on screen', ability:'lightning',  cdMax:480, stat(){ PL.spell.dmg+=10; gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); } },
       // tier 2
-      { name:"Armageddon Tome",   icon:'☄', desc:'+20 spell dmg / +3 slots', abilityName:'Dragon Fury',  abDesc:'S: Massive claw all rows',  ability:'dragonfury', cdMax:600, stat(){ PL.spell.dmg+=20; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"World Ender Scroll",icon:'🌍', desc:'+18 spell dmg / +30 HP',   abilityName:'Firewall',     abDesc:'S: Spread fire all rows',   ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=18; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
-      { name:"Eternal Grimoire",  icon:'♾', desc:'+22 spell dmg / +2 slots', abilityName:'Ice Nova',     abDesc:'S: Freeze all 3s',          ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=22; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Chaos Staff",       icon:'🌀', desc:'+20 spell dmg / +3 slots', abilityName:'Whirlwind',    abDesc:'S: Pull all enemies',       ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=20; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"Divine Codex",      icon:'💎', desc:'+25 spell dmg / +40 HP',   abilityName:'Chain Lightning',abDesc:'S: Lightning all enemies', ability:'lightning', cdMax:480, stat(){ PL.spell.dmg+=25; gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
+      { name:"Armageddon Tome",   icon:'☄', desc:'+14 spell dmg / +3 slots', abilityName:'Dragon Fury',    abDesc:'S: Massive claw strike hits all rows', ability:'dragonfury', cdMax:600, stat(){ PL.spell.dmg+=14; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"World Ender Scroll",icon:'🌍', desc:'+12 spell dmg / +30 HP',   abilityName:'Firewall',       abDesc:'S: Fire spreads across all rows', ability:'firewall',   cdMax:420, stat(){ PL.spell.dmg+=12; gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+30); } },
+      { name:"Eternal Grimoire",  icon:'♾', desc:'+15 spell dmg / +2 slots', abilityName:'Ice Nova',       abDesc:'S: Freeze all enemies for 3s', ability:'icenova',    cdMax:480, stat(){ PL.spell.dmg+=15; gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Chaos Staff",       icon:'🌀', desc:'+14 spell dmg / +3 slots', abilityName:'Whirlwind',      abDesc:'S: Pull all to center, 5% HP dmg, freeze 1s', ability:'whirlwind',  cdMax:540, stat(){ PL.spell.dmg+=14; gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Divine Codex",      icon:'💎', desc:'+16 spell dmg / +40 HP',   abilityName:'Chain Lightning',abDesc:'S: Lightning zaps all enemies on screen', ability:'lightning', cdMax:480, stat(){ PL.spell.dmg+=16; gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+40); } },
     ],
     shield: [
       // tier 0
-      { name:"Spiked Buckler",    icon:'🛡', desc:'+20 max HP / +1 spell slot',abilityName:'Thorn Wall',    abDesc:'S: Next block deals 80 dmg outward', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Mirror Shield",     icon:'🔵', desc:'+25 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'S: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+25); PL.weapon.dmg+=10; } },
-      { name:"Iron Wall",         icon:'🧱', desc:'+30 max HP / +15 weapon dmg',abilityName:'Holy Barrier',  abDesc:'S: Invincible for 3 seconds',ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=15; } },
-      { name:"Ward Stone",        icon:'🪨', desc:'+20 max HP / +1 slot',       abilityName:'Thorn Wall',    abDesc:'S: Next block deals 80 dmg', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
-      { name:"Scale Armor",       icon:'🦎', desc:'+35 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'S: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); PL.weapon.dmg+=10; } },
+      { name:"Spiked Buckler",    icon:'🛡', desc:'+20 max HP / +1 spell slot',abilityName:'Thorn Wall',    abDesc:'S: Arm — next blocked hit spikes all enemies', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Mirror Shield",     icon:'🔵', desc:'+25 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'S: Reflect next projectile (2× dmg)', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=25; gs.hp=Math.min(gs.maxHp,gs.hp+25); PL.weapon.dmg+=10; } },
+      { name:"Iron Wall",         icon:'🧱', desc:'+30 max HP / +15 weapon dmg',abilityName:'Holy Barrier',  abDesc:'S: Divine shield — invincible for 3s',ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=15; } },
+      { name:"Ward Stone",        icon:'🪨', desc:'+20 max HP / +1 slot',       abilityName:'Thorn Wall',    abDesc:'S: Arm — next blocked hit spikes all enemies', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=20; gs.hp=Math.min(gs.maxHp,gs.hp+20); gs.maxSpell=Math.min(8,gs.maxSpell+1); gs.spellUses=gs.maxSpell; } },
+      { name:"Scale Armor",       icon:'🦎', desc:'+35 max HP / +10 weapon dmg',abilityName:'Mirror',        abDesc:'S: Reflect next projectile (2× dmg)', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); PL.weapon.dmg+=10; } },
       // tier 1
-      { name:"Explosion Shield",  icon:'💣', desc:'+30 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Next block = big explosion',ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=20; } },
-      { name:"Runic Aegis",       icon:'🔷', desc:'+40 max HP / +2 spell slots',abilityName:'Holy Barrier',  abDesc:'S: Invincible 3 seconds',    ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Void Guard",        icon:'⬛', desc:'+45 max HP / +25 weapon dmg',abilityName:'Thorn Wall',    abDesc:'S: Next block explodes',     ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); PL.weapon.dmg+=25; } },
-      { name:"Spectral Wall",     icon:'👻', desc:'+35 max HP / +2 spell slots',abilityName:'Mirror',        abDesc:'S: Reflect next projectile', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
-      { name:"Hellforged Plate",  icon:'🔱', desc:'+50 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Block = explosion',       ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=20; } },
+      { name:"Explosion Shield",  icon:'💣', desc:'+30 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Arm — next blocked hit explodes, hits all enemies',ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=30; gs.hp=Math.min(gs.maxHp,gs.hp+30); PL.weapon.dmg+=20; } },
+      { name:"Runic Aegis",       icon:'🔷', desc:'+40 max HP / +2 spell slots',abilityName:'Holy Barrier',  abDesc:'S: Divine shield — invincible for 3s', ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Void Guard",        icon:'⬛', desc:'+45 max HP / +25 weapon dmg',abilityName:'Thorn Wall',    abDesc:'S: Arm — next blocked hit spikes all enemies', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); PL.weapon.dmg+=25; } },
+      { name:"Spectral Wall",     icon:'👻', desc:'+35 max HP / +2 spell slots',abilityName:'Mirror',        abDesc:'S: Reflect next projectile (2× dmg)', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=35; gs.hp=Math.min(gs.maxHp,gs.hp+35); gs.maxSpell=Math.min(8,gs.maxSpell+2); gs.spellUses=gs.maxSpell; } },
+      { name:"Hellforged Plate",  icon:'🔱', desc:'+50 max HP / +20 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Arm — next blocked hit explodes, hits all enemies',ability:'explodeshield',cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=20; } },
       // tier 2
-      { name:"Divine Bulwark",    icon:'✝', desc:'+45 max HP / +3 spell slots',abilityName:'Holy Barrier',  abDesc:'S: Invincible 3 seconds',    ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"Titan Shield",      icon:'🏛', desc:'+50 max HP / +12 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Massive block explosion', ability:'explodeshield', cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=12; } },
-      { name:"Eternal Aegis",     icon:'⚜', desc:'+40 max HP / +3 spell slots',abilityName:'Mirror',        abDesc:'S: Reflect projectile',      ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
-      { name:"Chaos Barrier",     icon:'🌪', desc:'+40 max HP / +14 weapon dmg',abilityName:'Thorn Wall',    abDesc:'S: Block deals 35 dmg out',  ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); PL.weapon.dmg+=14; } },
-      { name:"Godwall",           icon:'⭐', desc:'+55 max HP / +4 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Claw hits all rows',       ability:'dragonfury',   cdMax:600, stat(){ gs.maxHp+=55; gs.hp=Math.min(gs.maxHp,gs.hp+55); gs.maxSpell=Math.min(8,gs.maxSpell+4); gs.spellUses=gs.maxSpell; } },
+      { name:"Divine Bulwark",    icon:'✝', desc:'+45 max HP / +3 spell slots',abilityName:'Holy Barrier',  abDesc:'S: Divine shield — invincible for 3s', ability:'holybarrier',  cdMax:600, stat(){ gs.maxHp+=45; gs.hp=Math.min(gs.maxHp,gs.hp+45); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Titan Shield",      icon:'🏛', desc:'+50 max HP / +12 weapon dmg',abilityName:'Explode Shield',abDesc:'S: Arm — next blocked hit explodes, hits all enemies', ability:'explodeshield', cdMax:540, stat(){ gs.maxHp+=50; gs.hp=Math.min(gs.maxHp,gs.hp+50); PL.weapon.dmg+=12; } },
+      { name:"Eternal Aegis",     icon:'⚜', desc:'+40 max HP / +3 spell slots',abilityName:'Mirror',        abDesc:'S: Reflect next projectile (2× dmg)', ability:'mirrorshield', cdMax:360, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); gs.maxSpell=Math.min(8,gs.maxSpell+3); gs.spellUses=gs.maxSpell; } },
+      { name:"Chaos Barrier",     icon:'🌪', desc:'+40 max HP / +14 weapon dmg',abilityName:'Thorn Wall',    abDesc:'S: Arm — next blocked hit spikes all enemies', ability:'thornwall',    cdMax:480, stat(){ gs.maxHp+=40; gs.hp=Math.min(gs.maxHp,gs.hp+40); PL.weapon.dmg+=14; } },
+      { name:"Godwall",           icon:'⭐', desc:'+55 max HP / +4 spell slots',abilityName:'Dragon Fury',  abDesc:'S: Massive claw strike hits all rows', ability:'dragonfury',   cdMax:600, stat(){ gs.maxHp+=55; gs.hp=Math.min(gs.maxHp,gs.hp+55); gs.maxSpell=Math.min(8,gs.maxSpell+4); gs.spellUses=gs.maxSpell; } },
     ],
   };
 
@@ -843,51 +1106,67 @@
     PL.itemCd = PL.itemCdMax;
     switch(PL.itemAbility){
       case 'lunge': {
+        SFX.lunge();
         const dashDir = PL.facing;
         PL.x = Math.max(0, Math.min(W-PL.w, PL.x + dashDir * 120));
         const box={x:PL.x-40,y:ROW_Y[PL.row]-6,w:PL.w+80,h:PL.h+12};
         enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*CFG.multLunge); });
+        PL.iframes = CFG.lungeIframes;
         burst(PL.cx,PL.cy,'#ffaa00',20,8);
         break;
       }
       case 'souldrain': {
+        SFX.souldrain();
         PL.soulDrainActive=true;
         burst(PL.cx,PL.cy,'#8800ff',16,6);
         break;
       }
       case 'cleave': {
+        SFX.cleave();
         const box={x:0,y:ROW_Y[PL.row]-6,w:W,h:PL.h+12};
         enemies.forEach(e=>{ if(e.row===PL.row&&ov(box,ehb(e))) hitEnemy(e,PL.weapon.dmg*CFG.multCleave); });
         burst(PL.cx,PL.cy,'#ff8800',24,7);
+        // Visual axe sweep — flies across the full row, no damage (already applied)
+        const axeSpd = PL.facing * 22;
+        projs.push({x:PL.cx-18, y:ROW_Y[PL.row]+PL.h/2-18, vx:axeSpd, vy:0,
+          row:PL.row, dmg:0, owner:'player', axe:true, w:36, h:36, life:52,
+          spin:0, spinDir:PL.facing});
         break;
       }
       case 'lightning': {
+        SFX.lightning();
         enemies.forEach(e=>{ hitEnemy(e,PL.spell.dmg*CFG.multLightning); burst(e.x+ENEMY_TYPES[e.type].w/2,e.y,'#ffff00',8,4); });
         burst(PL.cx,PL.cy,'#ffff00',30,12);
         break;
       }
       case 'bloodlust': {
+        SFX.bloodlust();
         PL.bloodlustT=CFG.bloodlustDuration;
         burst(PL.cx,PL.cy,'#ff0044',20,7);
         break;
       }
       case 'voidslash': {
-        projs.push({x:PL.cx,y:ROW_Y[PL.row],vx:PL.facing*18,vy:0,row:PL.row,
-          dmg:PL.weapon.dmg*CFG.multVoidslash,owner:'player',spr:SPR_SPELL,w:SP_W*2,h:SP_H*2,life:120});
+        SFX.voidball();
+        projs.push({x:PL.cx,y:ROW_Y[PL.row]+PL.h/2-SP_H,vx:PL.facing*16,vy:0,row:PL.row,
+          dmg:PL.weapon.dmg*CFG.multVoidslash,owner:'player',spr:SPR_SPELL,w:SP_W*2,h:SP_H*2,
+          life:180, pierce:true, color:'#aa00ff'});
         burst(PL.cx,PL.cy,'#cc00ff',20,8);
         break;
       }
       case 'dragonfury': {
+        SFX.dragonfury();
         enemies.forEach(e=>hitEnemy(e,PL.weapon.dmg*CFG.multDragonfury));
         burst(W/2,H/2,'#ff4400',50,12);
         break;
       }
       case 'icenova': {
+        SFX.icenova();
         enemies.forEach(e=>{ e.frozen=(e.frozen||0)+CFG.freezeIcenova; burst(e.x+ENEMY_TYPES[e.type].w/2,e.y,'#88ccff',8,3); });
         burst(PL.cx,PL.cy,'#aaddff',30,8);
         break;
       }
       case 'firewall': {
+        SFX.firewall();
         for(let r=0;r<ROWS;r++){
           projs.push({x:PL.cx,y:ROW_Y[r],vx:PL.facing*6,vy:0,row:r,
             dmg:PL.spell.dmg*CFG.multFirewall,owner:'player',spr:SPR_SPELL,w:SP_W,h:SP_H,life:200});
@@ -896,16 +1175,17 @@
         break;
       }
       case 'deathmark': {
+        SFX.deathmark();
         PL.deathMarkActive=true;
         burst(PL.cx,PL.cy,'#880000',20,8);
         break;
       }
       case 'whirlwind': {
+        SFX.whirlwind();
         const wCX = W / 2;
         enemies.forEach(e=>{
           const def = ENEMY_TYPES[e.type];
-          // 5% current HP damage to all enemies including bosses
-          const wpDmg = Math.max(1, Math.floor(e.hp * 0.05));
+          const wpDmg = Math.max(1, Math.floor(e.hp * CFG.whirlwindHpPct));
           hitEnemy(e, wpDmg);
           if(!def.isBoss){
             // Non-boss: snap to center row and center X, freeze
@@ -913,7 +1193,7 @@
             e.y = ROW_Y[CENTER_ROW];
             e.targetY = ROW_Y[CENTER_ROW];
             e.x = wCX - def.w / 2;
-            e.frozen = (e.frozen||0) + 60;
+            e.frozen = (e.frozen||0) + CFG.whirlwindFreeze;
           } else {
             // Boss: pull X toward screen center (partial), no row change
             e.x = Math.max(W*0.15, Math.min(W - def.w - 5,
@@ -924,21 +1204,26 @@
         break;
       }
       case 'mirrorshield': {
+        SFX.mirrorshield();
         PL.mirrorActive=true;
         burst(PL.cx,PL.cy,'#aaddff',20,8);
         break;
       }
       case 'thornwall': {
+        SFX.thornwall();
         PL.thornActive=true;
         burst(PL.cx,PL.cy,'#44ff44',16,6);
         break;
       }
       case 'holybarrier': {
-        PL.iframes=180;
+        SFX.holybarrier();
+        PL.iframes=CFG.holyBarrierDur;
+        PL.holyBarrierT=CFG.holyBarrierDur;
         burst(PL.cx,PL.cy,'#ffffff',30,10);
         break;
       }
       case 'explodeshield': {
+        SFX.explodeshield();
         PL.explodeShieldActive=true;
         burst(PL.cx,PL.cy,'#ff8800',20,8);
         break;
@@ -954,7 +1239,14 @@
     const tierStart=tier*5;
     const pool=ITEM_POOLS[cat].slice(tierStart,tierStart+5);
     const shuffled=pool.slice().sort(()=>Math.random()-0.5);
-    gs.rewardItemChoices=shuffled.slice(0,3);
+    // Deduplicate by ability — no two choices should share the same ability
+    const seen=new Set(), choices=[];
+    for(const item of shuffled){
+      if(!seen.has(item.ability)){ seen.add(item.ability); choices.push(item); if(choices.length===3) break; }
+    }
+    // Fallback: if tier pool has fewer than 3 distinct abilities, fill with remainder
+    if(choices.length<3){ for(const item of shuffled){ if(!choices.includes(item)){ choices.push(item); if(choices.length===3) break; } } }
+    gs.rewardItemChoices=choices;
     gs.rewardItemChoice=0;
     gs.screen='itemreward';
   }
@@ -985,7 +1277,7 @@
       if(eat('Digit1')) applyItemReward(0);
       if(eat('Digit2')) applyItemReward(1);
       if(eat('Digit3')) applyItemReward(2);
-      if(eat('KeyW')||eat('KeyZ')) applyItemReward(gs.rewardItemChoice);
+      if(eat('KeyS')) applyItemReward(gs.rewardItemChoice);
       return;
     }
     if(gs.screen==='reward'){
@@ -994,7 +1286,7 @@
       if(eat('Digit1')) applyReward(0);
       if(eat('Digit2')) applyReward(1);
       if(eat('Digit3')) applyReward(2);
-      if(eat('KeyW')||eat('KeyZ')) applyReward(gs.rewardChoice);
+      if(eat('KeyS')) applyReward(gs.rewardChoice);
       return;
     }
     if(gs.screen!=='playing') return;
@@ -1018,13 +1310,14 @@
     }
     PL.x = Math.max(0, Math.min(W-WD_W, PL.x));
 
-    if(eat('KeyZ')||eat('Space')) doAttack();
+    if(PL.bloodlustT > 0 ? (K['KeyZ']||K['Space']) : (eat('KeyZ')||eat('Space'))) doAttack();
     if(eat('KeyX')) doSpell();
     if(eat('KeyS') && PL.itemAbility && PL.itemCd===0) doItemAbility();
 
     if(PL.atkTimer  > 0) PL.atkTimer--;
     if(PL.slashTimer > 0) PL.slashTimer--;
-    if(PL.iframes   > 0) PL.iframes--;
+    if(PL.iframes     > 0) PL.iframes--;
+    if(PL.holyBarrierT > 0) PL.holyBarrierT--;
     // Flameshield orb update — orbit player and damage enemies on contact
     if(flameshields.length > 0){
       flameshields = flameshields.filter(fs=>{
@@ -1058,6 +1351,13 @@
       apocalyptic: ['beam','focused','quake','nova','slam','beam','focused','quake','summon','nova'],
     };
 
+    // Clamp projectile spawn x so it's always ≥ minDist pixels from player —
+    // prevents boss attacks spawning on top of the player after a dive/lunge.
+    function safeSpawnX(rawX, dir, minDist) {
+      if(dir < 0) return Math.max(rawX, PL.cx + minDist); // firing left: must start right of player
+      return Math.min(rawX, PL.cx - minDist);              // firing right: must start left of player
+    }
+
     function fireBossAttack(e, def, atkType) {
       const dir = e.facing;          // –1 = toward player on left, +1 = toward player on right
       const cx  = e.x + def.w/2;
@@ -1068,9 +1368,10 @@
         /* ── SPIDER ─────────────────────────────────────────── */
         case 'spread': {
           const n = 3 + e.bossPhase * 2;
+          const sx = safeSpawnX(dir<0?e.x:e.x+def.w, dir, 160);
           for (let i=0;i<n;i++){
             const vy = (i-(n-1)/2)*0.7;
-            projs.push({x:dir<0?e.x:e.x+def.w, y:cy-FB_H/2,
+            projs.push({x:sx, y:cy-FB_H/2,
               vx:dir*4, vy, row:CENTER_ROW, dmg:def.dmg, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W, h:FB_H, life:300});
           }
@@ -1078,13 +1379,16 @@
           break;
         }
         case 'lunge': {
+          SFX.spiderLunge();
           e.lungeT = 45;
           burst(cx, cy, '#ff2200', 14, 5);
           break;
         }
         case 'web': {
+          SFX.spiderAttack();
+          const wx = safeSpawnX(dir<0?e.x:e.x+def.w, dir, 160);
           for (let r=Math.max(0,PL.row-1); r<=Math.min(ROWS-1,PL.row+1); r++){
-            projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
+            projs.push({x:wx, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
               vx:dir*2.2, vy:0, row:r, dmg:def.dmg*1.4, owner:'enemy', isBoss:true,
               spr:SPR_FB, w:FB_W*2, h:FB_H, life:420});
           }
@@ -1092,12 +1396,20 @@
           break;
         }
         case 'burst': {
+          SFX.spiderAttack();
+          // Spawn from spider's row; angle vy to track toward player's row.
+          // safeSpawnX ensures ≥160px travel distance even after a dive.
+          const bx  = safeSpawnX(dir<0?e.x:e.x+def.w, dir, 160);
+          const bSpiderRow = e.row;
+          const bTargetRow = PL.row; // snapshot player row for targeting
+          const bBaseVY = (ROW_Y[bTargetRow] - ROW_Y[bSpiderRow]) * 0.012;
           for (let i=0;i<4;i++){
             setTimeout(()=>{
               if(gs.screen!=='playing') return;
-              projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[PL.row]+GRUNT_H/2-FB_H/2,
-                vx:dir*(4+i*0.5), vy:(Math.random()-0.5)*0.4, row:PL.row, dmg:def.dmg*0.7,
-                owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:280});
+              projs.push({x:bx, y:ROW_Y[bSpiderRow]+GRUNT_H/2-FB_H/2,
+                vx:dir*(4+i*0.5), vy:bBaseVY+(Math.random()-0.5)*0.3,
+                row:bSpiderRow, dmg:def.dmg*0.7,
+                owner:'enemy', isBoss:true, spr:SPR_FB, w:FB_W, h:FB_H, life:300});
             }, i*80);
           }
           burst(cx, cy, '#ff6600', 12);
@@ -1105,6 +1417,7 @@
         }
         /* ── LICH ───────────────────────────────────────────── */
         case 'orbs': {
+          SFX.lichAttack();
           const shots = e.bossPhase + 1;
           for (let i=0;i<shots;i++){
             const targetVY = (ROW_Y[PL.row] - cy) * 0.015;
@@ -1152,6 +1465,7 @@
         }
         /* ── APOC ───────────────────────────────────────────── */
         case 'beam': {
+          SFX.apocAttack();
           for (let r=0;r<ROWS;r++){
             projs.push({x:dir<0?e.x:e.x+def.w, y:ROW_Y[r]+GRUNT_H/2-FB_H/2,
               vx:dir*5, vy:0, row:r, dmg:def.dmg, owner:'enemy', isBoss:true,
@@ -1161,6 +1475,7 @@
           break;
         }
         case 'focused': {
+          SFX.apocAttack();
           // 5 rapid shots locked to player's row
           for (let i=0;i<5;i++){
             setTimeout(()=>{
@@ -1214,6 +1529,7 @@
           break;
         }
         case 'dive': {
+          SFX.spiderDive();
           // Spider disappears briefly, telegraphs crash-down on player's row
           e.diveT = 70;
           e.diveRow = PL.row;
@@ -1225,6 +1541,7 @@
         }
         /* ── LICH new ────────────────────────────────────────────── */
         case 'darkness': {
+          SFX.lichDarkness();
           // Brief darkness overlay — screen dims, lich nearly invisible for 90 frames
           darknessT = 90;
           e.atkAnim = 50;
@@ -1232,6 +1549,7 @@
           break;
         }
         case 'soulpull': {
+          SFX.lichSoulpull();
           // Vortex pulls player toward lich for 120 frames
           e.soulPullT = 120;
           e.atkAnim = 60;
@@ -1240,6 +1558,7 @@
         }
         /* ── APOC new ────────────────────────────────────────────── */
         case 'quake': {
+          SFX.apocQuake();
           // Telegraph then fire a shockwave that sweeps the full screen width
           e.quakeWindupT = 50;
           e.atkAnim = 60;
@@ -1334,11 +1653,18 @@
           e.teleTimer++;
           if (e.teleTimer > 100 / e.bossPhase) {
             e.teleTimer = 0;
-            const newRow = Math.floor(Math.random()*ROWS);
+            // Pick a row different from the player's current row
+            const rowChoices = [...Array(ROWS).keys()].filter(r => r !== PL.row);
+            const newRow = rowChoices[Math.floor(Math.random()*rowChoices.length)];
             e.row = newRow;
             e.targetY = ROW_Y[newRow] + (GRUNT_H - def.h)/2;
-            e.x = W*0.25 + Math.random()*(W*0.65 - W*0.25);
+            // Teleport to the opposite side of the screen from the player
+            const farSide = PL.x < W/2
+              ? W*0.62 + Math.random()*(W*0.28)   // player left → lich appears right
+              : W*0.10 + Math.random()*(W*0.28);  // player right → lich appears left
+            e.x = farSide;
             burst(eCX, e.y+def.h/2, '#aa44ff', 16, 5);
+            SFX.lichTeleport();
             e.flashT = 15;
             e.atkAnim = 0;
           }
@@ -1444,6 +1770,7 @@
         if (e.swingCd > 0) e.swingCd--;
         const distToPlayer = Math.abs((e.x+def.w/2) - (PL.x+PL.w/2));
         if (e.swingCd === 0 && distToPlayer < 200 && e.row === PL.row) {
+          SFX.bruteSwing();
           e.windupT = 38;
           burst(e.x+def.w/2, e.y+def.h/2, '#ff6600', 16, 5);
         }
@@ -1471,6 +1798,7 @@
         if(rowDist <= shootRange) {
           const shotVX = dirToPlayer * (e.type==='brute' ? 2 : 3);
           if(e.type==='archer'){
+            SFX.archerShoot();
             [-0.5,0,0.5].forEach((yo,i)=>{
               setTimeout(()=>{
                 if(gs.screen!=='playing') return;
@@ -1480,6 +1808,7 @@
               }, i*110);
             });
           } else {
+            SFX.gruntShoot();
             projs.push({x:e.x+(e.facing>0?def.w:0), y:e.y+def.h/2-FB_H/2,
               vx:shotVX, vy:0, row:e.row, dmg:def.dmg,
               owner:'enemy', spr:SPR_FB, w:FB_W, h:FB_H, life:260});
@@ -1489,6 +1818,7 @@
 
       // melee touch — ONLY hurts player, never damages enemy
       if(e.row===PL.row && ov(ehb(e), PL.hb)){
+        SFX.gruntMelee();
         hurtPlayer(def.dmg, false);
       }
     });
@@ -1498,10 +1828,20 @@
     // projectiles
     projs.forEach(p=>{
       p.x+=p.vx; p.y+=p.vy; p.life--;
-      if(p.owner==='player'){
+      if(p.owner==='player' && !p.axe){
         enemies.forEach(e=>{
           if(e.phase!=='charge') return;
           const def2 = ENEMY_TYPES[e.type];
+          if(p.reflected){
+            // Reflected projectiles hit by physical Y overlap — no row restriction,
+            // so they hit the first enemy they actually pass through.
+            const hitbox = def2.isBoss ? {x:e.x+10,y:e.y+8,w:def2.w-20,h:def2.h-16} : ehb(e);
+            if(ov({x:p.x,y:p.y,w:p.w,h:p.h}, hitbox)){
+              hitEnemy(e,p.dmg); burst(p.x,p.y,FO,10);
+              p.life=0; // stop on first hit
+            }
+            return;
+          }
           // Bosses can be hit from any row; normal enemies same-row only
           if(!def2.isBoss){
             if(Math.abs(e.row - p.row) > 0) return;
@@ -1510,7 +1850,8 @@
             ? {x:e.x+10, y:e.y+8, w:def2.w-20, h:def2.h-16}
             : ehb(e);
           if(ov({x:p.x,y:p.y,w:p.w,h:p.h}, hitbox)){
-            hitEnemy(e,p.dmg); burst(p.x,p.y,FO,10); p.life=0;
+            hitEnemy(e,p.dmg); burst(p.x,p.y,FO,10);
+            if(!p.pierce) p.life=0;
           }
         });
       } else {
@@ -1522,7 +1863,8 @@
           if(p.y + p.h/2 > ry && p.y + p.h/2 < ry + GRUNT_H) { hitRow = r; break; }
         }
         if(PL.mirrorActive && hitRow===PL.row && ov({x:p.x,y:p.y,w:p.w,h:p.h},PL.hb)){
-          PL.mirrorActive=false; p.vx=-p.vx; p.owner='player'; p.dmg*=2;
+          PL.mirrorActive=false; p.vx=-p.vx; p.owner='player'; p.dmg*=CFG.mirrorDmgMult;
+          p.reflected=true; // bypass row restriction — hits first enemy it physically touches
           burst(PL.cx,PL.cy,'#aaddff',16,6);
           return;
         }
@@ -1559,6 +1901,7 @@
           gs.spellUses = gs.maxSpell;
           burst(d.x,ROW_Y[d.row],'#ff44ff',20,8);
         }
+        SFX.pickup();
         d.life=0;
       }
     });
@@ -1613,9 +1956,9 @@
         if(gs.level > 3){
           msg='★ WOLFDRAGON VICTORIOUS ★'; msgT=220;
           burst(W/2,H/2,'#ffcc00',60,12);
-          setTimeout(()=>{ gs.screen='victory'; setTimeout(()=>{ gs.screen='title'; }, 7000); }, 3000);
+          setTimeout(()=>{ gs.screen='victory'; }, 3000);
         } else {
-          setTimeout(()=>{ gs.screen='reward'; gs.rewardChoice=0; }, 2800);
+          setTimeout(()=>{ gs.screen='reward'; gs.rewardChoice=0; gs.rewardChoices=makeRewards(); }, 2800);
         }
       } else {
         setTimeout(()=>{ gs.wave++; startWave(); },2200);
@@ -1789,6 +2132,10 @@
     drawWDSprite(W/2 - WD_W/2, 290, false, false);
     ctx.fillStyle='#888'; ctx.font='13px monospace';
     ctx.fillText(`FINAL SCORE: ${gs.score}`, W/2, 420);
+    const blink = Math.floor(Date.now()/600)%2===0;
+    ctx.fillStyle = blink ? '#ffcc00' : '#aa7700';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('Press W to Play Again', W/2, 455);
     ctx.textAlign='left';
   }
 
@@ -1798,7 +2145,7 @@
     ctx.fillStyle='#aa44ff'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
     ctx.fillText('✦  CHOOSE YOUR ITEM  ✦',W/2,65);
     ctx.fillStyle='#666'; ctx.font='13px monospace';
-    ctx.fillText('← → navigate   Z / W confirm   or press 1 / 2 / 3',W/2,90);
+    ctx.fillText('← → navigate   S confirm   or press 1 / 2 / 3',W/2,90);
     if(gs.activeItem){
       ctx.fillStyle='#555'; ctx.font='11px monospace';
       ctx.fillText(`Current: ${gs.activeItem.name} — V: ${gs.activeItem.abilityName}`,W/2,112);
@@ -1814,23 +2161,40 @@
       ctx.fillRect(cx,cy,cardW,cardH);
       ctx.strokeStyle=sel?'#aa44ff':'#444'; ctx.lineWidth=sel?2.5:1;
       ctx.strokeRect(cx,cy,cardW,cardH);
+
+      // Clip all text to card bounds so nothing overflows
+      ctx.save();
+      ctx.beginPath(); ctx.rect(cx+1,cy+1,cardW-2,cardH-2); ctx.clip();
+
       ctx.fillStyle=sel?'#aa44ff':'#666'; ctx.font='bold 12px monospace'; ctx.textAlign='center';
       ctx.fillText(`[${i+1}]`,cx+cardW/2,cy+18);
-      ctx.font='34px sans-serif'; ctx.fillText(item.icon,cx+cardW/2,cy+64);
-      ctx.fillStyle=sel?'#ffffff':'#cccccc'; ctx.font='bold 13px monospace';
-      ctx.fillText(item.name,cx+cardW/2,cy+90);
+      ctx.font='34px sans-serif'; ctx.fillText(item.icon,cx+cardW/2,cy+60);
+      // Name — shrink font if too wide
+      ctx.fillStyle=sel?'#ffffff':'#cccccc';
+      ctx.font='bold 13px monospace';
+      const nameFontSz = ctx.measureText(item.name).width > cardW-16 ? 10 : 13;
+      ctx.font=`bold ${nameFontSz}px monospace`;
+      ctx.fillText(item.name,cx+cardW/2,cy+86);
+      // Stat desc lines
       ctx.fillStyle='#999'; ctx.font='10px monospace';
-      const dlines=item.desc.split('/');
-      dlines.forEach((l,li)=>ctx.fillText(l.trim(),cx+cardW/2,cy+108+li*14));
+      item.desc.split('/').forEach((l,li)=>ctx.fillText(l.trim(),cx+cardW/2,cy+102+li*13));
+      // Ability name
       ctx.fillStyle=sel?'#ffcc00':'#888'; ctx.font='bold 11px monospace';
-      ctx.fillText('★ '+item.abilityName,cx+cardW/2,cy+145);
+      ctx.fillText('★ '+item.abilityName,cx+cardW/2,cy+140);
+      // Ability desc — word-wrapped, clipped to bottom of card
       ctx.fillStyle='#777'; ctx.font='10px monospace';
-      const words=item.abDesc.split(' '); let line='',ly=cy+162;
+      const maxW=cardW-16, cardBottom=cy+cardH-8;
+      const words=item.abDesc.split(' '); let line='',ly=cy+156;
       words.forEach(w=>{
-        if((line+w).length>22){ ctx.fillText(line.trim(),cx+cardW/2,ly); line=''; ly+=13; }
-        line+=w+' ';
+        const test=line ? line+' '+w : w;
+        if(ctx.measureText(test).width>maxW){
+          if(ly<=cardBottom) ctx.fillText(line.trim(),cx+cardW/2,ly);
+          line=w; ly+=13;
+        } else { line=test; }
       });
-      if(line) ctx.fillText(line.trim(),cx+cardW/2,ly);
+      if(line && ly<=cardBottom) ctx.fillText(line.trim(),cx+cardW/2,ly);
+
+      ctx.restore();
     });
     ctx.textAlign='left';
   }
@@ -1842,7 +2206,7 @@
     ctx.fillStyle='#ffcc00'; ctx.font='bold 26px monospace'; ctx.textAlign='center';
     ctx.fillText('★  BOSS DEFEATED — CHOOSE YOUR REWARD  ★',W/2,70);
     ctx.fillStyle='#888'; ctx.font='13px monospace';
-    ctx.fillText('← → navigate   Z / W confirm   or press 1 / 2 / 3',W/2,98);
+    ctx.fillText('← → navigate   S confirm   or press 1 / 2 / 3',W/2,98);
     const rewards=getRewards();
     const cardW=200, cardH=180, gap=20;
     const totalW=cardW*3+gap*2;
@@ -1895,6 +2259,23 @@
     ctx.textAlign='left';
     ctx.fillStyle='#cc8800'; ctx.font='11px monospace';
     ctx.fillText(`LVL ${gs.level}   WAVE ${gs.wave}`,W-155,22);
+    // Cheat mode badges
+    if(godMode){
+      const gp = 0.7 + Math.sin(Date.now()/180)*0.3;
+      ctx.save(); ctx.globalAlpha = gp; ctx.fillStyle = '#ffe033';
+      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
+      ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 8;
+      ctx.fillText('✦ BRYAN ✦', W - 4, 38);
+      ctx.restore(); ctx.textAlign = 'left';
+    }
+    if(babyMode){
+      const bp = 0.7 + Math.sin(Date.now()/200)*0.3;
+      ctx.save(); ctx.globalAlpha = bp; ctx.fillStyle = '#88ddff';
+      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
+      ctx.shadowColor = '#44aaff'; ctx.shadowBlur = 8;
+      ctx.fillText('🍼 BABY', W - 4, godMode ? 52 : 38);
+      ctx.restore(); ctx.textAlign = 'left';
+    }
     // (controls shown above the canvas in HTML)
 
     // Active item ability — drawn near player in drawPlayer(), nothing here
@@ -2016,8 +2397,94 @@
     }
 
     // Player sprite
+    // Holy Barrier: player never blinks invisible — draw golden divine aura instead
+    if(PL.holyBarrierT > 0){
+      const t   = Date.now();
+      const ecx = PL.cx;
+      const ecy = wy + PL.h * 0.5;
+      // Pulse: faster flicker near expiry
+      const flickerRate = PL.holyBarrierT < 60 ? 60 : 120;
+      const pulse = 0.6 + Math.sin(t / flickerRate * Math.PI) * 0.4;
+
+      // Outer radiant ring
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.55;
+      ctx.strokeStyle = '#ffe066';
+      ctx.shadowColor = '#ffcc00';
+      ctx.shadowBlur  = 22;
+      ctx.lineWidth   = 5;
+      ctx.beginPath();
+      ctx.ellipse(ecx, ecy, PL.w * 0.78, PL.h * 0.68, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner golden glow fill
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.18;
+      const grad = ctx.createRadialGradient(ecx, ecy, 4, ecx, ecy, PL.w * 0.78);
+      grad.addColorStop(0,   '#ffffff');
+      grad.addColorStop(0.4, '#ffe566');
+      grad.addColorStop(1,   'rgba(255,200,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(ecx, ecy, PL.w * 0.78, PL.h * 0.68, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Radiating star points (8 spikes)
+      const spikes = 8;
+      const angOff = (t / 1800) % (Math.PI * 2); // slow rotate
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.70;
+      ctx.strokeStyle = '#fff5aa';
+      ctx.shadowColor = '#ffdd00';
+      ctx.shadowBlur  = 14;
+      ctx.lineWidth   = 1.8;
+      for(let i = 0; i < spikes; i++){
+        const a   = angOff + (i / spikes) * Math.PI * 2;
+        const r0  = PL.w * 0.82;
+        const r1  = PL.w * 0.82 + 14 + Math.sin(t / 90 + i) * 5;
+        ctx.beginPath();
+        ctx.moveTo(ecx + Math.cos(a) * r0 * 0.5, ecy + Math.sin(a) * r0 * 0.4);
+        ctx.lineTo(ecx + Math.cos(a) * r1 * 0.82, ecy + Math.sin(a) * r1 * 0.60);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Bright inner cross-flash
+      const crossAlpha = pulse * 0.35;
+      ctx.save();
+      ctx.globalAlpha = crossAlpha;
+      ctx.strokeStyle = '#ffffff';
+      ctx.shadowColor = '#fffabb';
+      ctx.shadowBlur  = 18;
+      ctx.lineWidth   = 2.5;
+      ctx.beginPath(); ctx.moveTo(ecx - 22, ecy); ctx.lineTo(ecx + 22, ecy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ecx, ecy - 28); ctx.lineTo(ecx, ecy + 28); ctx.stroke();
+      ctx.restore();
+
+      // Draw player (never invisible during Holy Barrier)
+      drawWDSprite(PL.x, wy, PL.facing < 0, PL.atk);
+
+      // "DIVINE SHIELD" label above when > half duration
+      if(PL.holyBarrierT > 90){
+        const labelAlpha = Math.min(1, (PL.holyBarrierT - 90) / 30);
+        ctx.save();
+        ctx.globalAlpha = labelAlpha * pulse * 0.9;
+        ctx.font = 'bold 11px "Metal Mania", serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffe566';
+        ctx.shadowColor = '#aa8800';
+        ctx.shadowBlur  = 8;
+        ctx.fillText('✦ DIVINE SHIELD ✦', ecx, wy - 24);
+        ctx.restore();
+      }
+      // still fall through to draw the slash arc below
+    } else {
+    // Normal damage iframes: blink invisible
     if(PL.iframes>0 && Math.floor(PL.iframes/4)%2===0) return;
     drawWDSprite(PL.x, wy, PL.facing < 0, PL.atk);
+    }
 
     // Weapon slash arc — style varies by PL.weapon.slashStyle
     if(PL.slashTimer > 0){
@@ -2141,40 +2608,39 @@
       }
     }
 
-    // Active ability cooldown arc — below player feet
+    // Active ability cooldown bar — horizontal bar below player feet
     if(gs.activeItem){
       const cdFrac  = PL.itemCd / Math.max(1, PL.itemCdMax);
       const ready   = PL.itemCd === 0;
-      const arcX    = PL.cx;
-      const arcY    = wy + PL.h + 14;
-      const arcR    = 9;
+      const barW    = 72;
+      const barH    = 5;
+      const barX    = PL.cx - barW / 2;
+      const barY    = wy + PL.h + 6;
       ctx.save();
-      // Background ring
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth   = 3;
-      ctx.beginPath(); ctx.arc(arcX, arcY, arcR, 0, Math.PI * 2); ctx.stroke();
-      // Progress/ready arc
-      if(ready){
-        ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 10;
-        ctx.strokeStyle = '#ffcc00';
-        ctx.lineWidth   = 3;
-        ctx.beginPath(); ctx.arc(arcX, arcY, arcR, 0, Math.PI * 2); ctx.stroke();
-      } else {
-        ctx.strokeStyle = '#aa44ff';
-        ctx.lineWidth   = 3;
-        ctx.beginPath();
-        ctx.arc(arcX, arcY, arcR, -Math.PI/2, -Math.PI/2 + (1 - cdFrac) * Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.shadowBlur  = 0;
-      ctx.fillStyle   = ready ? '#ffcc00' : '#999';
+      // BG track
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(barX, barY, barW, barH);
+      // Fill (orange while recharging, gold when ready)
+      const fillW = ready ? barW : (1 - cdFrac) * barW;
+      if(ready){ ctx.shadowColor='#ffcc00'; ctx.shadowBlur=8; }
+      ctx.fillStyle = ready ? '#ffcc00' : '#ff7700';
+      ctx.fillRect(barX, barY, fillW, barH);
+      ctx.shadowBlur = 0;
+      // "SP" label to the left
+      ctx.fillStyle   = ready ? '#ffcc00' : '#ff9933';
       ctx.font        = 'bold 7px monospace';
+      ctx.textAlign   = 'right';
+      ctx.fillText('SP', barX - 3, barY + barH);
+      // Time text
       ctx.textAlign   = 'center';
-      ctx.fillText(ready ? 'READY' : Math.ceil(PL.itemCd / 60) + 's', arcX, arcY + arcR + 8);
+      ctx.fillStyle   = ready ? '#ffcc00' : '#aaaaaa';
+      ctx.font        = 'bold 7px monospace';
+      ctx.fillText(ready ? 'READY' : Math.ceil(PL.itemCd / 60) + 's', PL.cx, barY + barH + 9);
+      // Ability name
       const shortName = gs.activeItem.abilityName.split(' ')[0];
       ctx.fillStyle   = '#666';
       ctx.font        = '7px monospace';
-      ctx.fillText('[S] ' + shortName, arcX, arcY + arcR + 16);
+      ctx.fillText('[S] ' + shortName, PL.cx, barY + barH + 17);
       ctx.textAlign   = 'left';
       ctx.restore();
     }
@@ -2381,7 +2847,50 @@
   }
 
   function drawProjs(){
-    projs.forEach(p=> spr(p.spr,p.x,p.y,SC2,p.owner==='enemy'));
+    projs.forEach(p=>{
+      if(p.pierce){
+        // Void Ball: glowing purple sphere that pierces enemies
+        const cx = p.x + p.w/2, cy = p.y + p.h/2, r = p.w * 0.55;
+        const pulse = 0.75 + Math.sin(Date.now()/80) * 0.25;
+        const grd = ctx.createRadialGradient(cx,cy,r*0.1,cx,cy,r);
+        grd.addColorStop(0,'rgba(220,140,255,'+pulse+')');
+        grd.addColorStop(0.4,'rgba(150,0,255,'+pulse*0.85+')');
+        grd.addColorStop(1,'rgba(60,0,120,0)');
+        ctx.save();
+        ctx.shadowColor='#cc00ff'; ctx.shadowBlur=18;
+        ctx.fillStyle=grd;
+        ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      } else if(p.axe){
+        // Cleave axe: spinning axe head flying across the row
+        p.spin = (p.spin||0) + 0.38 * p.spinDir;
+        const cx = p.x + p.w/2, cy = p.y + p.h/2;
+        const fade = Math.min(1, p.life / 12); // fade out near end
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(cx, cy);
+        ctx.rotate(p.spin);
+        ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 14;
+        // Axe head (crescent blade)
+        ctx.fillStyle = '#ff8800';
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, -0.9, Math.PI + 0.9); // outer arc
+        ctx.arc(0, 0, 7,  Math.PI + 0.9, -0.9, true); // inner cutout
+        ctx.closePath(); ctx.fill();
+        // Bright edge highlight
+        ctx.strokeStyle = '#ffdd88'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, 14, -0.8, Math.PI + 0.8); ctx.stroke();
+        // Handle
+        ctx.fillStyle = '#7a3a00';
+        ctx.fillRect(-3, 4, 6, 16);
+        // Handle grip wrap
+        ctx.fillStyle = '#4a2000';
+        ctx.fillRect(-3, 10, 6, 3);
+        ctx.restore();
+      } else {
+        spr(p.spr,p.x,p.y,SC2,p.owner==='enemy');
+      }
+    });
   }
 
   function drawDrops(){
@@ -2492,7 +3001,8 @@
   function reset(){
     Object.assign(gs,{screen:'playing',score:0,level:1,wave:1,
       hp:CFG.playerHp,maxHp:CFG.playerHp,spellUses:3,maxSpell:3,spellUpgrades:0,rewardChoice:0,
-      itemTier:0,activeItem:null,rewardItemChoices:[],rewardItemChoice:0});
+      itemTier:0,activeItem:null,rewardItemChoices:[],rewardItemChoice:0,
+      shieldPipUpgrades:0,rewardChoices:null});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
     PL.weapon.dmg=CFG.weaponDmg; PL.atkRange=CFG.atkRange;
@@ -2502,7 +3012,9 @@
     PL.itemAbility=null; PL.itemCd=0; PL.itemCdMax=0;
     PL.shBroken=false; PL.shHp=PL.shMaxHp; PL.soulDrainActive=false; PL.deathMarkActive=false;
     PL.mirrorActive=false; PL.thornActive=false; PL.explodeShieldActive=false;
-    PL.bloodlustT=0;
+    PL.bloodlustT=0; PL.holyBarrierT=0;
+    godMode=false; babyMode=false; godCheatBuf=''; deact67Buf=''; godCheatDeadline = performance.now() + 10000;
+    reloadCFG('wolfdragon_config'); // restore normal config (in case baby mode was active)
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[]; bgOff=0;
     webZones=[]; shockwaves=[]; darknessT=0;
     PL.webbed=0;
@@ -2531,6 +3043,7 @@
       if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
     } else if(gs.screen==='victory'){
       drawBG(); drawVictory();
+      if(eat('KeyW')||eat('Space')) reset();
     } else {
       update();
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();

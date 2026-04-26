@@ -542,3 +542,176 @@ img[src$=".svg"] {
     display: none;
   }
 }
+
+/* ============================================
+   MOBILE TAP-TO-START OVERLAY
+   ============================================ */
+.mobile-tap-start {
+  display: none; /* shown via JS on touch devices */
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 20;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-tap-start span {
+  font-size: 3rem;
+}
+
+.mobile-tap-start p {
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  color: var(--red-bright);
+  letter-spacing: 0.25em;
+  animation: flickerGlow 2s infinite alternate;
+}
+
+/* Show tap-to-start on touch devices */
+@media (pointer: coarse) {
+  .mobile-tap-start {
+    display: flex;
+  }
+}
+
+/* ============================================
+   MOBILE TOUCH CONTROLS
+   ============================================ */
+
+:root {
+  --dp-side:  clamp(46px, 13vw, 62px);  /* left/right arrow col width */
+  --dp-mid:   clamp(32px, 9vw,  44px);  /* center col width           */
+  --dp-vert:  clamp(38px, 10vw, 50px);  /* up/down row height         */
+  --dp-hgt:   clamp(50px, 14vw, 66px);  /* left/right row height      */
+  --ctrl-gap: clamp(3px,  1vw,  5px);
+}
+
+.mobile-controls {
+  display: none; /* shown via JS on touch devices */
+  align-items: stretch;
+  padding: 10px clamp(8px, 3vw, 16px) 18px;
+  background: var(--black);
+  border-top: 2px solid var(--red-dark);
+  gap: clamp(8px, 3vw, 16px);
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── D-pad: CSS grid so ↑↓ span full width ── */
+.dpad {
+  display: grid;
+  grid-template-columns: var(--dp-side) var(--dp-mid) var(--dp-side);
+  grid-template-rows:    var(--dp-vert) var(--dp-hgt) var(--dp-vert);
+  gap: var(--ctrl-gap);
+  flex-shrink: 0;
+}
+
+.dpad-up    { grid-column: 1 / 4; grid-row: 1; }
+.dpad-left  { grid-column: 1;     grid-row: 2; }
+.dpad-center {
+  grid-column: 2; grid-row: 2;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+}
+.dpad-right { grid-column: 3;     grid-row: 2; }
+.dpad-down  { grid-column: 1 / 4; grid-row: 3; }
+
+.dpad-btn {
+  background: #1a1a1a;
+  border: 2px solid #3a0000;
+  color: var(--red);
+  font-size: clamp(1.1rem, 3.8vw, 1.4rem);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.08s, border-color 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dpad-btn.pressed,
+.dpad-btn:active {
+  background: var(--red-dark);
+  border-color: var(--red-bright);
+  color: #fff;
+}
+
+/* ── Action pad: fills all remaining space ── */
+.action-pad {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ctrl-gap);
+  min-width: 0;
+}
+
+.action-row {
+  flex: 1;
+  display: flex;
+  gap: var(--ctrl-gap);
+}
+
+.act-btn {
+  flex: 1;
+  min-width: 0;
+  border: 2px solid #3a0000;
+  border-radius: 8px;
+  color: #fff;
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  gap: 3px;
+  cursor: pointer;
+  transition: background 0.08s, border-color 0.08s, transform 0.06s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  padding: 0;
+}
+
+.act-btn span {
+  font-size: clamp(0.5rem, 1.8vw, 0.65rem);
+  letter-spacing: 0.1em;
+  font-family: 'Oswald', sans-serif;
+  opacity: 0.8;
+}
+
+.btn-attack  { background: #2a0a00; border-color: #882200; }
+.btn-spell   { background: #0a002a; border-color: #442288; }
+.btn-block   { background: #001a2a; border-color: #224488; }
+.btn-special { background: #1a1400; border-color: #665500; }
+
+.act-btn.pressed,
+.act-btn:active {
+  transform: scale(0.94);
+  border-color: var(--red-bright);
+}
+
+.btn-attack.pressed,  .btn-attack:active  { background: #660800; border-color: #ff4400; }
+.btn-spell.pressed,   .btn-spell:active   { background: #220055; border-color: #8844ff; }
+.btn-block.pressed,   .btn-block:active   { background: #003355; border-color: #4488cc; }
+.btn-special.pressed, .btn-special:active { background: #443300; border-color: #ffcc00; }
+
+/* On touch devices */
+@media (pointer: coarse) {
+  .game-section { padding-bottom: 0; }
+  .game-controls-bar { display: none; }
+}

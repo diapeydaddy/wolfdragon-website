@@ -87,6 +87,8 @@
       <span class="ctrl-key">W</span><span class="ctrl-label">Start / Confirm</span>
       <span class="ctrl-sep">|</span>
       <span class="ctrl-key">S</span><span class="ctrl-label">Active Ability</span>
+      <span class="ctrl-sep">|</span>
+      <span class="ctrl-key">M</span><span class="ctrl-label">Music On/Off</span>
     </div>
 
     <div class="game-canvas-wrap">
@@ -98,6 +100,35 @@
         <span>🐺🐉</span>
         <p>Game Loading...</p>
       </div>
+      <!-- Mobile tap-to-start overlay (hidden once game starts) -->
+      <div id="mobile-tap-start" class="mobile-tap-start">
+        <span>🐺🐉</span>
+        <p>TAP TO BEGIN</p>
+      </div>
+    </div>
+
+    <!-- Mobile touch controls (shown only on touch devices) -->
+    <div class="mobile-controls" id="mobile-controls">
+      <!-- Left: Action buttons -->
+      <div class="action-pad">
+        <div class="action-row">
+          <button class="act-btn btn-block"   data-key="KeyC">🛡<br><span>BLOCK</span></button>
+          <button class="act-btn btn-special" data-key="KeyS">★<br><span>SPECIAL</span></button>
+        </div>
+        <div class="action-row">
+          <button class="act-btn btn-attack"  data-key="KeyZ">⚔<br><span>ATTACK</span></button>
+          <button class="act-btn btn-spell"   data-key="KeyX">✦<br><span>SPELL</span></button>
+        </div>
+      </div>
+
+      <!-- Right: D-pad (CSS grid, ↑↓ span full width) -->
+      <div class="dpad">
+        <button class="dpad-btn dpad-up"    data-key="ArrowUp">▲</button>
+        <button class="dpad-btn dpad-left"  data-key="ArrowLeft">◀</button>
+        <div    class="dpad-center"></div>
+        <button class="dpad-btn dpad-right" data-key="ArrowRight">▶</button>
+        <button class="dpad-btn dpad-down"  data-key="ArrowDown">▼</button>
+      </div>
     </div>
   </section>
 
@@ -108,6 +139,60 @@
 
   <script src="js/player.js"></script>
   <script src="js/game.js"></script>
+  <script>
+  // ── Mobile touch controls ──────────────────────────────────────────────────
+  (function(){
+    // Only activate on touch-capable devices
+    if(!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
+
+    document.getElementById('mobile-controls').style.display = 'flex';
+
+    // Tap-to-start overlay
+    const tapStart = document.getElementById('mobile-tap-start');
+    function hideTapStart(){ tapStart.style.display = 'none'; }
+    tapStart.addEventListener('touchstart', function(e){
+      e.preventDefault();
+      hideTapStart();
+      // Fire W (start/confirm) and try starting music
+      if(window._WD_J) window._WD_J['KeyW'] = true;
+      if(window._WD_K) window._WD_K['KeyW'] = true;
+      setTimeout(()=>{ if(window._WD_K) window._WD_K['KeyW']=false; }, 120);
+    }, {passive:false});
+
+    // Also tap on canvas fires W (for menus/confirmations)
+    document.getElementById('game-canvas').addEventListener('touchstart', function(e){
+      hideTapStart();
+      if(window._WD_J){ window._WD_J['KeyW']=true; }
+    }, {passive:true});
+
+    // Wire all dpad + action buttons
+    document.querySelectorAll('.dpad-btn, .act-btn').forEach(function(btn){
+      var code = btn.getAttribute('data-key');
+      if(!code) return;
+
+      function press(e){
+        e.preventDefault();
+        if(!window._WD_K) return;
+        window._WD_K[code] = true;
+        window._WD_J[code] = true;
+        btn.classList.add('pressed');
+      }
+      function release(e){
+        e.preventDefault();
+        if(!window._WD_K) return;
+        window._WD_K[code] = false;
+        btn.classList.remove('pressed');
+      }
+
+      btn.addEventListener('touchstart',  press,   {passive:false});
+      btn.addEventListener('touchend',    release, {passive:false});
+      btn.addEventListener('touchcancel', release, {passive:false});
+    });
+
+    // Hide tap-start once any game action happens
+    document.getElementById('game-canvas').addEventListener('touchstart', hideTapStart, {passive:true});
+  })();
+  </script>
   <script>
     (function(){
       const btn  = document.getElementById('fullscreen-btn');

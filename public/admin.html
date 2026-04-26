@@ -60,7 +60,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
       border-bottom: 2px solid #cc0000;
       padding-bottom: 14px;
       flex-wrap: wrap;
@@ -78,6 +78,47 @@
       transition: color 0.2s;
     }
     .back-link:hover { color: #cc0000; }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid #2a2a2a;
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-bottom: none;
+      color: #888;
+      padding: 9px 20px;
+      font-family: 'Oswald', monospace, sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      border-radius: 4px 4px 0 0;
+      transition: background 0.2s, color 0.2s;
+      position: relative;
+      top: 1px;
+    }
+    .tab-btn:hover { background: #1a0000; color: #ccc; }
+    .tab-btn.active {
+      background: #1a0000;
+      border-color: #440000;
+      color: #cc0000;
+      border-bottom: 1px solid #1a0000;
+    }
+    .tab-btn.baby-tab { color: #66aacc; border-color: #224466; }
+    .tab-btn.baby-tab.active { background: #00111a; border-color: #336688; color: #88ddff; border-bottom: 1px solid #00111a; }
+    .tab-indicator {
+      font-size: 0.75rem;
+      color: #555;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+    .tab-indicator.baby { color: #336688; }
 
     /* ── Buttons ── */
     .btn {
@@ -201,12 +242,47 @@
       min-width: 0;
     }
     .field input[type=number]:focus { border-color: #cc0000; }
-    .cd-hint {
+    .unit-label {
       font-size: 0.75rem;
-      color: #666;
+      color: #555;
       white-space: nowrap;
-      min-width: 44px;
+      min-width: 18px;
     }
+
+    /* ── Cheat Codes table ── */
+    .codes-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .codes-table th {
+      text-align: left;
+      color: #aa4444;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 12px 8px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .codes-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #1a1a1a;
+      vertical-align: top;
+    }
+    .codes-table tr:last-child td { border-bottom: none; }
+    .code-key {
+      font-family: monospace;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 3px;
+      padding: 2px 8px;
+      color: #ffdd66;
+      white-space: nowrap;
+      font-size: 0.9rem;
+    }
+    .codes-table td:first-child { width: 140px; }
+    .code-desc { color: #aaa; font-size: 0.85rem; }
+    .code-note { color: #555; font-size: 0.75rem; margin-top: 2px; }
 
     /* ── Bottom actions ── */
     .actions {
@@ -237,6 +313,13 @@
     <a href="/" class="back-link">&#8592; Back to Game</a>
   </div>
 
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="main" onclick="switchTab('main')">&#9881; MAIN CONFIG</button>
+    <button class="tab-btn baby-tab" data-tab="baby" id="baby-tab-btn" onclick="switchTab('baby')">&#127868; BABY CONFIG</button>
+  </div>
+  <div class="tab-indicator" id="tab-indicator">Main Config — wolfdragon_config</div>
+
   <!-- 1. Player -->
   <details open>
     <summary>Player</summary>
@@ -247,7 +330,9 @@
         <div class="field"><label>Starting Weapon DMG</label><input type="number" id="weaponDmg" data-default="25" step="1" /></div>
         <div class="field"><label>Starting Spell DMG</label><input type="number" id="spellDmg" data-default="60" step="1" /></div>
         <div class="field"><label>Attack Range (px)</label><input type="number" id="atkRange" data-default="100" step="1" /></div>
-        <div class="field"><label>Shield Pips</label><input type="number" id="shMaxHp" data-default="3" step="1" min="0" /></div>
+        <div class="field"><label>Shield Pips (starting)</label><input type="number" id="shMaxHp" data-default="3" step="1" min="0" /></div>
+        <div class="field"><label>Shield Pip Reward — Tier 1 <span style="color:#555;font-size:0.7em">(+pips, 1st pick)</span></label><input type="number" id="shieldPipT1" data-default="1" step="1" min="1" /></div>
+        <div class="field"><label>Shield Pip Reward — Tier 2 <span style="color:#555;font-size:0.7em">(+pips, 2nd pick)</span></label><input type="number" id="shieldPipT2" data-default="2" step="1" min="1" /></div>
       </div>
     </div>
   </details>
@@ -262,25 +347,25 @@
           <div class="field"><label>HP</label><input type="number" id="spiderHp" data-default="625" step="1" /></div>
           <div class="field"><label>Contact DMG</label><input type="number" id="spiderDmg" data-default="18" step="1" /></div>
           <div class="field"><label>Speed</label><input type="number" id="spiderSpeed" data-default="0.6" step="0.05" /></div>
-          <div class="field"><label>Attack Cooldown (frames)</label><input type="number" id="spiderCd" data-default="110" step="1" /></div>
+          <div class="field"><label>Attack Cooldown</label><div class="field-row"><input type="number" id="spiderCd" data-default="110" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
         </div>
       </div>
       <div class="sub-group">
         <div class="sub-group-label">Lich Boss</div>
         <div class="field-grid">
-          <div class="field"><label>HP</label><input type="number" id="lichHp" data-default="500" step="1" /></div>
+          <div class="field"><label>HP</label><input type="number" id="lichHp" data-default="750" step="1" /></div>
           <div class="field"><label>Contact DMG</label><input type="number" id="lichDmg" data-default="22" step="1" /></div>
           <div class="field"><label>Speed</label><input type="number" id="lichSpeed" data-default="0.4" step="0.05" /></div>
-          <div class="field"><label>Attack Cooldown (frames)</label><input type="number" id="lichCd" data-default="90" step="1" /></div>
+          <div class="field"><label>Attack Cooldown</label><div class="field-row"><input type="number" id="lichCd" data-default="90" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
         </div>
       </div>
       <div class="sub-group">
         <div class="sub-group-label">Apocalyptic Boss</div>
         <div class="field-grid">
-          <div class="field"><label>HP</label><input type="number" id="apocHp" data-default="1050" step="1" /></div>
-          <div class="field"><label>Contact DMG</label><input type="number" id="apocDmg" data-default="30" step="1" /></div>
+          <div class="field"><label>HP</label><input type="number" id="apocHp" data-default="1575" step="1" /></div>
+          <div class="field"><label>Contact DMG</label><input type="number" id="apocDmg" data-default="38" step="1" /></div>
           <div class="field"><label>Speed</label><input type="number" id="apocSpeed" data-default="0.25" step="0.05" /></div>
-          <div class="field"><label>Attack Cooldown (frames)</label><input type="number" id="apocCd" data-default="45" step="1" /></div>
+          <div class="field"><label>Attack Cooldown</label><div class="field-row"><input type="number" id="apocCd" data-default="45" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
         </div>
       </div>
       <div class="sub-group" style="margin-bottom:0">
@@ -328,21 +413,21 @@
     <summary>Ability Cooldowns</summary>
     <div class="section-body">
       <div class="field-grid">
-        <div class="field"><label>Lunge Strike</label><div class="field-row"><input type="number" id="cdLunge" data-default="360" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdLunge">6.0s</span></div></div>
-        <div class="field"><label>Soul Drain</label><div class="field-row"><input type="number" id="cdSouldrain" data-default="300" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdSouldrain">5.0s</span></div></div>
-        <div class="field"><label>Cleave</label><div class="field-row"><input type="number" id="cdCleave" data-default="420" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdCleave">7.0s</span></div></div>
-        <div class="field"><label>Chain Lightning</label><div class="field-row"><input type="number" id="cdLightning" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdLightning">8.0s</span></div></div>
-        <div class="field"><label>Bloodlust</label><div class="field-row"><input type="number" id="cdBloodlust" data-default="600" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdBloodlust">10.0s</span></div></div>
-        <div class="field"><label>Void Slash</label><div class="field-row"><input type="number" id="cdVoidslash" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdVoidslash">8.0s</span></div></div>
-        <div class="field"><label>Dragon Fury</label><div class="field-row"><input type="number" id="cdDragonfury" data-default="600" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdDragonfury">10.0s</span></div></div>
-        <div class="field"><label>Ice Nova</label><div class="field-row"><input type="number" id="cdIcenova" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdIcenova">8.0s</span></div></div>
-        <div class="field"><label>Firewall</label><div class="field-row"><input type="number" id="cdFirewall" data-default="420" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdFirewall">7.0s</span></div></div>
-        <div class="field"><label>Death Mark</label><div class="field-row"><input type="number" id="cdDeathmark" data-default="540" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdDeathmark">9.0s</span></div></div>
-        <div class="field"><label>Whirlwind</label><div class="field-row"><input type="number" id="cdWhirlwind" data-default="540" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdWhirlwind">9.0s</span></div></div>
-        <div class="field"><label>Mirror Shield</label><div class="field-row"><input type="number" id="cdMirrorshield" data-default="360" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdMirrorshield">6.0s</span></div></div>
-        <div class="field"><label>Thorn Wall</label><div class="field-row"><input type="number" id="cdThornwall" data-default="480" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdThornwall">8.0s</span></div></div>
-        <div class="field"><label>Holy Barrier</label><div class="field-row"><input type="number" id="cdHolybarrier" data-default="600" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdHolybarrier">10.0s</span></div></div>
-        <div class="field"><label>Explode Shield</label><div class="field-row"><input type="number" id="cdExplodeshield" data-default="540" step="1" oninput="updateHint(this)" /><span class="cd-hint" id="hint-cdExplodeshield">9.0s</span></div></div>
+        <div class="field"><label>Lunge Strike</label><div class="field-row"><input type="number" id="cdLunge" data-default="360" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Soul Drain</label><div class="field-row"><input type="number" id="cdSouldrain" data-default="300" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Cleave</label><div class="field-row"><input type="number" id="cdCleave" data-default="420" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Chain Lightning</label><div class="field-row"><input type="number" id="cdLightning" data-default="480" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Bloodlust</label><div class="field-row"><input type="number" id="cdBloodlust" data-default="600" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Void Ball</label><div class="field-row"><input type="number" id="cdVoidslash" data-default="480" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Dragon Fury</label><div class="field-row"><input type="number" id="cdDragonfury" data-default="600" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Ice Nova</label><div class="field-row"><input type="number" id="cdIcenova" data-default="480" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Firewall</label><div class="field-row"><input type="number" id="cdFirewall" data-default="420" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Death Mark</label><div class="field-row"><input type="number" id="cdDeathmark" data-default="540" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Whirlwind</label><div class="field-row"><input type="number" id="cdWhirlwind" data-default="540" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Mirror Shield</label><div class="field-row"><input type="number" id="cdMirrorshield" data-default="360" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Thorn Wall</label><div class="field-row"><input type="number" id="cdThornwall" data-default="480" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Holy Barrier</label><div class="field-row"><input type="number" id="cdHolybarrier" data-default="600" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        <div class="field"><label>Explode Shield</label><div class="field-row"><input type="number" id="cdExplodeshield" data-default="540" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
       </div>
     </div>
   </details>
@@ -351,20 +436,78 @@
   <details>
     <summary>Ability Effects</summary>
     <div class="section-body">
-      <div class="field-grid">
-        <div class="field"><label>Lunge DMG multiplier</label><input type="number" id="multLunge" data-default="1.2" step="0.05" /></div>
-        <div class="field"><label>Cleave DMG multiplier</label><input type="number" id="multCleave" data-default="1.2" step="0.05" /></div>
-        <div class="field"><label>Chain Lightning multiplier</label><input type="number" id="multLightning" data-default="0.8" step="0.05" /></div>
-        <div class="field"><label>Void Slash multiplier</label><input type="number" id="multVoidslash" data-default="2.0" step="0.05" /></div>
-        <div class="field"><label>Dragon Fury multiplier</label><input type="number" id="multDragonfury" data-default="1.8" step="0.05" /></div>
-        <div class="field"><label>Firewall multiplier</label><input type="number" id="multFirewall" data-default="1.2" step="0.05" /></div>
-        <div class="field"><label>Soul Drain heal (HP)</label><input type="number" id="healSouldrain" data-default="15" step="1" /></div>
-        <div class="field"><label>Bloodlust duration (frames)</label><input type="number" id="bloodlustDuration" data-default="300" step="1" /></div>
-        <div class="field"><label>Death Mark explosion DMG</label><input type="number" id="dmgDeathmark" data-default="80" step="1" /></div>
-        <div class="field"><label>Thorn Wall DMG</label><input type="number" id="dmgThornwall" data-default="35" step="1" /></div>
-        <div class="field"><label>Explode Shield DMG</label><input type="number" id="dmgExplodeshield" data-default="60" step="1" /></div>
-        <div class="field"><label>Ice Nova freeze (frames)</label><input type="number" id="freezeIcenova" data-default="90" step="1" /></div>
+      <div class="sub-group">
+        <div class="sub-group-label">Weapon Abilities</div>
+        <div class="field-grid">
+          <div class="field"><label>Lunge DMG multiplier</label><input type="number" id="multLunge" data-default="2.0" step="0.05" /></div>
+          <div class="field"><label>Lunge invuln duration</label><div class="field-row"><input type="number" id="lungeIframes" data-default="120" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Cleave DMG multiplier</label><input type="number" id="multCleave" data-default="1.2" step="0.05" /></div>
+          <div class="field"><label>Chain Lightning multiplier</label><input type="number" id="multLightning" data-default="0.35" step="0.05" /></div>
+          <div class="field"><label>Void Ball DMG multiplier</label><input type="number" id="multVoidslash" data-default="2.0" step="0.05" /></div>
+          <div class="field"><label>Dragon Fury multiplier</label><input type="number" id="multDragonfury" data-default="1.8" step="0.05" /></div>
+          <div class="field"><label>Firewall multiplier</label><input type="number" id="multFirewall" data-default="1.2" step="0.05" /></div>
+          <div class="field"><label>Soul Drain heal (HP)</label><input type="number" id="healSouldrain" data-default="15" step="1" /></div>
+          <div class="field"><label>Bloodlust duration</label><div class="field-row"><input type="number" id="bloodlustDuration" data-default="300" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Bloodlust ATK speed mult <span style="color:#555;font-size:0.7em">(lower=faster)</span></label><input type="number" id="bloodlustAtkMult" data-default="0.38" step="0.01" /></div>
+          <div class="field"><label>Death Mark explosion DMG</label><input type="number" id="dmgDeathmark" data-default="80" step="1" /></div>
+        </div>
       </div>
+      <div class="sub-group">
+        <div class="sub-group-label">Shield Abilities</div>
+        <div class="field-grid">
+          <div class="field"><label>Thorn Wall DMG</label><input type="number" id="dmgThornwall" data-default="35" step="1" /></div>
+          <div class="field"><label>Explode Shield DMG</label><input type="number" id="dmgExplodeshield" data-default="60" step="1" /></div>
+          <div class="field"><label>Holy Barrier duration</label><div class="field-row"><input type="number" id="holyBarrierDur" data-default="180" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Mirror Reflect DMG mult</label><input type="number" id="mirrorDmgMult" data-default="2.0" step="0.05" /></div>
+        </div>
+      </div>
+      <div class="sub-group">
+        <div class="sub-group-label">Spell Abilities</div>
+        <div class="field-grid">
+          <div class="field"><label>Spray DMG %</label><input type="number" id="sprayDmgPct" data-default="0.45" step="0.05" /></div>
+          <div class="field"><label>Flameshield Orb count</label><input type="number" id="flameshieldOrbs" data-default="4" step="1" min="1" /></div>
+          <div class="field"><label>Flameshield Orb DMG %</label><input type="number" id="flameshieldDmgPct" data-default="0.30" step="0.05" /></div>
+          <div class="field"><label>Nova burst DMG %</label><input type="number" id="novaDmgPct" data-default="0.28" step="0.05" /></div>
+          <div class="field"><label>Ice Nova freeze duration</label><div class="field-row"><input type="number" id="freezeIcenova" data-default="180" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Whirlwind HP% damage</label><input type="number" id="whirlwindHpPct" data-default="0.05" step="0.01" /></div>
+          <div class="field"><label>Whirlwind freeze duration</label><div class="field-row"><input type="number" id="whirlwindFreeze" data-default="60" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- 6. Cheat Codes -->
+  <details>
+    <summary>Cheat Codes</summary>
+    <div class="section-body">
+      <table class="codes-table">
+        <thead>
+          <tr><th>Code</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="code-key">bryan</span></td>
+            <td>
+              <div class="code-desc">God Mode — player takes no damage</div>
+              <div class="code-note">Type within first 10 seconds of starting a game. HUD shows ✦ BRYAN ✦.</div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="code-key">baby</span></td>
+            <td>
+              <div class="code-desc">Baby Mode — loads Baby Config settings for the current game</div>
+              <div class="code-note">Type within first 10 seconds of starting a game. HUD shows 🍼 BABY. Set up Baby Config in the 🍼 Baby Config tab above (revealed by typing "baby" within 10s of opening this admin page).</div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="code-key">67</span></td>
+            <td>
+              <div class="code-desc">Deactivates all active codes mid-game</div>
+              <div class="code-note">Type 6 then 7 at any point during play. Resets to normal config if baby mode was active.</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </details>
 
@@ -377,8 +520,17 @@
 </div>
 
 <script>
+  // ── Frame-based fields (stored in frames, displayed/edited in seconds) ──
+  var FRAME_FIELDS = new Set([
+    'spiderCd','lichCd','apocCd',
+    'cdLunge','cdSouldrain','cdCleave','cdLightning','cdBloodlust',
+    'cdVoidslash','cdDragonfury','cdIcenova','cdFirewall','cdDeathmark',
+    'cdWhirlwind','cdMirrorshield','cdThornwall','cdHolybarrier','cdExplodeshield',
+    'lungeIframes','bloodlustDuration','freezeIcenova','holyBarrierDur','whirlwindFreeze'
+  ]);
+
   // ── Keys in order (must match input IDs exactly) ──
-  const KEYS = [
+  var KEYS = [
     'playerHp','playerSpeed','weaponDmg','spellDmg','atkRange','shMaxHp',
     'spiderHp','spiderDmg','spiderSpeed','spiderCd',
     'lichHp','lichDmg','lichSpeed','lichCd',
@@ -391,8 +543,36 @@
     'cdVoidslash','cdDragonfury','cdIcenova','cdFirewall','cdDeathmark',
     'cdWhirlwind','cdMirrorshield','cdThornwall','cdHolybarrier','cdExplodeshield',
     'multLunge','multCleave','multLightning','multVoidslash','multDragonfury','multFirewall',
-    'healSouldrain','bloodlustDuration','dmgDeathmark','dmgThornwall','dmgExplodeshield','freezeIcenova',
+    'lungeIframes',
+    'healSouldrain','bloodlustDuration','bloodlustAtkMult',
+    'dmgDeathmark','dmgThornwall','dmgExplodeshield','freezeIcenova',
+    'holyBarrierDur','whirlwindHpPct','whirlwindFreeze',
+    'flameshieldOrbs','flameshieldDmgPct','sprayDmgPct','novaDmgPct','mirrorDmgMult',
+    'shieldPipT1','shieldPipT2',
   ];
+
+  // ── Tab state ──
+  var currentTab = 'main';
+
+  function getConfigKey() {
+    return currentTab === 'baby' ? 'wolfdragon_config_baby' : 'wolfdragon_config';
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    var ind = document.getElementById('tab-indicator');
+    if(tab === 'baby') {
+      ind.textContent = '🍼 Baby Config — wolfdragon_config_baby';
+      ind.className = 'tab-indicator baby';
+    } else {
+      ind.textContent = 'Main Config — wolfdragon_config';
+      ind.className = 'tab-indicator';
+    }
+    loadValues();
+  }
 
   // ── Auth ──
   function checkPw(e) {
@@ -417,27 +597,15 @@
   // ── Load saved or default values ──
   function loadValues() {
     var saved = {};
-    try { saved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}'); } catch(e) {}
+    try { saved = JSON.parse(localStorage.getItem(getConfigKey()) || '{}'); } catch(e) {}
     KEYS.forEach(function(k) {
       var el = document.getElementById(k);
       if (!el) return;
       var def = parseFloat(el.getAttribute('data-default'));
-      var val = (k in saved) ? saved[k] : def;
-      el.value = val;
-      // Update CD hint if applicable
-      if (k.indexOf('cd') === 0 && document.getElementById('hint-' + k)) {
-        document.getElementById('hint-' + k).textContent = (val / 60).toFixed(1) + 's';
-      }
+      var raw = (k in saved) ? saved[k] : def;
+      // Convert frames→seconds for display
+      el.value = FRAME_FIELDS.has(k) ? +(raw / 60).toFixed(3) : raw;
     });
-  }
-
-  // ── Live cooldown hint update ──
-  function updateHint(input) {
-    var hint = document.getElementById('hint-' + input.id);
-    if (hint) {
-      var frames = parseFloat(input.value) || 0;
-      hint.textContent = (frames / 60).toFixed(1) + 's';
-    }
   }
 
   // ── Save ──
@@ -445,23 +613,24 @@
     var cfg = {};
     KEYS.forEach(function(k) {
       var el = document.getElementById(k);
-      if (el) cfg[k] = parseFloat(el.value);
+      if (!el) return;
+      var v = parseFloat(el.value);
+      // Convert seconds→frames for storage
+      cfg[k] = FRAME_FIELDS.has(k) ? Math.round(v * 60) : v;
     });
-    localStorage.setItem('wolfdragon_config', JSON.stringify(cfg));
-    flash('✓ Saved! Reload the game to apply.');
+    localStorage.setItem(getConfigKey(), JSON.stringify(cfg));
+    var label = currentTab === 'baby' ? '🍼 Baby Config' : 'Main Config';
+    flash('✓ ' + label + ' saved! Reload the game to apply.');
   }
 
   // ── Reset ──
   function resetConfig() {
-    localStorage.removeItem('wolfdragon_config');
+    localStorage.removeItem(getConfigKey());
     KEYS.forEach(function(k) {
       var el = document.getElementById(k);
       if (!el) return;
       var def = parseFloat(el.getAttribute('data-default'));
-      el.value = def;
-      if (k.indexOf('cd') === 0 && document.getElementById('hint-' + k)) {
-        document.getElementById('hint-' + k).textContent = (def / 60).toFixed(1) + 's';
-      }
+      el.value = FRAME_FIELDS.has(k) ? +(def / 60).toFixed(3) : def;
     });
     flash('✓ Reset to defaults.');
   }
@@ -473,7 +642,7 @@
     el.textContent = msg;
     el.classList.add('show');
     if (flashTimer) clearTimeout(flashTimer);
-    flashTimer = setTimeout(function() { el.classList.remove('show'); }, 3000);
+    flashTimer = setTimeout(function() { el.classList.remove('show'); }, 3500);
   }
 
   // ── Init ──
