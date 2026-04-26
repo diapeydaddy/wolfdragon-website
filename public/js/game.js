@@ -236,16 +236,16 @@
     BRUTE:        { sh:'BR', sx:164, sy:144, sw:742, sh_:694 },
     // Spider boss — front + profile (new image 3)
     // Crop starts at y=160 (sprite begins at y=177 in original; 177-160=17)
-    SPIDER_FRONT: { sh:'SP', sx:0,   sy:17,  sw:509, sh_:620 },
-    SPIDER_SIDE:  { sh:'SP', sx:584, sy:17,  sw:386, sh_:613 },
+    SPIDER_FRONT: { sh:'SP', sx:28,  sy:38,  sw:481, sh_:483 },
+    SPIDER_SIDE:  { sh:'SP', sx:573, sy:73,  sw:413, sh_:578 },
     // Lich boss — front + profile (new image 2)
     // Crop starts at y=120 (sprite begins at y=136 in original; 136-120=16)
-    LICH_FRONT:   { sh:'LI', sx:61,  sy:16,  sw:430, sh_:543 },
-    LICH_SIDE:    { sh:'LI', sx:575, sy:16,  sw:410, sh_:543 },
+    LICH_FRONT:   { sh:'LI', sx:56,  sy:71,  sw:430, sh_:493 },
+    LICH_SIDE:    { sh:'LI', sx:655, sy:69,  sw:260, sh_:475 },
     // Apoc boss — front + profile (new image 1)
     // Crop starts at y=80 (sprite begins ~here); sy=0 maps to crop origin
-    APOC_FRONT:   { sh:'AP', sx:0,   sy:0,   sw:514, sh_:612 },
-    APOC_SIDE:    { sh:'AP', sx:575, sy:0,   sw:428, sh_:615 },
+    APOC_FRONT:   { sh:'AP', sx:13,  sy:43,  sw:499, sh_:490 },
+    APOC_SIDE:    { sh:'AP', sx:512, sy:26,  sw:491, sh_:510 },
   };
 
   // ── Background-removal helpers ────────────────────────────────────────────
@@ -489,44 +489,35 @@
     imgBR.onerror = done;
     imgBR.src = '/images/new image 5.png';
 
-    // Boss sheets: crop to large-sprite-only region BEFORE bg removal.
-    // This discards the small animation-sprite rows and label text at the bottom
-    // so the flood-fill and cluster algorithms only see the two large sprites.
-    // All three source images are 1024×1024; sprites split at x=512.
-    //   Spider: large sprites occupy y=0..800  (small rows start ~797)
-    //   Lich:   large sprites occupy y=0..620  (small rows start ~615)
-    //   Apoc:   large sprites occupy y=0..615  (small rows start ~612)
-    // SRECT sx/sy values below remain correct because we crop from (0,0).
+    // Boss sheets: pre-cropped clean RGBA PNGs (transparent background).
+    // No background removal needed — just draw to canvas and reference via SRECTS.
 
     // Sheet SP — Spider/Insectoid boss
     const imgSP = new Image();
     imgSP.onload = () => {
-      const c = cropToCanvas(imgSP, 0, 160, 1024, 640);
-      SHEETS.SP = removeSmallClusters(removeBgCheckerboard(c, 15), 4);
+      SHEETS.SP = cropToCanvas(imgSP, 0, 0, imgSP.naturalWidth, imgSP.naturalHeight);
       done();
     };
     imgSP.onerror = done;
-    imgSP.src = '/images/new image 3.png';
+    imgSP.src = '/images/boss-spider.png';
 
     // Sheet LI — Lich/Ghost boss
     const imgLI = new Image();
     imgLI.onload = () => {
-      const c = cropToCanvas(imgLI, 0, 120, 1024, 560);
-      SHEETS.LI = removeSmallClusters(removeBgCheckerboard(c, 15), 4);
+      SHEETS.LI = cropToCanvas(imgLI, 0, 0, imgLI.naturalWidth, imgLI.naturalHeight);
       done();
     };
     imgLI.onerror = done;
-    imgLI.src = '/images/new image 2.png';
+    imgLI.src = '/images/boss-lich.png';
 
     // Sheet AP — Apoc boss
     const imgAP = new Image();
     imgAP.onload = () => {
-      const c = cropToCanvas(imgAP, 0, 80, 1024, 620);
-      SHEETS.AP = removeSmallClusters(removeBgCheckerboard(c, 15), 4);
+      SHEETS.AP = cropToCanvas(imgAP, 0, 0, imgAP.naturalWidth, imgAP.naturalHeight);
       done();
     };
     imgAP.onerror = done;
-    imgAP.src = '/images/new image 1.png';
+    imgAP.src = '/images/boss-apoc.png';
   }
 
   // ── Core draw helper ──────────────────────────────────────────────────────
