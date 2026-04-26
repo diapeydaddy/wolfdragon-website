@@ -715,3 +715,83 @@ img[src$=".svg"] {
   .game-section { padding-bottom: 0; }
   .game-controls-bar { display: none; }
 }
+
+/* ── Album player header ── */
+.player-album-header {
+  max-width: 700px;
+  margin: 0 auto 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.player-album-art {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border: 2px solid var(--red-dark);
+  flex-shrink: 0;
+}
+.player-album-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.player-album-title {
+  font-family: var(--font-title);
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  color: var(--white);
+  letter-spacing: 0.05em;
+}
+.player-album-year {
+  font-size: 0.85rem;
+  color: var(--red);
+  letter-spacing: 0.15em;
+}
+
+/* ── Other Albums ── */
+.other-albums-section {
+  max-width: 700px;
+  margin: 36px auto 0;
+}
+.other-albums-label {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  color: var(--red);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--red-dark);
+  padding-bottom: 8px;
+}
+.other-albums-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.other-album-card {
+  width: 120px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.15s;
+}
+.other-album-card:hover { transform: scale(1.04); }
+.other-album-card img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border: 2px solid var(--red-dark);
+  display: block;
+  margin-bottom: 6px;
+}
+.other-album-card:hover img { border-color: var(--red); }
+.other-album-name {
+  font-size: 0.8rem;
+  color: var(--white);
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+}
+.other-album-year {
+  font-size: 0.72rem;
+  color: var(--red);
+  margin-top: 2px;
+}
