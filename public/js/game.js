@@ -228,7 +228,7 @@
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  SPRITE SHEET SYSTEM  (new transparent-bg images)
-  //  Sheet WD = "new image 4.png"  — WolfDragon side profile, white bg (source faces LEFT)
+  //  Sheet WD = "wolfdragon-sprite.png"  — WolfDragon side profile, RGBA transparent (source faces LEFT)
   //  Sheet SM = "new image 6.png"  — Small demon front+side, white bg
   //  Sheet GR = "new image 7.png"  — Grunt / red devil front, white bg
   //  Sheet BR = "new image 5.png"  — Brute front, white bg
@@ -499,11 +499,17 @@
     const total = 23;
     function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
 
-    // Sheet WD — WolfDragon side profile, white bg
+    // Sheet WD — WolfDragon side profile, already RGBA-transparent
     const imgWD = new Image();
-    imgWD.onload = () => { SHEETS.WD = removeBgGlobal(imgWD, 60); done(); };
+    imgWD.onload = () => {
+      // Image already has a clean alpha channel — just blit to a canvas, no bg removal needed
+      const oc = document.createElement('canvas');
+      oc.width = imgWD.naturalWidth; oc.height = imgWD.naturalHeight;
+      oc.getContext('2d').drawImage(imgWD, 0, 0);
+      SHEETS.WD = oc; done();
+    };
     imgWD.onerror = done;
-    imgWD.src = '/images/new image 4.png';
+    imgWD.src = '/images/wolfdragon-sprite.png';
 
     // Sheet SM — Small demon front+side, white bg
     const imgSM = new Image();
