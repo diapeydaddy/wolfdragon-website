@@ -681,6 +681,7 @@
     mirrorDmgMult:2.0,
     shieldPipT1:1, shieldPipT2:2,
     friendCocktailDmgPct: 2,   // % of apoc total HP per tiki hit
+    friendMinionDmgPct: 40,    // % of minion HP per tiki hit (post-Apoc)
     friendThrowRate: 180,       // frames between throws (~3 s)
   };
   const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
@@ -2099,7 +2100,7 @@
           fa.throwFrame++;
           if (fa.throwFrame === 2) {
             // Deal 40% of the minion's actual HP per throw
-            const dmg = minionTarget.maxHp * 0.4;
+            const dmg = minionTarget.maxHp * (CFG.friendMinionDmgPct / 100);
             const throwDW = FR_THR_DW[2];
             const ckX = fa.facing < 0 ? fa.x - TIKI_W : fa.x + throwDW;
             const ckY = fa.y + FRIEND_H * 0.28;
