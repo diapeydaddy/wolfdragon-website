@@ -2134,8 +2134,33 @@
         }
         fa.throwTimer--;
         if (fa.throwTimer <= 0) {
-          fa.facing = minionCX < fa.x ? -1 : 1;
-          fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
+          const mThrowFacing = minionCX < fa.x ? -1 : 1;
+          const mThrowMinX = Math.min(fa.x, minionCX);
+          const mThrowMaxX = Math.max(fa.x, minionCX);
+          const mBlocked = obstacles.some(o =>
+            o.row === fa.row && o.x < mThrowMaxX && o.x + o.w > mThrowMinX
+          );
+          if (!mBlocked) {
+            fa.facing = mThrowFacing;
+            fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
+          } else {
+            // Blocked — try a different row that has a clear shot in this x range
+            const mClearRows = [];
+            for (let r = 0; r < ROWS; r++) {
+              if (!obstacles.some(o => o.row === r && o.x < mThrowMaxX && o.x + o.w > mThrowMinX)) {
+                mClearRows.push(r);
+              }
+            }
+            if (mClearRows.length > 0) {
+              fa.targetRow = mClearRows[Math.floor(Math.random() * mClearRows.length)];
+              fa.throwTimer = 30;
+            } else {
+              // All rows blocked — reposition x
+              fa.targetX = 60 + Math.random() * (W - 180);
+              fa.wanderT = 20 + Math.random() * 20 | 0;
+              fa.throwTimer = 40;
+            }
+          }
         }
       }
     } else if (friendAlly && !apocE && enemies.length === 0) {
