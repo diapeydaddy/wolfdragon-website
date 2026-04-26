@@ -608,30 +608,50 @@
   }
 
   // ── Load saved or default values ──
+  // Baby config stores only its delta on top of main config, so the
+  // displayed values are: baby override → main override → hardcoded default.
   function loadValues() {
-    var saved = {};
-    try { saved = JSON.parse(localStorage.getItem(getConfigKey()) || '{}'); } catch(e) {}
+    var mainSaved = {}, babySaved = {};
+    try { mainSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}'); } catch(e) {}
+    try { babySaved = JSON.parse(localStorage.getItem('wolfdragon_config_baby') || '{}'); } catch(e) {}
     KEYS.forEach(function(k) {
       var el = document.getElementById(k);
       if (!el) return;
       var def = parseFloat(el.getAttribute('data-default'));
-      var raw = (k in saved) ? saved[k] : def;
-      // Convert frames→seconds for display
+      var mainVal = (k in mainSaved) ? mainSaved[k] : def;
+      var raw = currentTab === 'baby'
+        ? ((k in babySaved) ? babySaved[k] : mainVal)  // baby: delta → main → default
+        : mainVal;                                       // main: main → default
       el.value = FRAME_FIELDS.has(k) ? +(raw / 60).toFixed(3) : raw;
     });
   }
 
   // ── Save ──
+  // Main config saves normally.
+  // Baby config saves only the delta (keys that differ from main), so
+  // future main-config changes automatically propagate to baby mode.
   function saveConfig() {
+    var mainSaved = {};
+    try { mainSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}'); } catch(e) {}
     var cfg = {};
     KEYS.forEach(function(k) {
       var el = document.getElementById(k);
       if (!el) return;
       var v = parseFloat(el.value);
-      // Convert seconds→frames for storage
       cfg[k] = FRAME_FIELDS.has(k) ? Math.round(v * 60) : v;
     });
-    localStorage.setItem(getConfigKey(), JSON.stringify(cfg));
+    if (currentTab === 'baby') {
+      // Compute delta vs current main config; only store differing keys
+      var delta = {};
+      KEYS.forEach(function(k) {
+        var def = parseFloat(document.getElementById(k).getAttribute('data-default'));
+        var mainVal = (k in mainSaved) ? mainSaved[k] : def;
+        if (cfg[k] !== mainVal) delta[k] = cfg[k];
+      });
+      localStorage.setItem('wolfdragon_config_baby', JSON.stringify(delta));
+    } else {
+      localStorage.setItem('wolfdragon_config', JSON.stringify(cfg));
+    }
     var label = currentTab === 'baby' ? '🍼 Baby Config' : 'Main Config';
     flash('✓ ' + label + ' saved! Reload the game to apply.');
   }

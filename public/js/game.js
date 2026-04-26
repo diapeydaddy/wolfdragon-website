@@ -685,10 +685,15 @@
   };
   const _wdSaved = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
   const CFG = Object.assign({}, WD_DEFAULTS, _wdSaved);
-  // Reload CFG in-place (used by cheat codes to switch config presets)
+  // Reload CFG in-place (used by cheat codes to switch config presets).
+  // Baby config stores only its *delta* on top of main config, so main
+  // changes always flow through automatically for non-overridden keys.
   function reloadCFG(key) {
-    const saved = JSON.parse(localStorage.getItem(key) || '{}');
-    Object.assign(CFG, WD_DEFAULTS, saved);
+    const mainSaved  = JSON.parse(localStorage.getItem('wolfdragon_config') || '{}');
+    const extraSaved = key !== 'wolfdragon_config'
+      ? JSON.parse(localStorage.getItem(key) || '{}')
+      : {};
+    Object.assign(CFG, WD_DEFAULTS, mainSaved, extraSaved);
   }
 
   const ENEMY_TYPES = {
