@@ -2371,9 +2371,9 @@
               // Cutscene shot — big impact, trigger knockback to opposite side
               burst(p.x + p.w/2, p.y + p.h/2, '#ff9900', 30, 8);
               burst(apocTarget.x + APOC_W/2, apocTarget.y + APOC_H/2, '#ff4400', 40, 10);
-              const goLeft = apocTarget.x > W/2;
+              // Knock Apoc in the direction friend is facing
               apocTarget.knockbackT = 45;
-              apocTarget.knockbackTargetX = goLeft ? 20 : W - APOC_W - 20;
+              apocTarget.knockbackTargetX = fa.facing > 0 ? W - APOC_W - 20 : 20;
               apocTarget.knockbackOffY = 0;
               p.life = 0;
               // Tell friend to wait for knockback
