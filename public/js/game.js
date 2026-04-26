@@ -2373,7 +2373,7 @@
               burst(apocTarget.x + APOC_W/2, apocTarget.y + APOC_H/2, '#ff4400', 40, 10);
               // Knock Apoc in the direction friend is facing
               apocTarget.knockbackT = 45;
-              apocTarget.knockbackTargetX = fa.facing > 0 ? W - APOC_W - 20 : 20;
+              apocTarget.knockbackTargetX = (friendAlly && friendAlly.facing > 0) ? W - APOC_W - 20 : 20;
               apocTarget.knockbackOffY = 0;
               p.life = 0;
               // Tell friend to wait for knockback
