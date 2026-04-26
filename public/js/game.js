@@ -850,7 +850,7 @@
     enemies=[]; projs=[]; parts=[]; drops=[]; obstacles=[]; flameshields=[];
     webZones=[]; shockwaves=[]; darknessT=0;
     gs.wave=wave; gs.level=level;
-    gs.friendTriggered=false; friendAlly=null;
+    gs.friendTriggered=false; gs.friendCutscene=false; gs.friendCutsceneT=0; friendAlly=null;
     cleared=false; spawnQueue=[];
     startWave();
     const name = type.toUpperCase();
@@ -1397,6 +1397,8 @@
       return;
     }
     if(gs.screen!=='playing') return;
+    if(gs.friendCutscene) { /* drain key events during cutscene so nothing queues up */
+      Object.keys(J).forEach(k=>{ J[k]=false; }); return; }
 
     // movement
     if(eat('ArrowUp')   && PL.row<ROWS-1) PL.row++;
@@ -1683,6 +1685,7 @@
     enemies.forEach(e=>{
       if(e.flashT>0) e.flashT--;
       if(e.atkAnim>0) e.atkAnim--;
+      if(gs.friendCutscene) return;   // freeze everyone during friend entrance
       if((e.frozen||0)>0){ e.frozen--; return; }
       const def = ENEMY_TYPES[e.type];
 
@@ -1941,14 +1944,16 @@
     if (apocE && !gs.friendTriggered && apocE.phase === 'charge') {
       if (apocE.hp <= apocE.maxHp * 0.5) {
         gs.friendTriggered = true;
-        // Enter from right side
-        friendAlly = { x: W + FRIEND_W + 10, y: ROW_Y[0], row: 0, targetRow: 0,
-          state: 'entering', runFrame: 0, throwFrame: 0, frameTimer: 0,
+        gs.friendCutscene  = true;
+        gs.friendCutsceneT = 0;
+        // Enter from right side — cutscene state until they reach Wolfdragon
+        friendAlly = { x: W + FRIEND_W + 10, y: ROW_Y[PL.row], row: PL.row, targetRow: PL.row,
+          state: 'cutscene', runFrame: 0, throwFrame: 0, frameTimer: 0,
           throwTimer: CFG.friendThrowRate, targetX: W - 140,
           facing: -1,  // starts running left
           wanderT: 0 };
         msg = '✦ A FRIEND ARRIVES! ✦'; msgT = 160;
-        burst(W - 60, ROW_Y[0] + FRIEND_H/2, '#ff9900', 24, 7);
+        burst(W - 60, ROW_Y[PL.row] + FRIEND_H/2, '#ff9900', 24, 7);
       }
     }
 
@@ -1981,8 +1986,38 @@
       fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.08;
       fa.row = fa.targetRow;
 
-      if (fa.state === 'entering') {
-        // Run left onto screen toward initial position
+      if (fa.state === 'cutscene') {
+        // Phase 1: run in from right toward Wolfdragon's position
+        const cutsceneTargetX = Math.min(PL.x + WD_W + 10, W - FRIEND_W - 20);
+        if (fa.x > cutsceneTargetX) {
+          fa.x -= 4.5;
+          fa.facing = -1;
+          if (fa.frameTimer % 7 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
+          // Slide row to match player's row
+          fa.targetRow = PL.row;
+          fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.12;
+          fa.row = fa.targetRow;
+        } else {
+          // Phase 2: standing next to Wolfdragon — face the boss, hold for 60 frames
+          fa.x = cutsceneTargetX;
+          fa.facing = apocCX < fa.x ? -1 : 1;
+          gs.friendCutsceneT++;
+          if (gs.friendCutsceneT === 1) {
+            // Little sparkle burst when they arrive
+            burst(fa.x + FRIEND_W/2, fa.y + FRIEND_H/2, '#ffcc44', 20, 6);
+          }
+          if (gs.friendCutsceneT >= 60) {
+            // Cutscene over — release freeze, transition to normal idle wander
+            gs.friendCutscene  = false;
+            gs.friendCutsceneT = 0;
+            fa.state   = 'idle';
+            fa.targetX = cutsceneTargetX;
+            fa.wanderT = 80;
+          }
+        }
+
+      } else if (fa.state === 'entering') {
+        // Run left onto screen toward initial position (legacy, kept for safety)
         fa.x -= 3.5;
         fa.facing = -1;
         if (fa.frameTimer % 8 === 0) fa.runFrame = (fa.runFrame + 1) % 4;
@@ -2176,6 +2211,7 @@
 
     // projectiles
     projs.forEach(p=>{
+      if(gs.friendCutscene){ p.life--; return; } // freeze position during cutscene
       p.x+=p.vx; p.y+=p.vy; p.life--;
 
       // Tiki cocktail — friend ally projectile
@@ -3424,7 +3460,7 @@
       hp:CFG.playerHp,maxHp:CFG.playerHp,spellUses:3,maxSpell:3,spellUpgrades:0,rewardChoice:0,
       itemTier:0,activeItem:null,rewardItemChoices:[],rewardItemChoice:0,
       shieldPipUpgrades:0,rewardChoices:null,
-      friendTriggered:false});
+      friendTriggered:false, friendCutscene:false, friendCutsceneT:0});
     PL.x=70; PL.row=0; PL.facing=1;
     PL.atkTimer=0; PL.shTimer=0; PL.iframes=0;
     PL.weapon.dmg=CFG.weaponDmg; PL.atkRange=CFG.atkRange;
