@@ -1987,9 +1987,26 @@
         }
         fa.throwTimer--;
         if (fa.throwTimer <= 0) {
-          fa.facing = apocCX < fa.x ? -1 : 1;  // face boss for throw
-          fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
-          // timer reset happens when throw ENDS so idle wait = exactly friendThrowRate frames
+          const throwFacing = apocCX < fa.x ? -1 : 1;
+          // Check line-of-sight: any obstacle in this row between friend and boss?
+          const throwMinX = Math.min(fa.x, apocCX);
+          const throwMaxX = Math.max(fa.x, apocCX);
+          const blocked = obstacles.some(o =>
+            o.row === fa.row && o.x < throwMaxX && o.x + o.w > throwMinX
+          );
+          if (!blocked) {
+            fa.facing = throwFacing;
+            fa.state = 'throwing'; fa.throwFrame = 0; fa.frameTimer = 0;
+            // timer reset happens when throw ENDS so idle wait = exactly friendThrowRate frames
+          } else {
+            // Obstacle in the way — reposition to the other side and try again soon
+            fa.throwTimer = 40;
+            const apocOnLeft = apocCX < W / 2;
+            fa.targetX = apocOnLeft
+              ? Math.round(W * 0.55) + Math.random() * (W * 0.35)
+              : 50 + Math.random() * (W * 0.35);
+            fa.wanderT = 20 + Math.random() * 20 | 0;
+          }
         }
 
       } else if (fa.state === 'throwing') {
