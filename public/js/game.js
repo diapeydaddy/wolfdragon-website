@@ -94,7 +94,7 @@
       gruntShoot(){ osc(280,'sawtooth',0.08,0.35,80); noise(0.06,0.25,1200,400,1); },
       archerShoot(){ osc(340,'sawtooth',0.09,0.38,90); noise(0.05,0.22,2400,900,2); },
       bruteSwing(){ osc(75,'sawtooth',0.16,0.75,22); noise(0.20,0.55,380,150,0.7); },
-      gruntMelee(){ osc(110,'sine',0.10,0.5,38); noise(0.08,0.3,550,200,1); },
+      gruntMelee(){ osc(1050,'square',0.07,0.5,880); at(85,()=>osc(1050,'square',0.07,0.45,880)); },
       // Spider boss
       spiderAttack(){ noise(0.28,0.5,2800,500,0.4); osc(750,'sawtooth',0.22,0.45,1100); },
       spiderDive(){ osc(380,'sawtooth',0.35,0.55,850); noise(0.18,0.35,1200,400,1); },
@@ -2055,10 +2055,24 @@
       }
 
     } else if (friendAlly && !apocE && enemies.length > 0) {
-      // Apoc dead but minions remain — keep wandering until all cleared
+      // Apoc dead but minions remain — track toward a minion's row and wander
       const fa = friendAlly;
       fa.frameTimer++;
       fa.state = 'idle';
+
+      // Slide to match the nearest enemy's row
+      if (fa.frameTimer % 40 === 0) {
+        // Pick the closest enemy by x distance
+        let closest = enemies[0];
+        for (const en of enemies) {
+          if (Math.abs(en.x - fa.x) < Math.abs(closest.x - fa.x)) closest = en;
+        }
+        fa.targetRow = closest.row;
+      }
+      if (fa.targetRow === undefined) fa.targetRow = 0;
+      fa.y += (ROW_Y[fa.targetRow] - fa.y) * 0.08;
+      fa.row = fa.targetRow;
+
       const dx = fa.targetX - fa.x;
       if (Math.abs(dx) > 4) {
         fa.x += dx > 0 ? 2.8 : -2.8;
