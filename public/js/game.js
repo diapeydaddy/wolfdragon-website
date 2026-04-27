@@ -667,7 +667,7 @@
   const WD_DEFAULTS = {
     playerHp:140, playerSpeed:4, weaponDmg:25, spellDmg:60, atkRange:100, shMaxHp:3,
     spiderHp:625, spiderDmg:18, spiderSpeed:0.6, spiderCd:110,
-    lichHp:750,   lichDmg:22,   lichSpeed:0.4,  lichCd:90,
+    lichHp:750,   lichDmg:22,   lichSpeed:0.4,  lichCd:60,  lichTeleInterval:360,
     apocHp:1575,  apocDmg:38,   apocSpeed:0.25, apocCd:45,
     bossHpScaling:60,
     gruntHp:40,  gruntDmg:10, gruntSpeed:0.9,
@@ -1193,7 +1193,7 @@
     PL.dmgFlashT=70;
     SFX.hurt();
     burst(PL.cx,PL.cy,'#ff3333',12);
-    if(gs.hp<=0) gs.screen='gameover';
+    if(gs.hp<=0){ gs.screen='gameover'; gs.gameoverT=0; }
   }
 
   // ─── reward screen input ──────────────────────────────────────────────────
@@ -1999,7 +1999,7 @@
           e.y = Math.max(lichYMin, Math.min(lichYMax, e.y));
           // Teleport rows periodically
           e.teleTimer++;
-          if (e.teleTimer > 100 / e.bossPhase) {
+          if (e.teleTimer > CFG.lichTeleInterval - (e.bossPhase - 1) * 60) {
             e.teleTimer = 0;
             // Pick a row different from the player's current row
             const rowChoices = [...Array(ROWS).keys()].filter(r => r !== PL.row);
@@ -2038,7 +2038,7 @@
             const pat = BOSS_PATTERNS.lich;
             const atk = pat[e.attackIdx % pat.length];
             e.attackIdx++;
-            e.shootT = Math.max(60, def.shootCd - e.bossPhase * 10);
+            e.shootT = Math.max(35, def.shootCd - e.bossPhase * 8);
             fireBossAttack(e, def, atk);
           }
 
@@ -2577,7 +2577,7 @@
       }
 
       if(p.owner==='player' && !p.axe){
-        enemies.forEach(e=>{
+        if(!p.chainball) enemies.forEach(e=>{
           if(e.phase!=='charge') return;
           const def2 = ENEMY_TYPES[e.type];
           if(p.reflected){
@@ -4180,14 +4180,69 @@
   }
 
   function drawGameOver(){
-    ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#cc0000'; ctx.font='bold 50px monospace'; ctx.textAlign='center';
-    ctx.fillText('GAME OVER',W/2,H/2-44);
-    ctx.fillStyle='#888'; ctx.font='18px monospace';
-    ctx.fillText(`SCORE: ${gs.score}`,W/2,H/2+12);
-    ctx.fillStyle='#444'; ctx.font='13px monospace';
-    ctx.fillText('PRESS W TO RETRY',W/2,H/2+52);
-    ctx.textAlign='left';
+    gs.gameoverT = (gs.gameoverT || 0) + 1;
+    const t = gs.gameoverT;
+
+    // Phase timings
+    const FADE_IN     = 90;   // frames for overlay to fade in
+    const TEXT_START  = 50;   // frame when "YOU DIED" starts fading in
+    const TEXT_FULL   = 110;  // frame when text is fully opaque
+    const SUB_START   = 130;  // frame when score / press-W appear
+    const SUB_FULL    = 180;
+
+    // Dark overlay — fades in over first FADE_IN frames
+    const overlayA = Math.min(t / FADE_IN, 1) * 0.88;
+    ctx.fillStyle = `rgba(0,0,0,${overlayA})`;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.textAlign = 'center';
+
+    // "YOU DIED" — bold red, fades in then pulses very slightly
+    if(t >= TEXT_START){
+      const textProgress = Math.min((t - TEXT_START) / (TEXT_FULL - TEXT_START), 1);
+      const pulse = t > TEXT_FULL ? 0.07 * Math.sin((t - TEXT_FULL) * 0.04) : 0;
+      const textA = textProgress + pulse;
+
+      // Blood-red glow
+      ctx.save();
+      ctx.globalAlpha = textA * 0.35;
+      ctx.shadowColor = '#ff0000';
+      ctx.shadowBlur  = 40;
+      ctx.fillStyle   = '#ff0000';
+      ctx.font        = 'bold 72px serif';
+      ctx.fillText('YOU DIED', W/2, H/2 - 10);
+      ctx.restore();
+
+      // Crisp text on top
+      ctx.save();
+      ctx.globalAlpha = textA;
+      ctx.fillStyle   = '#cc1111';
+      ctx.font        = 'bold 72px serif';
+      ctx.fillText('YOU DIED', W/2, H/2 - 10);
+      ctx.restore();
+    }
+
+    // Score + retry prompt — fade in after a beat
+    if(t >= SUB_START){
+      const subA = Math.min((t - SUB_START) / (SUB_FULL - SUB_START), 1);
+      ctx.save();
+      ctx.globalAlpha = subA;
+
+      ctx.fillStyle = '#aaaaaa';
+      ctx.font      = '18px monospace';
+      ctx.fillText(`SCORE: ${gs.score}`, W/2, H/2 + 52);
+
+      // Blinking prompt once fully visible
+      const blink = t > SUB_FULL ? Math.sin(t * 0.07) > 0 : true;
+      if(blink){
+        ctx.fillStyle = '#888888';
+        ctx.font      = '14px monospace';
+        ctx.fillText('PRESS  W  TO PLAY AGAIN', W/2, H/2 + 88);
+      }
+      ctx.restore();
+    }
+
+    ctx.textAlign = 'left';
   }
 
   // ─── reset ────────────────────────────────────────────────────────────────
@@ -4226,9 +4281,9 @@
       if(eat('KeyW')||eat('Space')) reset();
     } else if(gs.screen==='gameover'){
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawEnemies(); drawShockwaves(); drawProjs();
-      drawEffects(); drawPlayer(); drawParts(); drawHUD(); drawGameOver();
-      if(darknessT>0){ darknessT--; const dA=Math.min(darknessT+1,30)/30*0.82; ctx.fillStyle=`rgba(0,0,5,${dA})`; ctx.fillRect(0,0,W,H); }
-      if(eat('KeyW')||eat('Space')) reset();
+      drawEffects(); drawPlayer(); drawParts(); drawGameOver();
+      // Only allow retry after the "YOU DIED" text has had time to appear
+      if((gs.gameoverT||0) > 150 && (eat('KeyW')||eat('Space'))) reset();
     } else if(gs.screen==='reward'){
       update();
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawTotems(); drawEnemies(); drawShockwaves(); drawProjs();

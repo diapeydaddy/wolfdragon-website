@@ -580,7 +580,8 @@
           <div class="field"><label>HP</label><input type="number" id="lichHp" data-default="750" step="1" /></div>
           <div class="field"><label>Contact DMG</label><input type="number" id="lichDmg" data-default="22" step="1" /></div>
           <div class="field"><label>Speed</label><input type="number" id="lichSpeed" data-default="0.4" step="0.05" /></div>
-          <div class="field"><label>Attack Cooldown</label><div class="field-row"><input type="number" id="lichCd" data-default="90" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Attack Cooldown</label><div class="field-row"><input type="number" id="lichCd" data-default="60" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Teleport Interval (Phase 1)</label><div class="field-row"><input type="number" id="lichTeleInterval" data-default="360" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
         </div>
       </div>
       <div class="sub-group">
@@ -770,7 +771,7 @@
 <script>
   // ── Frame-based fields (stored in frames, displayed/edited in seconds) ──
   var FRAME_FIELDS = new Set([
-    'spiderCd','lichCd','apocCd',
+    'spiderCd','lichCd','lichTeleInterval','apocCd',
     'cdLunge','cdSouldrain','cdCleave','cdLightning','cdBloodlust',
     'cdVoidslash','cdDragonfury','cdIcenova','cdFirewall','cdDeathmark',
     'cdWhirlwind','cdMirrorshield','cdThornwall','cdHolybarrier','cdExplodeshield',
@@ -783,7 +784,7 @@
   var KEYS = [
     'playerHp','playerSpeed','weaponDmg','spellDmg','atkRange','shMaxHp',
     'spiderHp','spiderDmg','spiderSpeed','spiderCd',
-    'lichHp','lichDmg','lichSpeed','lichCd',
+    'lichHp','lichDmg','lichSpeed','lichCd','lichTeleInterval',
     'apocHp','apocDmg','apocSpeed','apocCd',
     'bossHpScaling',
     'gruntHp','gruntDmg','gruntSpeed',
