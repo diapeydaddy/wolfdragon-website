@@ -580,8 +580,14 @@
           <div class="field"><label>HP</label><input type="number" id="lichHp" data-default="750" step="1" /></div>
           <div class="field"><label>Contact DMG</label><input type="number" id="lichDmg" data-default="22" step="1" /></div>
           <div class="field"><label>Speed</label><input type="number" id="lichSpeed" data-default="0.4" step="0.05" /></div>
-          <div class="field"><label>Attack Cooldown</label><div class="field-row"><input type="number" id="lichCd" data-default="60" data-unit="frames" step="0.5" /><span class="unit-label">s</span></div></div>
-          <div class="field"><label>Teleport Interval (Phase 1)</label><div class="field-row"><input type="number" id="lichTeleInterval" data-default="360" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Phase 2 starts at HP %</label><input type="number" id="lichPhase2Hp" data-default="60" step="1" /></div>
+          <div class="field"><label>Phase 3 starts at HP %</label><input type="number" id="lichPhase3Hp" data-default="30" step="1" /></div>
+          <div class="field"><label>Teleport Interval — P1</label><div class="field-row"><input type="number" id="lichTeleP1" data-default="360" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Teleport Interval — P2</label><div class="field-row"><input type="number" id="lichTeleP2" data-default="300" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Teleport Interval — P3</label><div class="field-row"><input type="number" id="lichTeleP3" data-default="240" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Attack Cooldown — P1</label><div class="field-row"><input type="number" id="lichAtkCdP1" data-default="50" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Attack Cooldown — P2</label><div class="field-row"><input type="number" id="lichAtkCdP2" data-default="40" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
+          <div class="field"><label>Attack Cooldown — P3</label><div class="field-row"><input type="number" id="lichAtkCdP3" data-default="32" data-unit="frames" step="1" /><span class="unit-label">s</span></div></div>
         </div>
       </div>
       <div class="sub-group">
@@ -771,7 +777,7 @@
 <script>
   // ── Frame-based fields (stored in frames, displayed/edited in seconds) ──
   var FRAME_FIELDS = new Set([
-    'spiderCd','lichCd','lichTeleInterval','apocCd',
+    'spiderCd','lichCd','lichTeleP1','lichTeleP2','lichTeleP3','lichAtkCdP1','lichAtkCdP2','lichAtkCdP3','apocCd',
     'cdLunge','cdSouldrain','cdCleave','cdLightning','cdBloodlust',
     'cdVoidslash','cdDragonfury','cdIcenova','cdFirewall','cdDeathmark',
     'cdWhirlwind','cdMirrorshield','cdThornwall','cdHolybarrier','cdExplodeshield',
@@ -784,7 +790,10 @@
   var KEYS = [
     'playerHp','playerSpeed','weaponDmg','spellDmg','atkRange','shMaxHp',
     'spiderHp','spiderDmg','spiderSpeed','spiderCd',
-    'lichHp','lichDmg','lichSpeed','lichCd','lichTeleInterval',
+    'lichHp','lichDmg','lichSpeed','lichCd',
+    'lichPhase2Hp','lichPhase3Hp',
+    'lichTeleP1','lichTeleP2','lichTeleP3',
+    'lichAtkCdP1','lichAtkCdP2','lichAtkCdP3',
     'apocHp','apocDmg','apocSpeed','apocCd',
     'bossHpScaling',
     'gruntHp','gruntDmg','gruntSpeed',

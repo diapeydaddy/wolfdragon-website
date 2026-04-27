@@ -667,7 +667,10 @@
   const WD_DEFAULTS = {
     playerHp:140, playerSpeed:4, weaponDmg:25, spellDmg:60, atkRange:100, shMaxHp:3,
     spiderHp:625, spiderDmg:18, spiderSpeed:0.6, spiderCd:110,
-    lichHp:750,   lichDmg:22,   lichSpeed:0.4,  lichCd:60,  lichTeleInterval:360,
+    lichHp:750,   lichDmg:22,   lichSpeed:0.4,  lichCd:60,
+    lichTeleP1:360, lichTeleP2:300, lichTeleP3:240,
+    lichAtkCdP1:50, lichAtkCdP2:40, lichAtkCdP3:32,
+    lichPhase2Hp:60, lichPhase3Hp:30,
     apocHp:1575,  apocDmg:38,   apocSpeed:0.25, apocCd:45,
     bossHpScaling:60,
     gruntHp:40,  gruntDmg:10, gruntSpeed:0.9,
@@ -1937,7 +1940,9 @@
       // ── BOSS AI ──────────────────────────────────────────────────────────
       if (def.isBoss) {
         const hpFrac = e.hp / e.maxHp;
-        e.bossPhase = hpFrac > 0.6 ? 1 : hpFrac > 0.3 ? 2 : 3;
+        const _p2t = (e.type==='lich' ? CFG.lichPhase2Hp : 60) / 100;
+        const _p3t = (e.type==='lich' ? CFG.lichPhase3Hp : 30) / 100;
+        e.bossPhase = hpFrac > _p2t ? 1 : hpFrac > _p3t ? 2 : 3;
         const spd = def.speed * (1 + (e.bossPhase - 1) * 0.4);
 
         if (e.type === 'spider') {
@@ -1997,37 +2002,38 @@
           // Clamp y every frame to stay on screen
           const lichYMin = ROW_Y[2] - 10, lichYMax = ROW_Y[0] + def.h;
           e.y = Math.max(lichYMin, Math.min(lichYMax, e.y));
-          // Teleport rows periodically
+          // Teleport rows periodically (per-phase interval)
+          const lichTeleThresh = e.bossPhase===1 ? CFG.lichTeleP1 : e.bossPhase===2 ? CFG.lichTeleP2 : CFG.lichTeleP3;
           e.teleTimer++;
-          if (e.teleTimer > CFG.lichTeleInterval - (e.bossPhase - 1) * 60) {
+          if (e.teleTimer > lichTeleThresh) {
             e.teleTimer = 0;
             // Pick a row different from the player's current row
             const rowChoices = [...Array(ROWS).keys()].filter(r => r !== PL.row);
             const newRow = rowChoices[Math.floor(Math.random()*rowChoices.length)];
             e.row = newRow;
             e.targetY = ROW_Y[newRow] + (GRUNT_H - def.h)/2;
-            // Teleport to whichever wall is furthest from the player
-            const plCX = PL.x + PL.w / 2;
-            const leftX  = W * 0.06;                     // near left wall
-            const rightX = W - def.w - W * 0.06;         // near right wall
-            const distL  = Math.abs(plCX - (leftX  + def.w / 2));
-            const distR  = Math.abs(plCX - (rightX + def.w / 2));
-            const baseX  = distR >= distL ? rightX : leftX;
-            e.x = baseX + (Math.random() - 0.5) * W * 0.08; // small jitter so it's not pixel-perfect every time
-            e.x = Math.max(W * 0.04, Math.min(W - def.w - W * 0.04, e.x));
-            burst(eCX, e.y+def.h/2, '#aa44ff', 16, 5);
+            // Always teleport to the wall furthest from the player — measured from wall centre
+            const plCX2 = PL.x + PL.w / 2;
+            const leftX  = W * 0.05;
+            const rightX = W - def.w - W * 0.05;
+            const distL  = Math.abs(plCX2 - (leftX  + def.w / 2));
+            const distR  = Math.abs(plCX2 - (rightX + def.w / 2));
+            e.x = distR >= distL ? rightX : leftX;
+            e.x += (Math.random() - 0.5) * W * 0.06; // small jitter ±2.4%
+            e.x = Math.max(W * 0.03, Math.min(W - def.w - W * 0.03, e.x));
+            burst(e.x + def.w/2, e.y+def.h/2, '#aa44ff', 16, 5);
             SFX.lichTeleport();
             e.flashT = 15;
             e.atkAnim = 0;
           }
           const targY = e.targetY !== undefined ? e.targetY : ROW_Y[CENTER_ROW];
           e.y += (targY - e.y) * 0.04;
-          // Chase player but maintain a safe melee distance
+          // Drift toward player from wherever he teleported; flee if too close
           const playerDist = Math.abs(eCX - (PL.x + PL.w/2));
           if (playerDist < 170) {
             e.x -= dirToPlayer * spd * 1.2; // flee when player too close
           } else {
-            e.x = Math.max(W*0.35, Math.min(W - def.w - 8, e.x + dirToPlayer * spd * 0.35));
+            e.x = Math.max(W*0.04, Math.min(W - def.w - W*0.04, e.x + dirToPlayer * spd * 0.35));
           }
           // Soul vortex pull
           if (e.soulPullT > 0) {
@@ -2042,7 +2048,7 @@
             const pat = BOSS_PATTERNS.lich;
             const atk = pat[e.attackIdx % pat.length];
             e.attackIdx++;
-            e.shootT = Math.max(35, def.shootCd - e.bossPhase * 8);
+            e.shootT = e.bossPhase===1 ? CFG.lichAtkCdP1 : e.bossPhase===2 ? CFG.lichAtkCdP2 : CFG.lichAtkCdP3;
             fireBossAttack(e, def, atk);
           }
 
