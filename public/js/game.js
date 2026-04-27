@@ -1454,16 +1454,27 @@
         break;
       }
       case 'shadowstep': {
-        SFX.lunge(); // reuse
-        const target = enemies.filter(e=>e.phase==='charge').sort((a,b)=>Math.abs((a.x+ENEMY_TYPES[a.type].w/2)-PL.cx)-Math.abs((b.x+ENEMY_TYPES[b.type].w/2)-PL.cx))[0];
+        SFX.lunge();
+        // Prefer closest enemy on player's own row; fall back to closest enemy anywhere
+        const charged = enemies.filter(e=>e.phase==='charge');
+        const sameRow  = charged.filter(e=>e.row===PL.row);
+        const pool     = sameRow.length > 0 ? sameRow : charged;
+        const target   = pool.sort((a,b)=>
+          Math.abs((a.x+ENEMY_TYPES[a.type].w/2)-PL.cx)-Math.abs((b.x+ENEMY_TYPES[b.type].w/2)-PL.cx)
+        )[0];
         if(target){
-          const def2=ENEMY_TYPES[target.type];
-          const behindX = target.facing>0 ? target.x+def2.w+8 : target.x-PL.w-8;
+          const def2 = ENEMY_TYPES[target.type];
+          // "behind" = opposite side of the direction the enemy is facing
+          // enemy.facing is toward the player; behind is away from the player
+          // facing=-1 (enemy faces left) → behind is to the RIGHT  → target.x + def2.w + 8
+          // facing=+1 (enemy faces right) → behind is to the LEFT  → target.x - PL.w - 8
+          const behindX = target.facing > 0 ? target.x - PL.w - 8 : target.x + def2.w + 8;
           effects.push({type:'shadowstep_ghost',x:PL.x,y:ROW_Y[PL.row],life:25,maxLife:25});
-          PL.x = Math.max(0,Math.min(W-PL.w, behindX));
-          PL.row = target.row;
+          PL.x     = Math.max(0, Math.min(W-PL.w, behindX));
+          PL.row   = target.row;
+          PL.facing = PL.x > target.x ? -1 : 1; // face toward enemy after teleport
           hitEnemy(target, PL.weapon.dmg*CFG.multShadowstep);
-          burst(PL.cx,PL.cy,'#440088',20,8);
+          burst(PL.cx, PL.cy, '#440088', 20, 8);
           PL.iframes = 20;
         }
         break;
