@@ -2006,11 +2006,15 @@
             const newRow = rowChoices[Math.floor(Math.random()*rowChoices.length)];
             e.row = newRow;
             e.targetY = ROW_Y[newRow] + (GRUNT_H - def.h)/2;
-            // Teleport to the opposite side of the screen from the player
-            const farSide = PL.x < W/2
-              ? W*0.62 + Math.random()*(W*0.28)   // player left → lich appears right
-              : W*0.10 + Math.random()*(W*0.28);  // player right → lich appears left
-            e.x = farSide;
+            // Teleport to whichever wall is furthest from the player
+            const plCX = PL.x + PL.w / 2;
+            const leftX  = W * 0.06;                     // near left wall
+            const rightX = W - def.w - W * 0.06;         // near right wall
+            const distL  = Math.abs(plCX - (leftX  + def.w / 2));
+            const distR  = Math.abs(plCX - (rightX + def.w / 2));
+            const baseX  = distR >= distL ? rightX : leftX;
+            e.x = baseX + (Math.random() - 0.5) * W * 0.08; // small jitter so it's not pixel-perfect every time
+            e.x = Math.max(W * 0.04, Math.min(W - def.w - W * 0.04, e.x));
             burst(eCX, e.y+def.h/2, '#aa44ff', 16, 5);
             SFX.lichTeleport();
             e.flashT = 15;
