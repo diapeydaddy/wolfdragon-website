@@ -2652,8 +2652,13 @@
           burst(p.x,p.y,'#88ccff',6,3); p.life=0; return;
         }
         if(PL.mirrorActive && hitRow===PL.row && ov({x:p.x,y:p.y,w:p.w,h:p.h},PL.hb)){
-          PL.mirrorActive=false; p.vx=-p.vx; p.owner='player'; p.dmg*=CFG.mirrorDmgMult;
+          PL.mirrorActive=false;
+          p.vx = -p.vx;   // reverse horizontal
+          p.vy = -p.vy;   // reverse vertical so orb retraces toward the boss that fired it
+          p.owner='player'; p.isBoss=false;
+          p.dmg *= CFG.mirrorDmgMult;
           p.reflected=true; // bypass row restriction — hits first enemy it physically touches
+          p.life = Math.max(p.life, 300); // ensure enough lifetime to reach the boss
           burst(PL.cx,PL.cy,'#aaddff',16,6);
           return;
         }
