@@ -4214,17 +4214,16 @@
     const t=Date.now()/1000, g=Math.sin(t*1.8)*0.4+0.6;
     ctx.shadowColor=`rgba(200,0,0,${g})`; ctx.shadowBlur=40;
     ctx.fillStyle='#cc0000'; ctx.font='bold 58px monospace';
-    ctx.textAlign='center'; ctx.fillText('WOLFDRAGON',W/2,90);
+    ctx.textAlign='center'; ctx.fillText('WOLFDRAGON',W/2,130);
     ctx.shadowBlur=0;
     ctx.fillStyle='#660000'; ctx.font='15px monospace';
-    ctx.fillText('SLAY THE DEMON ARMY',W/2,120);
-    // Large hero sprite on title screen — drawn at 240×240 so it's actually visible
-    const sprW = 240, sprH = 240;
-    drawSpr(SRECTS.WD_SIDE, W/2 - sprW/2, 135, sprW, sprH, true); // true = flip to face right
+    ctx.fillText('SLAY THE DEMON ARMY',W/2,170);
+    // WolfDragon sprite on title screen
+    drawWDSprite(W/2 - WD_W/2, 195, false, false);
     // (controls shown above the canvas in HTML)
     const blink=Math.floor(t*2)%2===0;
     ctx.fillStyle=blink?'#cc0000':'#550000'; ctx.font='bold 15px monospace';
-    ctx.fillText('PRESS  W  TO  BEGIN',W/2,440);
+    ctx.fillText('PRESS  W  TO  BEGIN',W/2,435);
     ctx.textAlign='left';
   }
 
