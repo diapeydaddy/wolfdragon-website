@@ -1168,9 +1168,9 @@
 
   let blockMsg = 0;
 
-  function hurtPlayer(dmg, isBoss, shieldCost) {
+  function hurtPlayer(dmg, isBoss, shieldCost, bypassShield) {
     if(godMode) return; // invincible
-    if(PL.sh || PL.iframes > 0 && PL.shBroken) {
+    if(!bypassShield && (PL.sh || PL.iframes > 0 && PL.shBroken)) {
       // Shield is active OR shield just broke this volley (iframes grace period).
       // Either way: fully absorb — no HP damage.
       if(PL.sh) {
@@ -1960,7 +1960,7 @@
                 // Area damage on landing row
                 if (PL.row === e.diveRow) {
                   const impactBox = {x: e.x - 30, y: landY - 10, w: def.w + 60, h: def.h + 20};
-                  if (ov(impactBox, PL.hb)) hurtPlayer(def.dmg * 1.4, true);
+                  if (ov(impactBox, PL.hb)) hurtPlayer(def.dmg * 1.4, true, undefined, true); // unblockable
                 }
                 burst(e.x + def.w/2, landY, '#ff6600', 30, 9);
                 e.diveT = 0;
