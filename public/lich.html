@@ -557,9 +557,20 @@
     let lichStateT = 0;
     let lichAlpha = 1;        // for teleport fade
     let lichTelePhase = 0;    // 0=fading out, 1=fading in
-    let speechIdx = 0;
     let speechTimer = 0;
     const SPEECH_INTERVAL = 540; // ~9 seconds at 60fps
+    // Shuffle speech indices so every line is heard before any repeats
+    function shuffleDeck() {
+      const arr = SPEECHES.map((_, i) => i);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    let speechDeck = shuffleDeck();
+    let speechDeckPos = 0;
+    let speechIdx = speechDeck[0];
     let vmIndex = 0;          // which voicemail to show next
     let envIndex = 0;         // which envelope to show next
 
@@ -1939,7 +1950,12 @@
       speechTimer++;
       if (speechTimer > SPEECH_INTERVAL) {
         speechTimer = 0;
-        speechIdx = (speechIdx + 1) % SPEECHES.length;
+        speechDeckPos++;
+        if (speechDeckPos >= speechDeck.length) {
+          speechDeck = shuffleDeck();
+          speechDeckPos = 0;
+        }
+        speechIdx = speechDeck[speechDeckPos];
       }
     }
 
