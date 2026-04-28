@@ -188,6 +188,7 @@
       margin-bottom: 20px;
       text-shadow: 0 0 12px var(--purple);
     }
+    .modal-title:empty { display: none; }
 
     /* ── VOICEMAIL MODAL ── */
     .vm-list { display: flex; flex-direction: column; gap: 14px; }
@@ -701,7 +702,10 @@
       { id:'laundry', x:20,  y:390, w:190, h:120, label:'Laundry Pile',              cursor:'pointer' },
       { id:'pizza',   x:215, y:400, w:100, h:80,  label:'Pizza Boxes',               cursor:'pointer' },
       { id:'hat',     x:740, y:310, w:110, h:180, label:'Magic Hat & Wand',           cursor:'pointer' },
-      { id:'board',   x:30,  y:120, w:230, h:200, label:'Bulletin Board',             cursor:'pointer' },
+      { id:'board-bellagio',  x:22,  y:128, w:102, h:78,  label:'Bellagio — Rejection Letter', cursor:'pointer' },
+      { id:'board-mgm',       x:132, y:142, w:92,  h:68,  label:'MGM Grand — Rejection Letter',cursor:'pointer' },
+      { id:'board-rustynail', x:52,  y:252, w:122, h:60,  label:'The Rusty Nail — Booking',    cursor:'pointer' },
+      { id:'board-vegas',     x:182, y:255, w:72,  h:55,  label:'Vegas Postcard',               cursor:'pointer' },
       { id:'tv',      x:840, y:360, w:140, h:120, label:'TV',                         cursor:'pointer' },
       { id:'calendar',x:750, y:110, w:190, h:200, label:'Calendar',                   cursor:'pointer' },
       { id:'window',  x:330, y:100, w:340, h:240, label:'Window',                     cursor:'default'  },
@@ -747,6 +751,96 @@
         icon: '🌧️',
         title: 'The City at Night',
         body: 'Rain again. The streetlights blur into long orange smears on the wet asphalt below.\n\nFrom up here the city looks like it has no idea who he is. Which is true. But he\'s working on it.'
+      },
+      'board-bellagio': {
+        icon: '✉️',
+        title: '',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;background:#f5f0e4;color:#1a1a1a;padding:32px 36px;border-radius:3px;max-width:460px;margin:0 auto;border:1px solid #ddd8c8;box-shadow:2px 3px 12px rgba(0,0,0,0.35);">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:16px;border-bottom:2px solid #c8a060;">
+    <div>
+      <div style="font-size:1.4rem;font-weight:700;letter-spacing:0.12em;color:#8b0000;">THE BELLAGIO</div>
+      <div style="font-size:0.62rem;color:#9a7a50;letter-spacing:0.18em;margin-top:3px;">LAS VEGAS, NEVADA · ENTERTAINMENT DIVISION</div>
+    </div>
+    <div style="width:44px;height:44px;background:#8b0000;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.1rem;">✦</div>
+  </div>
+  <div style="font-size:0.72rem;color:#888;letter-spacing:0.1em;margin-bottom:20px;">March 14 &nbsp;·&nbsp; RE: Entertainment Submission — "The Lich: An Evening of Impossible Things"</div>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:14px;">Dear Mr. Lich,</p>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:14px;">Thank you for your submission to The Bellagio's 2024–2025 headline entertainment program. We receive a significant volume of applications each season and regret that we are unable to accommodate all performers at this time.</p>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:14px;">We wish you the best in your future endeavors and encourage you to reapply in the coming season.</p>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:24px;">Sincerely,<br><span style="font-style:italic;">Office of Talent & Programming</span><br><span style="font-size:0.75rem;color:#888;">The Bellagio, Las Vegas</span></p>
+  <div style="border-top:1px solid #ddd8c8;padding-top:14px;">
+    <div style="font-size:0.72rem;font-style:italic;color:#c05030;background:#fff8f0;border-left:3px solid #c05030;padding:8px 12px;">"Next year." — handwritten in the margin</div>
+  </div>
+</div>`
+      },
+      'board-mgm': {
+        icon: '✉️',
+        title: '',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;background:#ede8d8;color:#1a1a1a;padding:32px 36px;border-radius:3px;max-width:460px;margin:0 auto;border:1px solid #d0c8b0;box-shadow:2px 3px 12px rgba(0,0,0,0.35);">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid #c8a800;">
+    <div>
+      <div style="font-size:1.5rem;font-weight:900;letter-spacing:0.08em;color:#1a1a1a;">MGM<span style="color:#c8a800;"> GRAND</span></div>
+      <div style="font-size:0.6rem;color:#888;letter-spacing:0.2em;margin-top:2px;">GRAND GARDEN ENTERTAINMENT · LAS VEGAS</div>
+    </div>
+    <div style="font-size:1.8rem;">🦁</div>
+  </div>
+  <div style="font-size:0.72rem;color:#888;letter-spacing:0.1em;margin-bottom:20px;">April 2 &nbsp;·&nbsp; Application Ref: ENT-2024-4471</div>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:14px;">Dear Applicant,</p>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:14px;">Thank you for your interest in performing at MGM Grand. We receive thousands of applications each year from talented performers across all disciplines. After careful review, we are unable to move forward with your submission at this time.</p>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:14px;">Please note that this decision does not reflect the quality of your act. We simply have limited availability and highly competitive programming demands.</p>
+  <p style="font-size:0.9rem;line-height:1.75;margin-bottom:24px;">We wish you well,<br><span style="font-style:italic;">MGM Grand Talent Relations</span></p>
+  <div style="border-top:1px solid #d0c8b0;padding-top:14px;">
+    <div style="font-size:0.72rem;font-style:italic;color:#c05030;background:#fff8f0;border-left:3px solid #c05030;padding:8px 12px;">"They won't." — written in red pen, underlined twice</div>
+  </div>
+</div>`
+      },
+      'board-rustynail': {
+        icon: '🍺',
+        title: '',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;background:#e8f0ff;color:#1a1a2a;padding:28px 32px;border-radius:4px;max-width:460px;margin:0 auto;border:2px solid #4466cc;box-shadow:2px 3px 12px rgba(0,0,80,0.3);">
+  <div style="background:#1a2a6a;color:white;margin:-28px -32px 22px;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:1.15rem;font-weight:700;letter-spacing:0.1em;">🍺 THE RUSTY NAIL</div>
+      <div style="font-size:0.6rem;opacity:0.65;letter-spacing:0.18em;margin-top:3px;">LIVE ENTERTAINMENT BOOKING · EST. 1987</div>
+    </div>
+    <div style="background:#2255cc;padding:5px 10px;border-radius:3px;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;">CONFIRMED ✓</div>
+  </div>
+  <div style="background:#d0e0ff;border-radius:3px;padding:14px 16px;margin-bottom:18px;">
+    <div style="font-size:0.65rem;color:#4466aa;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px;">Booking Details</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;">
+      <div><span style="color:#666;">Date:</span> <strong>Friday, April 19</strong></div>
+      <div><span style="color:#666;">Set:</span> <strong>45 min</strong></div>
+      <div><span style="color:#666;">Doors:</span> <strong>8:00 PM</strong></div>
+      <div><span style="color:#666;">Stage:</span> <strong>9:00 PM</strong></div>
+      <div><span style="color:#666;">Fee:</span> <strong style="color:#1a8822;">$80 + bar tab</strong></div>
+      <div><span style="color:#666;">Load-in:</span> <strong>7:30 PM</strong></div>
+    </div>
+  </div>
+  <p style="font-size:0.88rem;line-height:1.7;margin-bottom:16px;">Hey! It's Donna at the Nail. We'd LOVE to have you back — the crowd on Friday really responded to you. That card bit at the end had people talking.</p>
+  <p style="font-size:0.88rem;line-height:1.7;margin-bottom:20px;">Let us know on parking — we can comp one spot in the back. And please bring your own deck this time, Terry still hasn't found the one from last month.</p>
+  <div style="display:flex;gap:4px;margin-bottom:6px;">
+    <span style="color:#f5a700;font-size:1.1rem;">★★★★☆</span>
+    <span style="font-size:0.72rem;color:#888;align-self:center;margin-left:4px;">Crowd response, last show</span>
+  </div>
+</div>`
+      },
+      'board-vegas': {
+        icon: '🎰',
+        title: '',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;background:#0a0818;color:#fff;border-radius:4px;overflow:hidden;max-width:460px;margin:0 auto;box-shadow:0 0 30px rgba(255,150,0,0.3);">
+  <div style="position:relative;height:220px;overflow:hidden;">
+    <img src="/images/vegas-strip.jpg" alt="Las Vegas Strip at night" style="width:100%;height:100%;object-fit:cover;object-position:center;" />
+    <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.1),rgba(10,8,24,0.85));"></div>
+    <div style="position:absolute;bottom:14px;left:18px;right:18px;">
+      <div style="font-size:1.6rem;font-weight:900;letter-spacing:0.18em;color:#ffcc33;text-shadow:0 0 20px rgba(255,180,0,0.9),0 2px 4px rgba(0,0,0,0.8);">LAS VEGAS</div>
+      <div style="font-size:0.62rem;letter-spacing:0.28em;color:#ff9944;margin-top:2px;text-shadow:0 0 10px rgba(255,120,0,0.7);">THE ENTERTAINMENT CAPITAL OF THE WORLD</div>
+    </div>
+  </div>
+  <div style="padding:20px 22px;">
+    <div style="font-size:0.72rem;color:#ff9944;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:12px;">Pinned — handwritten on the back:</div>
+    <div style="font-family:'Special Elite',serif;font-size:1rem;line-height:1.8;color:#e8e0cc;background:rgba(255,255,255,0.05);border-left:3px solid #ffcc33;padding:12px 16px;border-radius:0 3px 3px 0;">"One day this is the stage. Not the Nail. Not the Empire Room. <em>This.</em> I just need one person to see it the way I do."</div>
+  </div>
+</div>`
       },
     };
 
@@ -1129,22 +1223,29 @@
       }
 
       // Papers pinned
-      // Rejection 1 (top-left, slightly tilted)
+      const hov = hoveredZone ? hoveredZone.id : '';
+
+      // ── Rejection 1 — Bellagio (top-left, slightly tilted) ──
       ctx.save(); ctx.translate(bx + 40, by + 40); ctx.rotate(-0.06);
       ctx.fillStyle = '#f5f0e4'; ctx.fillRect(-50, -30, 100, 75);
+      if (hov === 'board-bellagio') {
+        ctx.strokeStyle = 'rgba(255,180,80,0.7)'; ctx.lineWidth = 2; ctx.strokeRect(-50, -30, 100, 75);
+      }
       ctx.fillStyle = '#aa3322'; ctx.font = 'bold 7px Oswald'; ctx.fillText('THE BELLAGIO', -44, -18);
       ctx.fillStyle = '#333'; ctx.font = '6px Oswald';
       ctx.fillText('Thank you for your', -44, -6);
       ctx.fillText('submission. We are', -44, 4);
       ctx.fillText('unable to...', -44, 14);
       ctx.fillStyle = '#aa4422'; ctx.font = 'italic 6px serif'; ctx.fillText('"Next year."', -44, 35);
-      // Pin
-      ctx.fillStyle = '#cc2222'; ctx.beginPath(); ctx.arc(-50+51, -30, 5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#cc2222'; ctx.beginPath(); ctx.arc(1, -30, 5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
 
-      // Rejection 2 (center, slight tilt other way)
+      // ── Rejection 2 — MGM Grand (center, slight tilt) ──
       ctx.save(); ctx.translate(bx + 145, by + 55); ctx.rotate(0.04);
       ctx.fillStyle = '#ede8d8'; ctx.fillRect(-45, -25, 90, 65);
+      if (hov === 'board-mgm') {
+        ctx.strokeStyle = 'rgba(255,180,80,0.7)'; ctx.lineWidth = 2; ctx.strokeRect(-45, -25, 90, 65);
+      }
       ctx.fillStyle = '#442222'; ctx.font = 'bold 7px Oswald'; ctx.fillText('MGM GRAND', -40, -13);
       ctx.fillStyle = '#444'; ctx.font = '6px Oswald';
       ctx.fillText('We receive thousands', -40, -2);
@@ -1153,9 +1254,12 @@
       ctx.fillStyle = '#dd2244'; ctx.beginPath(); ctx.arc(0, -25, 5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
 
-      // Booking confirmation (bright blue paper)
+      // ── Rusty Nail booking confirmation ──
       ctx.save(); ctx.translate(bx + 80, by + 155); ctx.rotate(-0.03);
       ctx.fillStyle = '#e8f0ff'; ctx.fillRect(-60, -20, 120, 55);
+      if (hov === 'board-rustynail') {
+        ctx.strokeStyle = 'rgba(100,160,255,0.7)'; ctx.lineWidth = 2; ctx.strokeRect(-60, -20, 120, 55);
+      }
       ctx.fillStyle = '#2244aa'; ctx.font = 'bold 7px Oswald'; ctx.fillText('THE RUSTY NAIL ✓', -55, -8);
       ctx.fillStyle = '#333'; ctx.font = '6px Oswald';
       ctx.fillText('We\'d love to have', -55, 4);
@@ -1164,23 +1268,19 @@
       ctx.fillStyle = '#2255cc'; ctx.beginPath(); ctx.arc(0, -20, 5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
 
-      // Vegas postcard (small)
+      // ── Vegas postcard ──
       ctx.save(); ctx.translate(bx + 185, by + 165); ctx.rotate(0.07);
       const pcGrad = ctx.createLinearGradient(-35, -25, 35, 25);
       pcGrad.addColorStop(0, '#1a0a40');
       pcGrad.addColorStop(1, '#3a1a00');
       ctx.fillStyle = pcGrad; ctx.fillRect(-35, -25, 70, 50);
+      if (hov === 'board-vegas') {
+        ctx.strokeStyle = 'rgba(255,200,60,0.8)'; ctx.lineWidth = 2; ctx.strokeRect(-35, -25, 70, 50);
+      }
       ctx.fillStyle = '#ffcc44'; ctx.font = 'bold 7px Oswald'; ctx.fillText('LAS VEGAS', -25, -10);
       ctx.fillStyle = '#ff8822'; ctx.font = '5px Oswald'; ctx.fillText('One day.', -25, 2);
       ctx.fillStyle = '#ffaa33'; ctx.beginPath(); ctx.arc(0, -25, 5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
-
-      // Hover glow
-      if (hoveredZone && hoveredZone.id === 'board') {
-        ctx.strokeStyle = 'rgba(200,150,80,0.4)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(bx - 6, by - 6, bw + 12, bh + 12);
-      }
     }
 
     function drawCalendar() {
@@ -2134,9 +2234,6 @@
           openModal('inspect-modal');
           break;
         }
-        case 'board':
-          openModal('board-modal');
-          break;
         case 'calendar':
           openModal('cal-modal');
           break;
@@ -2144,6 +2241,19 @@
           showEnvelope(envIndex);
           openModal('inspect-modal');
           break;
+        case 'board-bellagio':
+        case 'board-mgm':
+        case 'board-rustynail':
+        case 'board-vegas': {
+          const bd = INSPECT_DATA[zone.id];
+          if (bd) {
+            document.getElementById('inspect-icon').textContent  = '';
+            document.getElementById('inspect-title').textContent = '';
+            document.getElementById('inspect-body').innerHTML    = bd.html;
+            openModal('inspect-modal');
+          }
+          break;
+        }
         case 'laundry':
         case 'pizza':
         case 'hat':
