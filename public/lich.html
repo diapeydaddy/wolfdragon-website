@@ -1819,8 +1819,8 @@
       const text = SPEECHES[speechIdx];
       if (!text) return;
 
-      const maxW = 253;
-      ctx.font = '13px Oswald';
+      const maxW = 300;
+      ctx.font = '16px Oswald';
 
       // Word wrap
       const words = text.split(' ');
@@ -1828,7 +1828,7 @@
       let line = '';
       words.forEach(w => {
         const test = line ? line + ' ' + w : w;
-        if (ctx.measureText(test).width > maxW - 22) {
+        if (ctx.measureText(test).width > maxW - 26) {
           lines.push(line);
           line = w;
         } else {
@@ -1837,8 +1837,8 @@
       });
       if (line) lines.push(line);
 
-      const lineH = 18;
-      const padX = 14, padY = 10;
+      const lineH = 22;
+      const padX = 16, padY = 12;
       const bw = maxW;
       const bh = lines.length * lineH + padY * 2;
       let bx = bubX - bw/2;
@@ -1861,10 +1861,10 @@
 
       // Text
       ctx.fillStyle = '#ddd0f0';
-      ctx.font = '13px Oswald';
+      ctx.font = '16px Oswald';
       ctx.textAlign = 'left';
       lines.forEach((l, i) => {
-        ctx.fillText(l, bx + padX, by + padY + i * lineH + 13);
+        ctx.fillText(l, bx + padX, by + padY + i * lineH + 16);
       });
     }
 
