@@ -561,6 +561,7 @@
     let speechTimer = 0;
     const SPEECH_INTERVAL = 540; // ~9 seconds at 60fps
     let vmIndex = 0;          // which voicemail to show next
+    let envIndex = 0;         // which envelope to show next
 
     let hoveredZone = null;
     let mouseX = 0, mouseY = 0;
@@ -668,11 +669,8 @@
 
     // ── CLICK ZONES (logical coords, scale handled on click) ───
     const ZONES = [
-      { id:'phone',   x:605, y:285, w:72,  h:64,  label:'Phone (6 New Voicemails)',  cursor:'pointer' },
-      { id:'env0',    x:453, y:308, w:50,  h:44,  label:'Letter — Past Due Bill',    cursor:'pointer' },
-      { id:'env1',    x:484, y:306, w:50,  h:44,  label:'Letter — Past Due Bill',    cursor:'pointer' },
-      { id:'env2',    x:515, y:308, w:50,  h:44,  label:'Letter — Past Due Bill',    cursor:'pointer' },
-      { id:'env3',    x:546, y:305, w:50,  h:44,  label:'Letter — From Dani',        cursor:'pointer' },
+      { id:'phone',     x:605, y:285, w:72,  h:64,  label:'Phone (6 New Voicemails)',  cursor:'pointer' },
+      { id:'envelopes', x:458, y:303, w:75,  h:50,  label:'Mail Stack',               cursor:'pointer' },
       { id:'laundry', x:20,  y:390, w:190, h:120, label:'Laundry Pile',              cursor:'pointer' },
       { id:'pizza',   x:215, y:400, w:100, h:80,  label:'Pizza Boxes',               cursor:'pointer' },
       { id:'hat',     x:740, y:310, w:110, h:180, label:'Magic Hat & Wand',           cursor:'pointer' },
@@ -723,27 +721,139 @@
         title: 'The City at Night',
         body: 'Rain again. The streetlights blur into long orange smears on the wet asphalt below.\n\nFrom up here the city looks like it has no idea who he is. Which is true. But he\'s working on it.'
       },
-      env0: {
-        icon: '✉️',
-        title: 'PAST DUE — Necromantic Utilities',
-        body: 'Account #00-LCH-7782\nService: Spectral Power & Dark Energy Grid\n\nAmount Due: $312.44\nDays Overdue: 47\n\n"FAILURE TO REMIT PAYMENT WILL RESULT IN DISCONNECTION OF ALL SPECTRAL SERVICES INCLUDING BUT NOT LIMITED TO: ambient darkness, cold spot maintenance, and ethereal echo effects.\n\nThis is your THIRD notice. We do not enjoy sending these."'
-      },
-      env1: {
-        icon: '✉️',
-        title: 'PAST DUE — Shadowrealm Internet Services',
-        body: 'Plan: Dark Web Standard ($49.99/mo)\nPast Due Balance: $149.97 (3 months)\n\n"Your connection to the interdimensional spectral plane will be suspended within 5 business days.\n\nNOTE: We understand you have been occupied with the attempted conquest of the northern district. Payment is still required regardless of conquest outcome."'
-      },
-      env2: {
-        icon: '✉️',
-        title: 'PAST DUE — Dungeon Supply Co.',
-        body: 'Invoice #D-4491 — SECOND NOTICE\n\nSkull candles (×12) .............. $48.00\nBlack altar cloth ................... $22.00\nFog machine repair ................ $85.00\n─────────────────────────────\nTOTAL OVERDUE: $155.00\n\n"We value your business and appreciate your commitment to the dark arts. Please pay your bill."'
-      },
-      env3: {
-        icon: '💌',
-        title: 'Letter — From Dani',
-        body: '"Hey.\n\nI know this is weird and I\'m not trying to make it a whole thing. I just realized I never got my mom\'s Christmas sweater back — the green one with the little reindeer on it? She keeps asking me about it every time I see her and honestly I\'m running out of excuses.\n\nIf you still have it, could you just drop it in the mail? You can keep the ornament. I know you liked that ornament.\n\nI hope you\'re doing okay.\n\n— Dani"'
-      },
     };
+
+    // ── ENVELOPE DATA (rich HTML documents) ─────────────────────
+    const ENVELOPES = [
+      {
+        icon: '✉️',
+        label: 'Necromantic Utilities',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;font-size:0.82rem;color:#1a1a1a;background:#f8f5f0;border-radius:4px;overflow:hidden;">
+  <div style="background:#1a0a2a;color:#c090ff;padding:13px 18px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:1rem;font-weight:700;letter-spacing:0.08em;">NECROMANTIC UTILITIES</div>
+      <div style="font-size:0.62rem;opacity:0.65;letter-spacing:0.16em;margin-top:2px;">SPECTRAL POWER DIVISION · EST. 1066 AD</div>
+    </div>
+    <div style="font-size:0.62rem;opacity:0.55;text-align:right;line-height:1.5;">Account Services<br>1-800-NECRO-PAY</div>
+  </div>
+  <div style="padding:16px 18px;">
+    <div style="display:flex;gap:10px;margin-bottom:14px;">
+      <div style="flex:1;background:#ede8e0;padding:8px 10px;border-radius:2px;">
+        <div style="font-size:0.6rem;color:#888;text-transform:uppercase;letter-spacing:0.1em;">Account No.</div>
+        <div style="font-weight:700;margin-top:2px;">#00-LCH-7782</div>
+      </div>
+      <div style="flex:1;background:#ede8e0;padding:8px 10px;border-radius:2px;">
+        <div style="font-size:0.6rem;color:#888;text-transform:uppercase;letter-spacing:0.1em;">Bill Period</div>
+        <div style="font-weight:700;margin-top:2px;">Mar 1 – Mar 31</div>
+      </div>
+      <div style="flex:1;background:#fde8e8;padding:8px 10px;border-radius:2px;">
+        <div style="font-size:0.6rem;color:#cc2222;text-transform:uppercase;letter-spacing:0.1em;">Due Date</div>
+        <div style="font-weight:700;color:#cc2222;margin-top:2px;">PAST DUE</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <tr style="background:#ede8e0;"><td style="padding:5px 8px;font-size:0.7rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.08em;" colspan="2">Current Charges</td></tr>
+      <tr style="border-bottom:1px solid #ddd8ce;"><td style="padding:6px 8px;color:#333;">Ambient Darkness Package</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$189.00</td></tr>
+      <tr style="border-bottom:1px solid #ddd8ce;"><td style="padding:6px 8px;color:#333;">Cold Spot Maintenance</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$45.00</td></tr>
+      <tr style="border-bottom:1px solid #ddd8ce;"><td style="padding:6px 8px;color:#333;">Ethereal Echo Service</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$28.44</td></tr>
+      <tr style="border-bottom:1px solid #ddd8ce;"><td style="padding:6px 8px;color:#cc2222;">Late Fee (47 days overdue)</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#cc2222;">$50.00</td></tr>
+    </table>
+    <div style="background:#b91c1c;color:#fff;padding:12px 16px;border-radius:3px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div><div style="font-size:0.6rem;opacity:0.8;letter-spacing:0.14em;">TOTAL AMOUNT DUE</div><div style="font-size:1.5rem;font-weight:700;line-height:1.1;">$312.44</div></div>
+      <div style="font-size:1.6rem;font-weight:900;opacity:0.9;letter-spacing:0.04em;border:3px solid rgba(255,255,255,0.6);padding:4px 8px;transform:rotate(-3deg);">PAST DUE</div>
+    </div>
+    <div style="font-size:0.65rem;color:#999;line-height:1.5;">This is your <strong>THIRD</strong> notice. Failure to remit payment will result in disconnection of all spectral services including ambient darkness, cold spot maintenance, and ethereal echo effects. We do not enjoy sending these.</div>
+  </div>
+</div>`
+      },
+      {
+        icon: '✉️',
+        label: 'Shadowrealm Internet',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;font-size:0.82rem;color:#1a1a2a;background:#f4f6fa;border-radius:4px;overflow:hidden;">
+  <div style="background:#0d1a3a;color:#60a0ff;padding:13px 18px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:1rem;font-weight:700;letter-spacing:0.06em;">SHADOWREALM<span style="color:#fff;"> INTERNET</span></div>
+      <div style="font-size:0.62rem;opacity:0.6;letter-spacing:0.14em;margin-top:2px;">INTERDIMENSIONAL CONNECTIVITY SERVICES</div>
+    </div>
+    <div style="background:#1a2d5a;padding:6px 10px;border-radius:2px;text-align:center;">
+      <div style="font-size:0.6rem;opacity:0.6;letter-spacing:0.1em;">ACCOUNT</div>
+      <div style="font-size:0.8rem;font-weight:700;">SR-00-4421</div>
+    </div>
+  </div>
+  <div style="padding:16px 18px;">
+    <div style="background:#e8ecf8;border-left:3px solid #3060cc;padding:10px 14px;margin-bottom:14px;border-radius:0 3px 3px 0;">
+      <div style="font-size:0.68rem;color:#3060cc;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;">⚠ Service Interruption Notice</div>
+      <div style="margin-top:4px;color:#333;">Your spectral connection will be <strong>suspended in 5 business days</strong> unless payment is received.</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <tr style="background:#dde3f0;"><td style="padding:5px 8px;font-size:0.7rem;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.08em;" colspan="2">Plan: Dark Web Standard</td></tr>
+      <tr style="border-bottom:1px solid #d0d6e8;"><td style="padding:6px 8px;color:#333;">January — $49.99</td><td style="padding:6px 8px;text-align:right;color:#cc2222;font-weight:600;">UNPAID</td></tr>
+      <tr style="border-bottom:1px solid #d0d6e8;"><td style="padding:6px 8px;color:#333;">February — $49.99</td><td style="padding:6px 8px;text-align:right;color:#cc2222;font-weight:600;">UNPAID</td></tr>
+      <tr style="border-bottom:1px solid #d0d6e8;"><td style="padding:6px 8px;color:#333;">March — $49.99</td><td style="padding:6px 8px;text-align:right;color:#cc2222;font-weight:600;">UNPAID</td></tr>
+    </table>
+    <div style="background:#1a2d5a;color:#fff;padding:12px 16px;border-radius:3px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div><div style="font-size:0.6rem;opacity:0.7;letter-spacing:0.14em;">TOTAL PAST DUE</div><div style="font-size:1.5rem;font-weight:700;line-height:1.1;">$149.97</div></div>
+      <div style="font-size:1.6rem;font-weight:900;opacity:0.85;letter-spacing:0.04em;border:3px solid rgba(255,255,255,0.5);padding:4px 8px;transform:rotate(-2deg);">PAST DUE</div>
+    </div>
+    <div style="font-size:0.65rem;color:#888;line-height:1.5;">NOTE: We understand you have been occupied with the attempted conquest of the northern district. Payment is nonetheless required. Conquest outcome does not affect billing obligations.</div>
+  </div>
+</div>`
+      },
+      {
+        icon: '✉️',
+        label: 'Dungeon Supply Co.',
+        html: `<div style="white-space:normal;font-family:'Oswald',sans-serif;font-size:0.82rem;color:#1a1410;background:#faf7f0;border-radius:4px;overflow:hidden;">
+  <div style="padding:14px 18px 10px;border-bottom:2px solid #3a2a10;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:1.05rem;font-weight:700;letter-spacing:0.06em;color:#2a1a08;">DUNGEON SUPPLY CO.</div>
+      <div style="font-size:0.62rem;color:#886644;letter-spacing:0.12em;margin-top:2px;">PURVEYOR OF DARK GOODS SINCE 1347</div>
+    </div>
+    <div style="text-align:right;font-size:0.68rem;color:#886644;line-height:1.6;">Invoice #D-4491<br>Dated: March 8</div>
+  </div>
+  <div style="padding:14px 18px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:0.7rem;">
+      <div><span style="color:#886644;text-transform:uppercase;letter-spacing:0.08em;">Bill To: </span><span style="font-weight:600;">The Lich, Apt 4B</span></div>
+      <div style="background:#fde8d0;color:#c05010;padding:3px 8px;border:1px solid #c05010;font-weight:700;font-size:0.68rem;letter-spacing:0.1em;">SECOND NOTICE</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <tr style="background:#ede5d0;border-bottom:1px solid #c8b890;">
+        <td style="padding:5px 8px;font-size:0.68rem;font-weight:600;color:#6a4a20;text-transform:uppercase;letter-spacing:0.08em;">Item</td>
+        <td style="padding:5px 8px;font-size:0.68rem;font-weight:600;color:#6a4a20;text-align:center;">Qty</td>
+        <td style="padding:5px 8px;font-size:0.68rem;font-weight:600;color:#6a4a20;text-align:right;">Amount</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd0b8;"><td style="padding:6px 8px;color:#333;">Skull Candles (pillar, black)</td><td style="padding:6px 8px;text-align:center;color:#555;">12</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$48.00</td></tr>
+      <tr style="border-bottom:1px solid #ddd0b8;"><td style="padding:6px 8px;color:#333;">Black Altar Cloth (72"×36")</td><td style="padding:6px 8px;text-align:center;color:#555;">1</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$22.00</td></tr>
+      <tr style="border-bottom:2px solid #c8b890;"><td style="padding:6px 8px;color:#333;">Fog Machine Repair (labor)</td><td style="padding:6px 8px;text-align:center;color:#555;">1</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$85.00</td></tr>
+      <tr><td style="padding:6px 8px;" colspan="2"><span style="font-size:0.65rem;color:#cc3300;">Late fee (2nd notice)</span></td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#cc3300;">$0.00</td></tr>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <div style="width:180px;">
+        <div style="display:flex;justify-content:space-between;padding:5px 8px;border-bottom:1px solid #ddd0b8;font-size:0.75rem;"><span>Subtotal</span><span>$155.00</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 8px;font-size:0.75rem;"><span>Tax</span><span>$0.00 (dark goods exemption)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 8px;background:#3a2a10;color:#fff;font-weight:700;font-size:0.85rem;margin-top:4px;"><span>TOTAL DUE</span><span>$155.00</span></div>
+      </div>
+    </div>
+    <div style="font-size:0.65rem;color:#aa8855;line-height:1.5;border-top:1px dashed #c8b890;padding-top:10px;">We value your patronage and your commitment to the dark arts. Please remit payment at your earliest convenience. A third notice will be sent via imp courier, which is unpleasant for everyone involved.</div>
+  </div>
+</div>`
+      },
+      {
+        icon: '💌',
+        label: 'Letter from Dani',
+        html: `<div style="white-space:normal;background:repeating-linear-gradient(#faf7ec,#faf7ec 27px,#c8d8e8 28px);background-size:100% 28px;padding:24px 28px 24px 56px;border-radius:3px;min-height:260px;position:relative;border:1px solid #ddd0a8;box-shadow:inset -1px 0 0 rgba(200,180,120,0.3),inset 0 0 0 1px rgba(255,255,255,0.4);">
+  <div style="position:absolute;left:40px;top:0;bottom:0;width:1px;background:rgba(220,150,150,0.4);"></div>
+  <div style="font-family:'Special Elite',serif;color:#2a200e;line-height:1.95;font-size:0.92rem;">
+    <div style="text-align:right;margin-bottom:4px;color:#886644;font-size:0.8rem;">April 3rd</div>
+    <p style="margin:0 0 14px;">Hey.</p>
+    <p style="margin:0 0 14px;">I know this is weird and I'm not trying to make it a whole thing. I just realized I never got my mom's Christmas sweater back — the green one with the little reindeer on it? She keeps asking me about it every time I see her and honestly I'm running out of excuses.</p>
+    <p style="margin:0 0 14px;">If you still have it, could you just drop it in the mail? You can keep the ornament. I know you liked that ornament.</p>
+    <p style="margin:0 0 20px;">I hope you're doing okay.</p>
+    <p style="margin:0;">— Dani</p>
+    <p style="margin:8px 0 0;font-size:0.75rem;color:#aa8855;">P.S. Mrs. Tibbles is doing fine in case you were wondering. She isn't. But she's fine.</p>
+  </div>
+</div>`
+      },
+    ];
 
     // ── CANVAS SCALE ────────────────────────────────────────────
     function canvasScale() {
@@ -1412,109 +1522,94 @@
     }
 
     function drawEnvelopes() {
-      // 4 envelopes on the table between the playing cards and the phone
-      // Table top at ty=348; envelope bottoms rest on the surface
-      const tableY = 348;
-      const ew = 50, eh = 32;
+      // Condensed stack of 4 envelopes — back to front, slightly offset/rotated
+      // Sits on table between cards (ends ~x=462) and phone (starts x=605)
+      const stackCX = 492, stackY = 346;
+      const ew = 52, eh = 34;
 
-      const ENVS = [
-        { cx: 478, rot: -0.09, bill: true  },
-        { cx: 508, rot:  0.04, bill: true  },
-        { cx: 539, rot:  0.11, bill: true  },
-        { cx: 569, rot: -0.06, bill: false }, // Dani's letter
+      // Stack layers: index 0 = bottom/back, index 3 = top/front
+      const LAYERS = [
+        { dx: -4, dy: -3, rot: -0.12, bill: true  },
+        { dx:  2, dy: -2, rot:  0.06, bill: true  },
+        { dx:  5, dy: -1, rot: -0.04, bill: true  },
+        { dx:  0, dy:  0, rot:  0.09, bill: false }, // Dani's letter — on top
       ];
-      const IDS = ['env0','env1','env2','env3'];
 
-      ENVS.forEach((env, i) => {
+      function drawOneEnvelope(dx, dy, rot, bill) {
         ctx.save();
-        ctx.translate(env.cx, tableY - 2);
-        ctx.rotate(env.rot);
-
+        ctx.translate(stackCX + dx, stackY + dy);
+        ctx.rotate(rot);
         const ex = -ew / 2, ey = -eh;
 
-        // Drop shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
-        rrect(ex + 2, ey + 3, ew, eh, 2);
-        ctx.fill();
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        rrect(ex + 2, ey + 4, ew, eh, 2); ctx.fill();
 
-        // Envelope body
-        const bodyColor = env.bill ? '#f0ede6' : '#f4eaf2';
+        // Body
+        const bodyColor = bill ? '#f0ede6' : '#f4eaf2';
         rrect(ex, ey, ew, eh, 2);
-        ctx.fillStyle = bodyColor;
-        ctx.fill();
-        ctx.strokeStyle = env.bill ? 'rgba(0,0,0,0.16)' : 'rgba(150,70,130,0.28)';
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
+        ctx.fillStyle = bodyColor; ctx.fill();
+        ctx.strokeStyle = bill ? 'rgba(0,0,0,0.15)' : 'rgba(150,60,130,0.30)';
+        ctx.lineWidth = 0.8; ctx.stroke();
 
-        // Interior fold lines — V from corners to center (classic envelope look)
-        const midX = ex + ew / 2, midY = ey + eh * 0.58;
-        ctx.strokeStyle = env.bill ? 'rgba(0,0,0,0.09)' : 'rgba(160,70,140,0.13)';
+        // V fold lines
+        const midX = ex + ew / 2, midY = ey + eh * 0.56;
+        ctx.strokeStyle = bill ? 'rgba(0,0,0,0.08)' : 'rgba(160,60,140,0.12)';
         ctx.lineWidth = 0.6;
-        // Bottom V
         ctx.beginPath();
-        ctx.moveTo(ex,      ey + eh);
-        ctx.lineTo(midX,    midY);
-        ctx.lineTo(ex + ew, ey + eh);
+        ctx.moveTo(ex, ey + eh); ctx.lineTo(midX, midY); ctx.lineTo(ex + ew, ey + eh);
         ctx.stroke();
-        // Side chevrons
         ctx.beginPath();
-        ctx.moveTo(ex,      ey);
-        ctx.lineTo(midX,    midY);
-        ctx.moveTo(ex + ew, ey);
-        ctx.lineTo(midX,    midY);
+        ctx.moveTo(ex, ey); ctx.lineTo(midX, midY);
+        ctx.moveTo(ex + ew, ey); ctx.lineTo(midX, midY);
         ctx.stroke();
 
-        // Top flap (closed, slightly darker)
-        const flapColor = env.bill ? '#e6ddd2' : '#e8d8e6';
+        // Closed flap
         ctx.beginPath();
-        ctx.moveTo(ex,      ey);
-        ctx.lineTo(midX,    ey + eh * 0.42);
-        ctx.lineTo(ex + ew, ey);
+        ctx.moveTo(ex, ey); ctx.lineTo(midX, ey + eh * 0.40); ctx.lineTo(ex + ew, ey);
         ctx.closePath();
-        ctx.fillStyle = flapColor;
-        ctx.fill();
-        ctx.strokeStyle = env.bill ? 'rgba(0,0,0,0.10)' : 'rgba(150,70,130,0.20)';
-        ctx.lineWidth = 0.6;
-        ctx.stroke();
+        ctx.fillStyle = bill ? '#e4dbd0' : '#ead6e8'; ctx.fill();
+        ctx.strokeStyle = bill ? 'rgba(0,0,0,0.09)' : 'rgba(150,60,130,0.22)';
+        ctx.lineWidth = 0.6; ctx.stroke();
 
-        if (env.bill) {
-          // Red "PAST DUE" rubber-stamp, slightly tilted
+        if (bill) {
+          // Red PAST DUE stamp
           ctx.save();
-          ctx.translate(ex + ew * 0.66, ey + eh * 0.68);
-          ctx.rotate(0.28);
-          ctx.strokeStyle = 'rgba(175,18,18,0.72)';
-          ctx.lineWidth = 1;
+          ctx.translate(ex + ew * 0.65, ey + eh * 0.66);
+          ctx.rotate(0.27);
+          ctx.strokeStyle = 'rgba(172,16,16,0.70)'; ctx.lineWidth = 1;
           ctx.strokeRect(-13, -6, 26, 11);
-          ctx.fillStyle = 'rgba(175,18,18,0.72)';
+          ctx.fillStyle = 'rgba(172,16,16,0.70)';
           ctx.font = 'bold 5.5px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('PAST DUE', 0, 2.5);
-          ctx.textAlign = 'left';
+          ctx.textAlign = 'center'; ctx.fillText('PAST DUE', 0, 2.5); ctx.textAlign = 'left';
           ctx.restore();
         } else {
-          // Small wax-seal style heart for Dani's letter
+          // Wax seal heart (Dani's letter)
           ctx.save();
-          ctx.translate(ex + ew * 0.66, ey + eh * 0.65);
-          ctx.fillStyle = 'rgba(190,60,110,0.55)';
+          ctx.translate(ex + ew * 0.65, ey + eh * 0.64);
+          ctx.fillStyle = 'rgba(185,50,105,0.55)';
           ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(230,160,190,0.9)';
-          ctx.font = '7px serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('♥', 0, 2.5);
-          ctx.textAlign = 'left';
+          ctx.fillStyle = 'rgba(235,155,190,0.9)';
+          ctx.font = '7px serif'; ctx.textAlign = 'center';
+          ctx.fillText('♥', 0, 2.5); ctx.textAlign = 'left';
           ctx.restore();
         }
-
-        // Hover highlight
-        if (hoveredZone && hoveredZone.id === IDS[i]) {
-          ctx.strokeStyle = 'rgba(180,80,255,0.55)';
-          ctx.lineWidth = 1.5;
-          rrect(ex - 2, ey - 2, ew + 4, eh + 4, 3);
-          ctx.stroke();
-        }
-
         ctx.restore();
-      });
+      }
+
+      // Draw back-to-front
+      LAYERS.forEach(l => drawOneEnvelope(l.dx, l.dy, l.rot, l.bill));
+
+      // Hover outline over whole stack
+      if (hoveredZone && hoveredZone.id === 'envelopes') {
+        ctx.save();
+        ctx.translate(stackCX, stackY);
+        ctx.strokeStyle = 'rgba(180,80,255,0.55)';
+        ctx.lineWidth = 1.5;
+        rrect(-ew / 2 - 6, -eh - 8, ew + 28, eh + 12, 4);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     function drawHatStand() {
@@ -1918,10 +2013,10 @@
         case 'calendar':
           openModal('cal-modal');
           break;
-        case 'env0':
-        case 'env1':
-        case 'env2':
-        case 'env3':
+        case 'envelopes':
+          showEnvelope(envIndex);
+          openModal('inspect-modal');
+          break;
         case 'laundry':
         case 'pizza':
         case 'hat':
@@ -1963,11 +2058,35 @@
         `<div class="vm-nav">${hint}${leftBtn}${rightBtn}</div>`;
     }
 
-    // Arrow delegation — works for any vm-arrow button injected into inspect-body
+    // ── ENVELOPE NAVIGATION ──────────────────────────────────────
+    function showEnvelope(idx) {
+      idx = Math.max(0, Math.min(ENVELOPES.length - 1, idx));
+      envIndex = idx;
+      const env = ENVELOPES[idx];
+      const tot = ENVELOPES.length;
+
+      document.getElementById('inspect-icon').textContent  = env.icon;
+      document.getElementById('inspect-title').textContent = `${env.label} (${idx + 1} of ${tot})`;
+
+      const hasLeft  = idx > 0;
+      const hasRight = idx < tot - 1;
+      const leftBtn  = hasLeft  ? `<button class="vm-arrow" data-envdir="-1">←</button>` : '';
+      const rightBtn = hasRight ? `<button class="vm-arrow" data-envdir="1">→</button>`  : '';
+      const hint     = (!hasLeft && hasRight)
+        ? `<span class="vm-hint">Click → for next letter</span>`
+        : `<span class="vm-hint"></span>`;
+
+      document.getElementById('inspect-body').innerHTML =
+        env.html +
+        `<div class="vm-nav" style="margin-top:14px;">${hint}${leftBtn}${rightBtn}</div>`;
+    }
+
+    // Arrow delegation — voicemails and envelopes both live in inspect-body
     document.getElementById('inspect-body').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-vmdir]');
-      if (!btn) return;
-      showVoicemail(vmIndex + parseInt(btn.dataset.vmdir, 10));
+      if (btn) { showVoicemail(vmIndex + parseInt(btn.dataset.vmdir, 10)); return; }
+      const ebtn = e.target.closest('[data-envdir]');
+      if (ebtn) { showEnvelope(envIndex + parseInt(ebtn.dataset.envdir, 10)); }
     });
 
     // ── MODAL LOGIC ──────────────────────────────────────────────
