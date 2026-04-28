@@ -967,34 +967,103 @@
 
     function drawLaundryPile() {
       const lx = 20, ly = 390;
-      // Drop shadow
+
+      // ── Floor shadow ──
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(lx + 90, ly + 110, 85, 20, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(lx + 92, ly + 115, 90, 18, 0, 0, Math.PI*2); ctx.fill();
 
-      // Various cloth pieces
-      const cloths = [
-        {col:'#1a3a6a', pts:[[0,80],[60,60],[130,70],[160,100],[140,130],[20,140]]},
-        {col:'#2a1a4a', pts:[[20,50],[90,40],[150,55],[170,90],[130,120],[10,110]]},
-        {col:'#4a2a1a', pts:[[30,30],[100,20],[160,40],[170,75],[90,80],[15,70]]},
-        {col:'#1a4a2a', pts:[[50,10],[120,5],[175,25],[180,60],[100,65],[40,50]]},
-        {col:'#4a3a1a', pts:[[60,0],[130,-5],[185,15],[190,40],[120,45],[55,30]]},
-      ];
+      // ── Layer 1: dark jeans pooled at the bottom ──
+      // Draped denim — wide, low, heavy-looking blob
+      ctx.fillStyle = '#1a2d50';
+      ctx.beginPath();
+      ctx.moveTo(lx,      ly + 120);
+      ctx.bezierCurveTo(lx - 8,  ly + 80,  lx + 30,  ly + 70,  lx + 60,  ly + 75);
+      ctx.bezierCurveTo(lx + 85, ly + 65,  lx + 130, ly + 62,  lx + 165, ly + 72);
+      ctx.bezierCurveTo(lx + 190,ly + 80,  lx + 185, ly + 105, lx + 175, ly + 120);
+      ctx.bezierCurveTo(lx + 140,ly + 128, lx + 60,  ly + 130, lx,       ly + 120);
+      ctx.closePath(); ctx.fill();
+      // Denim fold shadow
+      ctx.strokeStyle = '#122040'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(lx + 40, ly + 118);
+      ctx.bezierCurveTo(lx + 60, ly + 100, lx + 90, ly + 98, lx + 120, ly + 110);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(lx + 130, ly + 115);
+      ctx.bezierCurveTo(lx + 145, ly + 102, lx + 160, ly + 105, lx + 170, ly + 115);
+      ctx.stroke();
 
-      cloths.forEach(c => {
-        ctx.fillStyle = c.col;
-        ctx.beginPath();
-        ctx.moveTo(lx + c.pts[0][0], ly + c.pts[0][1]);
-        c.pts.forEach(p => ctx.lineTo(lx + p[0], ly + p[1]));
-        ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.stroke();
-      });
+      // ── Layer 2: dark hoodie/sweater bunched up behind ──
+      ctx.fillStyle = '#2a1e38';
+      ctx.beginPath();
+      ctx.moveTo(lx + 10,  ly + 90);
+      ctx.bezierCurveTo(lx + 5,   ly + 55,  lx + 30,  ly + 48,  lx + 65,  ly + 52);
+      ctx.bezierCurveTo(lx + 100, ly + 44,  lx + 145, ly + 46,  lx + 170, ly + 55);
+      ctx.bezierCurveTo(lx + 188, ly + 64,  lx + 182, ly + 88,  lx + 162, ly + 92);
+      ctx.bezierCurveTo(lx + 120, ly + 100, lx + 45,  ly + 100, lx + 10,  ly + 90);
+      ctx.closePath(); ctx.fill();
+      // Hood lump poking up on the right
+      ctx.fillStyle = '#241830';
+      ctx.beginPath();
+      ctx.moveTo(lx + 135, ly + 58);
+      ctx.bezierCurveTo(lx + 140, ly + 30,  lx + 168, ly + 28,  lx + 172, ly + 52);
+      ctx.bezierCurveTo(lx + 162, ly + 52,  lx + 148, ly + 54,  lx + 135, ly + 58);
+      ctx.closePath(); ctx.fill();
 
-      // Hover glow
+      // ── Layer 3: olive/green t-shirt on top-left, recognisable shirt shape ──
+      ctx.fillStyle = '#2e4a28';
+      ctx.beginPath();
+      // Left sleeve sticking out left
+      ctx.moveTo(lx,      ly + 65);
+      ctx.bezierCurveTo(lx - 5,  ly + 45,  lx + 14, ly + 40,  lx + 28, ly + 50);
+      // Shoulder curve into collar
+      ctx.bezierCurveTo(lx + 35, ly + 38,  lx + 48, ly + 34,  lx + 56, ly + 38);
+      // Neck/collar dip
+      ctx.bezierCurveTo(lx + 60, ly + 30,  lx + 72, ly + 28,  lx + 78, ly + 36);
+      // Right shoulder
+      ctx.bezierCurveTo(lx + 88, ly + 32,  lx + 100,ly + 36,  lx + 104,ly + 44);
+      // Right sleeve stub
+      ctx.bezierCurveTo(lx + 112,ly + 38,  lx + 124,ly + 42,  lx + 118,ly + 60);
+      // Right side of shirt body
+      ctx.bezierCurveTo(lx + 122,ly + 72,  lx + 110,ly + 82,  lx + 98, ly + 80);
+      // Shirt hem (slightly rumpled)
+      ctx.bezierCurveTo(lx + 78, ly + 88,  lx + 42, ly + 85,  lx + 22, ly + 80);
+      // Left side back up
+      ctx.bezierCurveTo(lx + 8,  ly + 76,  lx + 2,  ly + 72,  lx,      ly + 65);
+      ctx.closePath(); ctx.fill();
+      // Shirt wrinkle lines
+      ctx.strokeStyle = '#223820'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(lx+38, ly+55); ctx.bezierCurveTo(lx+42,ly+65, lx+48,ly+72, lx+44,ly+80); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx+62, ly+52); ctx.bezierCurveTo(lx+65,ly+62, lx+68,ly+70, lx+65,ly+80); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx+86, ly+56); ctx.bezierCurveTo(lx+88,ly+64, lx+87,ly+72, lx+84,ly+78); ctx.stroke();
+
+      // ── Layer 4: light grey/white balled-up sock (front-right of pile) ──
+      ctx.fillStyle = '#b8b0a8';
+      ctx.beginPath();
+      ctx.ellipse(lx + 148, ly + 88, 22, 16, 0.3, 0, Math.PI*2); ctx.fill();
+      // Sock cuff rim
+      ctx.fillStyle = '#ccc4bc';
+      ctx.beginPath(); ctx.ellipse(lx + 148, ly + 80, 18, 9, 0.3, 0, Math.PI); ctx.fill();
+      ctx.strokeStyle = '#a09890'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(lx + 148, ly + 80, 18, 9, 0.3, 0, Math.PI); ctx.stroke();
+      // Elastic lines on cuff
+      ctx.strokeStyle = 'rgba(150,140,132,0.5)'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(lx+131,ly+82); ctx.bezierCurveTo(lx+136,ly+76,lx+158,ly+76,lx+164,ly+82); ctx.stroke();
+
+      // ── Layer 5: brown/tan fabric scrap peeking out lower-left ──
+      ctx.fillStyle = '#5a3e22';
+      ctx.beginPath();
+      ctx.moveTo(lx,      ly + 105);
+      ctx.bezierCurveTo(lx + 5,  ly + 92,  lx + 25, ly + 88,  lx + 45, ly + 95);
+      ctx.bezierCurveTo(lx + 38, ly + 108, lx + 18, ly + 114, lx,      ly + 105);
+      ctx.closePath(); ctx.fill();
+
+      // ── Hover glow ──
       if (hoveredZone && hoveredZone.id === 'laundry') {
         ctx.strokeStyle = 'rgba(200,200,255,0.4)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.ellipse(lx + 95, ly + 70, 100, 80, -0.1, 0, Math.PI*2);
+        ctx.ellipse(lx + 92, ly + 82, 102, 58, -0.05, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
