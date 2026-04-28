@@ -1819,8 +1819,8 @@
       const text = SPEECHES[speechIdx];
       if (!text) return;
 
-      const maxW = 220;
-      ctx.font = '11px Oswald';
+      const maxW = 253;
+      ctx.font = '13px Oswald';
 
       // Word wrap
       const words = text.split(' ');
@@ -1828,7 +1828,7 @@
       let line = '';
       words.forEach(w => {
         const test = line ? line + ' ' + w : w;
-        if (ctx.measureText(test).width > maxW - 20) {
+        if (ctx.measureText(test).width > maxW - 22) {
           lines.push(line);
           line = w;
         } else {
@@ -1837,8 +1837,8 @@
       });
       if (line) lines.push(line);
 
-      const lineH = 16;
-      const padX = 12, padY = 9;
+      const lineH = 18;
+      const padX = 14, padY = 10;
       const bw = maxW;
       const bh = lines.length * lineH + padY * 2;
       let bx = bubX - bw/2;
@@ -1848,23 +1848,23 @@
       // Tail
       ctx.fillStyle = 'rgba(10,4,18,0.92)';
       ctx.beginPath();
-      ctx.moveTo(bubX - 8, by + bh);
+      ctx.moveTo(bubX - 9, by + bh);
       ctx.lineTo(bubX, by + bh + 18);
-      ctx.lineTo(bubX + 8, by + bh);
+      ctx.lineTo(bubX + 9, by + bh);
       ctx.fill();
 
       // Bubble body
-      rrect(bx, by, bw, bh, 8);
+      rrect(bx, by, bw, bh, 9);
       ctx.fillStyle = 'rgba(10,4,18,0.92)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(120,50,200,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
 
       // Text
       ctx.fillStyle = '#ddd0f0';
-      ctx.font = '11px Oswald';
+      ctx.font = '13px Oswald';
       ctx.textAlign = 'left';
       lines.forEach((l, i) => {
-        ctx.fillText(l, bx + padX, by + padY + i * lineH + 11);
+        ctx.fillText(l, bx + padX, by + padY + i * lineH + 13);
       });
     }
 
