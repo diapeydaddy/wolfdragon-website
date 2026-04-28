@@ -147,51 +147,161 @@
     <p class="world-subtitle">Explore the lives of the characters — defeat bosses to unlock their secrets</p>
     <div class="world-doors" id="world-doors">
 
-      <!-- Lich's Apartment -->
-      <a class="world-door" href="/lich.html" id="door-lich">
-        <div class="door-frame">
-          <div class="door-number">I</div>
-          <div class="door-inner">
-            <div class="door-sprite">
-              <img src="images/boss-lich.png" class="door-boss-img" id="lich-door-img" alt="Lich" />
-            </div>
-            <div class="door-nameplate">LICH</div>
-          </div>
-          <div class="door-label">The Apartment</div>
+      <!-- Door I: Lich's Apartment -->
+      <a class="door-card" href="/lich.html" id="door-lich">
+        <div class="door-svg-wrap">
+          <svg viewBox="0 0 160 248" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="lWood" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#4a2e18"/>
+                <stop offset="60%"  stop-color="#3a2210"/>
+                <stop offset="100%" stop-color="#281608"/>
+              </linearGradient>
+              <linearGradient id="lStone" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#1c1428"/>
+                <stop offset="100%" stop-color="#100c1a"/>
+              </linearGradient>
+              <radialGradient id="lKnob" cx="40%" cy="35%" r="60%">
+                <stop offset="0%"   stop-color="#e8c040"/>
+                <stop offset="100%" stop-color="#8a6010"/>
+              </radialGradient>
+            </defs>
+            <!-- Stone arch frame -->
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248 Z" fill="url(#lStone)"/>
+            <!-- Frame edge bevel -->
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+            <!-- Stone mortar lines -->
+            <rect x="2" y="140" width="156" height="2" fill="rgba(0,0,0,0.25)"/>
+            <rect x="2" y="188" width="156" height="2" fill="rgba(0,0,0,0.25)"/>
+            <rect x="2" y="220" width="80" height="2" fill="rgba(0,0,0,0.25)"/>
+            <rect x="82" y="164" width="78" height="2" fill="rgba(0,0,0,0.25)"/>
+            <!-- Door slab -->
+            <path d="M14,248 L14,94 A66,66,0,0,1,146,94 L146,248 Z" fill="url(#lWood)"/>
+            <!-- Wood grain subtle lines -->
+            <line x1="14" y1="126" x2="146" y2="126" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+            <line x1="14" y1="148" x2="146" y2="148" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>
+            <line x1="14" y1="170" x2="146" y2="170" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>
+            <line x1="14" y1="192" x2="146" y2="192" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>
+            <line x1="14" y1="220" x2="146" y2="220" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+            <!-- Fanlight (arch window) — purple for Lich -->
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="rgba(90,20,180,0.50)"/>
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="none" stroke="rgba(140,60,220,0.4)" stroke-width="1.5"/>
+            <!-- Fanlight spokes -->
+            <line x1="80" y1="94" x2="80" y2="32" stroke="#2a1608" stroke-width="2.5"/>
+            <line x1="80" y1="94" x2="24" y2="78" stroke="#2a1608" stroke-width="1.8"/>
+            <line x1="80" y1="94" x2="136" y2="78" stroke="#2a1608" stroke-width="1.8"/>
+            <!-- Purple fanlight inner glow -->
+            <path d="M22,94 A58,58,0,0,1,138,94 Z" fill="rgba(130,40,255,0.12)"/>
+            <!-- Top panel (recessed) -->
+            <rect x="20" y="104" width="120" height="55" rx="3" fill="rgba(0,0,0,0.22)"/>
+            <rect x="21" y="105" width="118" height="53" rx="3" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <rect x="21" y="105" width="118" height="2" rx="1" fill="rgba(255,255,255,0.04)"/>
+            <!-- Bottom panel (recessed) -->
+            <rect x="20" y="167" width="120" height="73" rx="3" fill="rgba(0,0,0,0.22)"/>
+            <rect x="21" y="168" width="118" height="71" rx="3" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <rect x="21" y="168" width="118" height="2" rx="1" fill="rgba(255,255,255,0.04)"/>
+            <!-- Door knob -->
+            <circle cx="120" cy="206" r="8" fill="#5a3010"/>
+            <circle cx="120" cy="206" r="7" fill="url(#lKnob)"/>
+            <circle cx="117" cy="203" r="2.5" fill="rgba(255,255,255,0.35)"/>
+            <!-- Roman numeral on stone above door -->
+            <text x="80" y="18" text-anchor="middle" font-family="serif" font-size="13" fill="rgba(180,140,220,0.6)" letter-spacing="3">I</text>
+          </svg>
         </div>
-        <div class="door-key-status" id="door-lich-key">
-          <span class="key-locked">🔒 Beat Lich to unlock secrets</span>
-        </div>
+        <div class="door-name">Lich's Apartment</div>
+        <div class="door-key-line" id="door-lich-key">🔒 Beat Lich to unlock secrets</div>
       </a>
 
-      <!-- Apocalyptic's War Chamber — Coming Soon -->
-      <div class="world-door door-coming-soon" id="door-apoc">
-        <div class="door-frame door-locked">
-          <div class="door-number">II</div>
-          <div class="door-inner door-inner-dark">
-            <div class="door-sprite door-sprite-dark">?</div>
-            <div class="door-nameplate door-nameplate-dim">APOCALYPTIC</div>
-          </div>
-          <div class="door-label door-label-dim">The War Chamber</div>
+      <!-- Door II: Apocalyptic's War Chamber (coming soon) -->
+      <div class="door-card door-locked-card" id="door-apoc">
+        <div class="door-svg-wrap">
+          <svg viewBox="0 0 160 248" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="aWood" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#1e1a14"/>
+                <stop offset="100%" stop-color="#0e0c0a"/>
+              </linearGradient>
+              <linearGradient id="aStone" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#181410"/>
+                <stop offset="100%" stop-color="#0c0a08"/>
+              </linearGradient>
+            </defs>
+            <!-- Stone frame -->
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248 Z" fill="url(#aStone)"/>
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="2"/>
+            <rect x="2" y="150" width="156" height="2" fill="rgba(0,0,0,0.3)"/>
+            <rect x="2" y="200" width="156" height="2" fill="rgba(0,0,0,0.3)"/>
+            <!-- Door slab (dark iron) -->
+            <path d="M14,248 L14,94 A66,66,0,0,1,146,94 L146,248 Z" fill="url(#aWood)"/>
+            <!-- Fanlight — dark red -->
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="rgba(80,10,10,0.60)"/>
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="none" stroke="rgba(100,20,20,0.5)" stroke-width="1.5"/>
+            <line x1="80" y1="94" x2="80" y2="32" stroke="#181410" stroke-width="2.5"/>
+            <line x1="80" y1="94" x2="24" y2="78" stroke="#181410" stroke-width="1.8"/>
+            <line x1="80" y1="94" x2="136" y2="78" stroke="#181410" stroke-width="1.8"/>
+            <!-- Iron studs -->
+            <circle cx="30" cy="118" r="5" fill="#2a2420"/><circle cx="30" cy="118" r="3" fill="#3a3028"/><circle cx="29" cy="117" r="1.2" fill="rgba(255,255,255,0.12)"/>
+            <circle cx="130" cy="118" r="5" fill="#2a2420"/><circle cx="130" cy="118" r="3" fill="#3a3028"/><circle cx="129" cy="117" r="1.2" fill="rgba(255,255,255,0.12)"/>
+            <circle cx="30" cy="228" r="5" fill="#2a2420"/><circle cx="30" cy="228" r="3" fill="#3a3028"/><circle cx="29" cy="227" r="1.2" fill="rgba(255,255,255,0.12)"/>
+            <circle cx="130" cy="228" r="5" fill="#2a2420"/><circle cx="130" cy="228" r="3" fill="#3a3028"/><circle cx="129" cy="227" r="1.2" fill="rgba(255,255,255,0.12)"/>
+            <!-- Top panel -->
+            <rect x="20" y="104" width="120" height="55" rx="3" fill="rgba(0,0,0,0.3)"/>
+            <rect x="21" y="105" width="118" height="53" rx="3" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+            <!-- Bottom panel -->
+            <rect x="20" y="167" width="120" height="73" rx="3" fill="rgba(0,0,0,0.3)"/>
+            <rect x="21" y="168" width="118" height="71" rx="3" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+            <!-- Padlock -->
+            <rect x="66" y="192" width="28" height="22" rx="3" fill="#2a2218"/>
+            <path d="M72,192 L72,184 A8,8,0,0,1,88,184 L88,192" fill="none" stroke="#3a3020" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="80" cy="204" r="4" fill="#1a1610"/>
+            <rect x="78.5" y="204" width="3" height="6" rx="1" fill="#1a1610"/>
+            <!-- Roman numeral -->
+            <text x="80" y="18" text-anchor="middle" font-family="serif" font-size="13" fill="rgba(120,80,60,0.4)" letter-spacing="3">II</text>
+          </svg>
         </div>
-        <div class="door-key-status">
-          <span class="key-locked">🔒 Coming Soon</span>
-        </div>
+        <div class="door-name" style="color:#2a2018">Apocalyptic's War Chamber</div>
+        <div class="door-key-line">🔒 Coming Soon</div>
       </div>
 
-      <!-- Mystery Door -->
-      <div class="world-door door-coming-soon" id="door-mystery">
-        <div class="door-frame door-locked door-mystery-frame">
-          <div class="door-number door-number-mystery">?</div>
-          <div class="door-inner door-inner-dark">
-            <div class="door-sprite door-sprite-mystery">⬛</div>
-            <div class="door-nameplate door-nameplate-dim">???</div>
-          </div>
-          <div class="door-label door-label-dim">Requires All 3 Keys</div>
+      <!-- Door III: Mystery -->
+      <div class="door-card door-locked-card" id="door-mystery">
+        <div class="door-svg-wrap">
+          <svg viewBox="0 0 160 248" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="mGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stop-color="rgba(180,120,255,0.35)"/>
+                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+              </radialGradient>
+            </defs>
+            <!-- Stone frame — very dark -->
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248 Z" fill="#080608"/>
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248" fill="none" stroke="rgba(120,60,200,0.12)" stroke-width="2"/>
+            <!-- Door slab — black -->
+            <path d="M14,248 L14,94 A66,66,0,0,1,146,94 L146,248 Z" fill="#060406"/>
+            <!-- Fanlight -->
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="rgba(40,0,60,0.8)"/>
+            <line x1="80" y1="94" x2="80" y2="32" stroke="#0a060e" stroke-width="2.5"/>
+            <line x1="80" y1="94" x2="24" y2="78" stroke="#0a060e" stroke-width="1.8"/>
+            <line x1="80" y1="94" x2="136" y2="78" stroke="#0a060e" stroke-width="1.8"/>
+            <!-- Subtle glow behind keyhole -->
+            <ellipse cx="80" cy="180" rx="28" ry="32" fill="url(#mGlow)"/>
+            <!-- Keyhole -->
+            <circle cx="80" cy="168" r="9" fill="#0a060e"/>
+            <circle cx="80" cy="168" r="8" fill="rgba(180,100,255,0.2)"/>
+            <path d="M74,176 L74,192 L86,192 L86,176 A6,8,0,0,1,74,176 Z" fill="#0a060e"/>
+            <path d="M75,177 L75,191 L85,191 L85,177 A5,7,0,0,1,75,177 Z" fill="rgba(160,80,255,0.18)"/>
+            <!-- Chains -->
+            <path d="M14,160 Q80,155 146,160" fill="none" stroke="rgba(80,60,40,0.4)" stroke-width="4" stroke-linecap="round"/>
+            <path d="M14,166 Q80,161 146,166" fill="none" stroke="rgba(50,40,30,0.35)" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Question mark panels -->
+            <rect x="20" y="104" width="120" height="55" rx="3" fill="rgba(0,0,0,0.4)"/>
+            <rect x="20" y="167" width="120" height="73" rx="3" fill="rgba(0,0,0,0.4)"/>
+            <!-- ? -->
+            <text x="80" y="18" text-anchor="middle" font-family="serif" font-size="14" fill="rgba(120,60,200,0.3)" letter-spacing="2">?</text>
+          </svg>
         </div>
-        <div class="door-key-status" id="mystery-key-status">
-          <span class="key-locked" id="mystery-key-text">🔒 🗝️ 🗝️ 🗝️ — Collect All Boss Keys</span>
-        </div>
+        <div class="door-name" style="color:#1a1020">??? Unknown</div>
+        <div class="door-key-line" id="mystery-key-status">🗝️🗝️🗝️ Requires All 3 Boss Keys</div>
       </div>
 
     </div>
@@ -208,15 +318,12 @@
     const keys = JSON.parse(localStorage.getItem('wolfdragon_keys') || '{}');
     if(keys.lichKey){
       const el = document.getElementById('door-lich-key');
-      if(el) el.innerHTML = '<span class="key-unlocked">🔑 Lich Key — Unlocked</span>';
+      if(el){ el.textContent = '🔑 Lich Key — Unlocked'; el.classList.add('unlocked'); }
     }
-    // Mystery door requires all 3
     const allKeys = keys.spiderKey && keys.lichKey && keys.apocKey;
     if(allKeys){
-      const t = document.getElementById('mystery-key-text');
-      if(t) t.innerHTML = '🔑 🔑 🔑 All Keys — Unlocked!';
-      const ms = document.getElementById('mystery-key-status');
-      if(ms) ms.querySelector('span').className = 'key-unlocked';
+      const el = document.getElementById('mystery-key-status');
+      if(el){ el.textContent = '🔑🔑🔑 All Keys — Enter'; el.classList.add('unlocked'); }
     }
   })();
   </script>
