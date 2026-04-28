@@ -228,7 +228,7 @@
     "I have a Monet. A real one. Not a print. An actual Monet. Bought it at auction in 2019. It makes me feel things.",
     "Dave Matthews has a song called 'The Space Between.' I've listened to it forty times this month and I'm still not sure what it's about.",
     "I care about my people. I want this to be a place people are proud to work. Is that unusual for a supreme overlord?",
-    "The motivational poster was a gift from the team. It says 'Don't Stop.' I did not expect to be moved by that. I was moved by that.",
+    "The motivational poster was a gift from the team. It says 'Mindset Is Everything.' I did not expect to be moved by that. I was moved by that.",
     "Every morning I make a list. Every night I review it. The Bahamas has been carried forward sixteen times.",
     "I have a very specific vision for what this looks like when it's finished. Clean. Organized. The world runs well. Under my direction, obviously.",
     "*quiet* Sometimes when everyone's gone and it's just me and the city plans... I think this is actually fine. I'm fine. We're going to be fine. *pause* Back to work.",
@@ -251,7 +251,7 @@
   // ── ZONES ────────────────────────────────────────────────────────────────────
   const ZONES = [
     // Back wall
-    { id:'poster',      x:32,  y:108, w:126, h:172, label:'Motivational Poster', cursor:'pointer' },
+    { id:'poster',      x:748, y:108, w:128, h:172, label:'Motivational Poster', cursor:'pointer' },
     { id:'window',      x:166, y:95,  w:320, h:290, label:'City View',           cursor:'pointer' },
     { id:'guitar',      x:494, y:206, w:58,  h:228, label:'Guitar',              cursor:'pointer' },
     { id:'monet',       x:578, y:106, w:158, h:134, label:'Monet Painting',      cursor:'pointer' },
@@ -270,10 +270,10 @@
     { id:'book-gal',    x:52,  y:240, w:18,  h:48,  label:'The New Industrial State', cursor:'pointer' },
     { id:'pindoll',     x:86,  y:237, w:36,  h:45,  label:'Pin Doll',                 cursor:'pointer' },
     // Floor / desk items
-    { id:'whiteboard',  x:330, y:218, w:152, h:188, label:'Whiteboard',          cursor:'pointer' },
+    { id:'whiteboard',  x:330, y:162, w:152, h:228, label:'Whiteboard',          cursor:'pointer' },
     { id:'tps-reports', x:606, y:352, w:106, h:42,  label:'TPS Reports',         cursor:'pointer' },
-    { id:'computer',    x:728, y:287, w:168, h:96,  label:'Computer',            cursor:'pointer' },
-    { id:'fax',         x:876, y:318, w:98,  h:78,  label:'Fax Machine',         cursor:'pointer' },
+    { id:'computer',    x:708, y:267, w:168, h:96,  label:'Computer',            cursor:'pointer' },
+    { id:'fax',         x:922, y:250, w:78,  h:138, label:'Fax Machine',         cursor:'pointer' },
   ];
 
   let hoveredZone = null;
@@ -374,12 +374,13 @@
       html: `<div style="white-space:normal;text-align:center;">
   <div style="background:linear-gradient(180deg,#080810,#0e0e18,#0a0a14);border-radius:4px;padding:36px 24px 28px;margin-bottom:14px;border:3px solid #1a1a28;">
     <div style="font-family:'Oswald',Arial,sans-serif;font-size:0.65rem;letter-spacing:0.25em;color:#cc2222;text-transform:uppercase;margin-bottom:18px;opacity:0.8;">Dark Legion Enterprises</div>
-    <div style="font-family:'Oswald',Arial,sans-serif;font-size:3.2rem;font-weight:600;color:#ffffff;letter-spacing:0.08em;line-height:1;margin-bottom:6px;text-shadow:0 0 40px rgba(200,168,64,0.3);">DON'T</div>
-    <div style="font-family:'Oswald',Arial,sans-serif;font-size:3.2rem;font-weight:600;color:#c8a840;letter-spacing:0.08em;line-height:1;margin-bottom:28px;text-shadow:0 0 40px rgba(200,168,64,0.5);">STOP.</div>
+    <div style="font-family:'Oswald',Arial,sans-serif;font-size:2.8rem;font-weight:600;color:#ffffff;letter-spacing:0.06em;line-height:1;margin-bottom:4px;text-shadow:0 0 40px rgba(200,168,64,0.3);">MINDSET</div>
+    <div style="font-family:'Oswald',Arial,sans-serif;font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.5);letter-spacing:0.2em;margin-bottom:4px;">IS</div>
+    <div style="font-family:'Oswald',Arial,sans-serif;font-size:2.4rem;font-weight:600;color:#c8a840;letter-spacing:0.06em;line-height:1;margin-bottom:24px;text-shadow:0 0 40px rgba(200,168,64,0.5);">EVERYTHING</div>
     <div style="width:40px;height:1px;background:rgba(200,168,64,0.4);margin:0 auto 18px;"></div>
-    <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.12em;line-height:1.7;">THE ONLY FAILURE IS<br>STOPPING BEFORE YOU'RE DONE.</div>
+    <div style="font-size:0.72rem;color:rgba(255,255,255,0.32);letter-spacing:0.1em;line-height:1.7;">YOUR MIND DETERMINES<br>EVERYTHING ELSE.</div>
   </div>
-  <div style="font-size:0.78rem;color:#7a7060;font-style:italic;padding: 0 8px;">
+  <div style="font-size:0.78rem;color:#7a7060;font-style:italic;padding:0 8px;">
     A gift from the team. Signed on the back by all forty-eight minions. Even Brute #4, whose signature is just a fist impression in the cardboard.
   </div>
 </div>`
@@ -420,7 +421,7 @@
   <div style="font-size:0.78rem;margin-bottom:10px;"><strong>Procedure Steps (IEEE 829, 10-step):</strong><br>
   1. Log into command system &nbsp; 2. Confirm environment (§2) &nbsp; 3. Execute invasion protocol (INV-PROTO-2.4) &nbsp; 4. Record outcomes &nbsp; 5. Attach cover sheet &nbsp; <span style="color:#888;">6–10. See above. That covers it.</span></div>
   <div style="font-size:0.78rem;margin-bottom:10px;"><strong>Results:</strong> PASS: Sectors 4, 5, 6 ✓ &nbsp;|&nbsp; <span style="color:#cc2222;">FAIL: Sector 7</span> ("mostly done" — Brute #9) &nbsp;|&nbsp; PENDING: Ritual containment</div>
-  <div style="border-top:1px solid #ddd;padding-top:9px;font-size:0.7rem;color:#888;font-style:italic;line-height:1.6;">"After <em>Office Space</em>, 'TPS report' has come to connote pointless, mindless paperwork — a literacy practice that is a meaningless exercise imposed upon employees by an inept and uncaring management."<br><span style="color:#555;font-style:normal;">Written in margin: <strong>We are not inept. The cover sheets are important. — A.</strong></span></div>
+  <div style="border-top:1px solid #ddd;padding-top:9px;font-size:0.7rem;color:#555;line-height:1.6;">Written in margin: <strong>The cover sheets are important. — A.</strong></div>
 </div>`
     },
     computer: {
@@ -729,7 +730,7 @@
 
   // ── WHITEBOARD (EASEL) ───────────────────────────────────────────────────────
   function drawWhiteboard() {
-    const wx = 334, wy = 228, ww = 148, wh = 122;
+    const wx = 334, wy = 170, ww = 148, wh = 122;
     const hov = hoveredZone && hoveredZone.id === 'whiteboard';
     const floorY = 388;
 
@@ -815,7 +816,7 @@
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.6)';
       ctx.lineWidth = 2;
-      rrect(wx - 6, wy - 6, ww + 12, wh + 170, 4);
+      rrect(wx - 6, wy - 6, ww + 12, wh + 230, 4);
       ctx.stroke();
     }
   }
@@ -892,7 +893,7 @@
 
   // ── MOTIVATIONAL POSTER ──────────────────────────────────────────────────────
   function drawPoster() {
-    const px = 34, py = 108, pw = 132, ph = 170;
+    const px = 750, py = 108, pw = 126, ph = 170;
     const hov = hoveredZone && hoveredZone.id === 'poster';
 
     // Black frame
@@ -907,32 +908,37 @@
     ctx.fillStyle = pGrad;
     ctx.fillRect(px, py, pw, ph);
 
-    // Red brand line
+    // Red accent line
     ctx.fillStyle = '#8b0000';
     ctx.fillRect(px + 10, py + 18, pw - 20, 1.5);
 
-    // "DON'T" text
-    ctx.font = 'bold 22px "Oswald", Arial';
+    // "MINDSET" line
+    ctx.font = 'bold 18px "Oswald", Arial';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText("DON'T", px + pw / 2, py + 75);
-    // "STOP." text
+    ctx.fillText('MINDSET', px + pw / 2, py + 68);
+    // "IS" small bridge
+    ctx.font = 'bold 11px "Oswald", Arial';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('IS', px + pw / 2, py + 84);
+    // "EVERYTHING" gold
+    ctx.font = 'bold 16px "Oswald", Arial';
     ctx.fillStyle = '#c8a840';
-    ctx.fillText('STOP.', px + pw / 2, py + 102);
+    ctx.fillText('EVERYTHING', px + pw / 2, py + 103);
 
     // Divider
     ctx.strokeStyle = 'rgba(200,168,64,0.3)';
     ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(px + 20, py + 115); ctx.lineTo(px + pw - 20, py + 115); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px + 16, py + 114); ctx.lineTo(px + pw - 16, py + 114); ctx.stroke();
 
-    // Small text
-    ctx.font = '6px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.fillText('THE ONLY FAILURE IS', px + pw / 2, py + 130);
-    ctx.fillText('STOPPING TOO SOON.', px + pw / 2, py + 141);
+    // Subtext
+    ctx.font = '5.5px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillText('YOUR MIND DETERMINES', px + pw / 2, py + 128);
+    ctx.fillText('EVERYTHING ELSE.', px + pw / 2, py + 139);
 
     // Credit
-    ctx.font = 'italic 6.5px Arial';
-    ctx.fillStyle = 'rgba(200,168,64,0.4)';
+    ctx.font = 'italic 6px Arial';
+    ctx.fillStyle = 'rgba(200,168,64,0.38)';
     ctx.fillText('— The Team', px + pw / 2, py + ph - 12);
 
     ctx.textAlign = 'left';
@@ -1051,8 +1057,6 @@
     return `rgb(${r},${g},${b2})`;
   }
 
-  // (credenza removed — fax now lives on the angled desk)
-
   // ── DESK (right side, angled — near-left corner closest to viewer) ──────────
   // Corners: FL=front-left, FR=front-right, BR=back-right, BL=back-left
   const D = {
@@ -1131,104 +1135,183 @@
     ctx.closePath(); ctx.fill();
   }
 
-  // ── COMPUTER (on desk, center-right area) ───────────────────────────────────
+  // ── COMPUTER (on desk, shifted back toward rear edge) ───────────────────────
   function drawComputer() {
     const hov = hoveredZone && hoveredZone.id === 'computer';
     // Stand base (on desk surface)
     ctx.fillStyle = '#1a1a22';
-    ctx.fillRect(798, 358, 22, 14);
-    ctx.fillRect(783, 370, 52, 5);
+    ctx.fillRect(778, 340, 22, 14);
+    ctx.fillRect(763, 352, 52, 5);
     // Monitor body
     ctx.fillStyle = '#141418';
-    rrect(728, 288, 166, 96, 6);
+    rrect(708, 268, 166, 96, 6);
     ctx.fill();
     // Screen
     ctx.fillStyle = '#0a0e16';
-    rrect(736, 295, 150, 80, 3);
+    rrect(716, 275, 150, 80, 3);
     ctx.fill();
     // Screen glow
-    const scrGlow = ctx.createRadialGradient(811, 335, 0, 811, 335, 70);
+    const scrGlow = ctx.createRadialGradient(791, 315, 0, 791, 315, 70);
     scrGlow.addColorStop(0, 'rgba(0,80,180,0.14)');
     scrGlow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = scrGlow;
-    ctx.fillRect(736, 295, 150, 80);
+    ctx.fillRect(716, 275, 150, 80);
     // Screen content
     ctx.fillStyle = 'rgba(0,180,60,0.8)';
     ctx.font = '5.5px monospace';
     ['CONQUEST_STATUS...OK', 'FEAR_INDEX.......▲18%', 'PHASE_3......PENDING', 'ENCHANTER..VACANT 94d', '> _'].forEach((line, i) => {
-      ctx.fillText(line, 740, 308 + i * 12);
+      ctx.fillText(line, 720, 288 + i * 12);
     });
     // Power light
     const pulse = 0.6 + Math.sin(frame * 0.04) * 0.3;
     ctx.fillStyle = `rgba(0,200,100,${pulse})`;
-    ctx.beginPath(); ctx.arc(808, 381, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(788, 361, 2.5, 0, Math.PI * 2); ctx.fill();
 
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.55)';
       ctx.lineWidth = 2;
-      rrect(726, 286, 170, 98, 7);
+      rrect(706, 266, 170, 98, 7);
       ctx.stroke();
     }
   }
 
-  // ── TPS REPORTS (on desk, left side) ────────────────────────────────────────
+  // ── TPS REPORTS (stack of papers on desk, left side) ────────────────────────
   function drawTPSReports() {
     const hov = hoveredZone && hoveredZone.id === 'tps-reports';
-    const tx = 608, ty = 370;
-    for (let i = 3; i >= 0; i--) {
-      ctx.fillStyle = i % 2 === 0 ? '#f0ece4' : '#e8e4dc';
-      ctx.fillRect(tx + i, ty - i, 104, 3 + i);
-      ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 0.5;
-      ctx.strokeRect(tx + i, ty - i, 104, 3 + i);
-    }
-    // Top sheet
-    ctx.fillStyle = '#f8f4ec';
-    ctx.fillRect(tx, ty - 4, 104, 24);
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 0.5;
-    ctx.strokeRect(tx, ty - 4, 104, 24);
+    const tx = 608, ty = 362;
+    const pw = 106, ph = 8; // each sheet height
+
+    // Stack: bottom to top, each slightly offset
+    const sheets = [
+      { ox:3,  oy:3,  rot: 0.025, c:'#e4e0d4' },
+      { ox:2,  oy:2,  rot:-0.018, c:'#eceadf' },
+      { ox:1,  oy:1,  rot: 0.01,  c:'#f0edd8' },
+      { ox:0,  oy:0,  rot: 0,     c:'#f8f5e8' }, // top sheet
+    ];
+
+    sheets.forEach(s => {
+      ctx.save();
+      ctx.translate(tx + s.ox, ty + s.oy);
+      ctx.rotate(s.rot);
+      // Shadow under each sheet
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      ctx.fillRect(1, 2, pw, ph + 28);
+      // Sheet body
+      ctx.fillStyle = s.c;
+      ctx.fillRect(0, 0, pw, ph + 28);
+      ctx.strokeStyle = 'rgba(0,0,0,0.09)'; ctx.lineWidth = 0.5;
+      ctx.strokeRect(0, 0, pw, ph + 28);
+      // Faint ruled lines on each sheet
+      ctx.strokeStyle = 'rgba(180,180,160,0.2)'; ctx.lineWidth = 0.5;
+      [10, 17, 24].forEach(ly => {
+        ctx.beginPath(); ctx.moveTo(6, ly); ctx.lineTo(pw - 6, ly); ctx.stroke();
+      });
+      ctx.restore();
+    });
+
+    // Top sheet labels (drawn flat, no rotation)
     ctx.fillStyle = '#8b0000';
-    ctx.font = 'bold 5px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('TPS REPORT — Q2', tx + 52, ty + 5);
-    ctx.fillStyle = '#555'; ctx.font = '4.5px Arial';
-    ctx.fillText('COVER SHEET: ATTACHED ✓', tx + 52, ty + 14);
+    ctx.font = 'bold 5.5px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('TPS REPORT — Q2', tx + pw / 2, ty + 9);
+    ctx.strokeStyle = 'rgba(139,0,0,0.35)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(tx + 8, ty + 12); ctx.lineTo(tx + pw - 8, ty + 12); ctx.stroke();
+    ctx.fillStyle = '#444'; ctx.font = '4.5px Arial';
+    ctx.fillText('DARK OPS — CONFIDENTIAL', tx + pw / 2, ty + 19);
+    ctx.fillStyle = '#1a7a1a'; ctx.font = 'bold 4.5px Arial';
+    ctx.fillText('COVER SHEET: ATTACHED ✓', tx + pw / 2, ty + 27);
     ctx.textAlign = 'left';
+
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.55)'; ctx.lineWidth = 2;
-      ctx.strokeRect(tx - 2, ty - 6, 108, 28);
+      ctx.strokeRect(tx - 4, ty - 4, pw + 10, 42);
     }
   }
 
-  // ── FAX MACHINE (on desk right end) ─────────────────────────────────────────
-  function drawFaxOnDesk() {
+  // ── FILING CABINET + FAX (back-right corner, behind desk) ───────────────────
+  function drawFilingCabinet() {
     const hov = hoveredZone && hoveredZone.id === 'fax';
-    const fx = 878, fy = 322, fw = 94, fh = 62;
+    const cx = 924, cy = 295, cw = 68, ch = 90;
+
+    // Right-side face (perspective sliver, drawn first so body overlaps it)
+    ctx.fillStyle = '#252525';
+    ctx.beginPath();
+    ctx.moveTo(cx + cw, cy);
+    ctx.lineTo(cx + cw + 8, cy + 5);
+    ctx.lineTo(cx + cw + 8, cy + ch + 5);
+    ctx.lineTo(cx + cw, cy + ch);
+    ctx.closePath(); ctx.fill();
+
+    // Top face (angled sliver)
+    ctx.fillStyle = '#5a5a5a';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + cw, cy);
+    ctx.lineTo(cx + cw + 8, cy + 5);
+    ctx.lineTo(cx + 8, cy + 5);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Cabinet front face
+    const cabGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy);
+    cabGrad.addColorStop(0, '#3c3c3c');
+    cabGrad.addColorStop(0.45, '#484848');
+    cabGrad.addColorStop(1, '#2a2a2a');
+    ctx.fillStyle = cabGrad;
+    rrect(cx, cy, cw, ch, 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 0.5;
+    rrect(cx, cy, cw, ch, 2); ctx.stroke();
+
+    // 3 drawers
+    const drawerH = 25;
+    [0, 1, 2].forEach(i => {
+      const dy = cy + 5 + i * (drawerH + 3);
+      ctx.fillStyle = '#404040';
+      rrect(cx + 4, dy, cw - 8, drawerH, 1); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.5;
+      rrect(cx + 4, dy, cw - 8, drawerH, 1); ctx.stroke();
+      // Handle
+      ctx.fillStyle = '#777';
+      rrect(cx + cw / 2 - 11, dy + drawerH / 2 - 3, 22, 5, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      rrect(cx + cw / 2 - 10, dy + drawerH / 2 - 2, 20, 2, 1); ctx.fill();
+    });
+
+    // Label holder on top drawer
+    ctx.fillStyle = '#e0ddd0';
+    ctx.fillRect(cx + 14, cy + 7, cw - 28, 8);
+    ctx.fillStyle = '#555'; ctx.font = '4px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('FIELD OPS', cx + cw / 2, cy + 13);
+
+    // ── Fax machine on top of cabinet ──
+    const fx = cx + 2, fy = cy - 44, fw = 64, fh = 44;
     ctx.fillStyle = '#c0bab0';
-    rrect(fx, fy, fw, fh, 4); ctx.fill();
+    rrect(fx, fy, fw, fh, 3); ctx.fill();
     ctx.fillStyle = '#b0aaa0';
-    rrect(fx + 2, fy + 2, fw - 4, fh - 4, 3); ctx.fill();
+    rrect(fx + 2, fy + 2, fw - 4, fh - 4, 2); ctx.fill();
     // LCD
     ctx.fillStyle = '#2a3a2a';
-    rrect(fx + 8, fy + 8, fw - 16, 12, 2); ctx.fill();
+    rrect(fx + 6, fy + 6, fw - 12, 10, 1); ctx.fill();
     ctx.fillStyle = '#88cc88';
-    ctx.font = '5.5px monospace'; ctx.textAlign = 'left';
-    ctx.fillText('1 NEW FAX', fx + 11, fy + 17);
+    ctx.font = '4.5px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('1 NEW FAX', fx + 8, fy + 14);
     // Buttons
-    ['#e0d8c8','#2a8a2a','#8a2a2a'].forEach((c, i) => {
+    ['#e0d8c8', '#2a8a2a', '#8a2a2a'].forEach((c, i) => {
       ctx.fillStyle = c;
-      rrect(fx + 8 + i * 14, fy + 26, 10, 6, 2); ctx.fill();
+      rrect(fx + 6 + i * 11, fy + 22, 9, 5, 1); ctx.fill();
     });
     // Paper sticking out top
     ctx.fillStyle = '#f0f0e8';
-    ctx.fillRect(fx + 12, fy - 10, fw - 24, 4);
+    ctx.fillRect(fx + 10, fy - 8, fw - 20, 3);
     ctx.fillStyle = '#e8e8e0';
-    ctx.fillRect(fx + 18, fy - 18, fw - 36, 10);
-    ctx.fillStyle = '#666';
-    ctx.font = '4.5px monospace';
-    ctx.fillText('FAX: TREASURY RPT', fx + 19, fy - 10);
+    ctx.fillRect(fx + 14, fy - 15, fw - 28, 9);
+    ctx.fillStyle = '#666'; ctx.font = '4px monospace';
+    ctx.fillText('FAX: TREASURY RPT', fx + 15, fy - 8);
+    ctx.textAlign = 'left';
 
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.55)'; ctx.lineWidth = 2;
-      rrect(fx - 2, fy - 20, fw + 4, fh + 22, 4); ctx.stroke();
+      rrect(cx - 2, fy - 10, cw + 12, ch + fh + 14, 3); ctx.stroke();
     }
   }
 
@@ -1447,9 +1530,9 @@
     // Floor objects (back to front)
     drawBookshelf();
     drawWhiteboard();
+    drawFilingCabinet();  // back-right corner, behind desk
     drawDesk();
     drawTPSReports();
-    drawFaxOnDesk();
     drawComputer();
     // Character + UI
     drawApocalyptic();
