@@ -565,6 +565,19 @@
     let vmIndex = 0;          // which voicemail to show next
     let envIndex = 0;         // which envelope to show next
 
+    // ── CEILING LEAK STATE ───────────────────────────────────────
+    const DRIP_X       = 718;   // between desk (x≈690) and hat stand (x≈742)
+    const DRIP_TOP_Y   = 93;    // ceiling surface
+    const DRIP_FLOOR_Y = 402;   // where drop hits floor
+    const DRIP_SPEED   = 1.4;   // px per frame
+    const DRIP_WAIT    = 200;   // frames between drops (~3.3s)
+    let dripY       = DRIP_TOP_Y;
+    let dripFalling = false;
+    let dripWait    = 80;       // short initial delay so it drips quickly on load
+    let puddleR     = 6;        // puddle radius — grows with each drop
+    let rippleT     = 0;        // countdown for ripple animation
+    let rippleR     = 0;        // current ripple radius
+
     let hoveredZone = null;
     let mouseX = 0, mouseY = 0;
 
@@ -1626,6 +1639,85 @@
       }
     }
 
+    function drawLeak() {
+      // ── Ceiling water stain ──
+      const stainGrad = ctx.createRadialGradient(DRIP_X, DRIP_TOP_Y - 4, 0, DRIP_X, DRIP_TOP_Y - 4, 22);
+      stainGrad.addColorStop(0,   'rgba(30,50,70,0.60)');
+      stainGrad.addColorStop(0.5, 'rgba(20,38,55,0.35)');
+      stainGrad.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = stainGrad;
+      ctx.beginPath();
+      ctx.ellipse(DRIP_X, DRIP_TOP_Y - 2, 22, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Hanging bulge at ceiling (grows while waiting) ──
+      if (!dripFalling) {
+        const grow = Math.max(0, 1 - dripWait / DRIP_WAIT); // 0→1 as wait counts down
+        const br = 2.5 + grow * 3.5;
+        const waterGrad = ctx.createRadialGradient(DRIP_X - 1, DRIP_TOP_Y + br * 0.4, 0, DRIP_X, DRIP_TOP_Y + br, br + 2);
+        waterGrad.addColorStop(0, 'rgba(200,225,245,0.85)');
+        waterGrad.addColorStop(1, 'rgba(100,160,210,0.5)');
+        ctx.fillStyle = waterGrad;
+        ctx.beginPath();
+        ctx.ellipse(DRIP_X, DRIP_TOP_Y + br * 0.5, br * 0.7, br, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ── Falling drop ──
+      if (dripFalling) {
+        // Thread from ceiling to just above the drop
+        ctx.strokeStyle = 'rgba(140,185,220,0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(DRIP_X, DRIP_TOP_Y);
+        ctx.lineTo(DRIP_X, dripY - 5);
+        ctx.stroke();
+
+        // Teardrop shape (rounded bottom, pointed top)
+        const dg = ctx.createRadialGradient(DRIP_X - 1, dripY - 1, 0, DRIP_X, dripY + 2, 7);
+        dg.addColorStop(0, 'rgba(210,235,250,0.90)');
+        dg.addColorStop(1, 'rgba(90,150,200,0.55)');
+        ctx.fillStyle = dg;
+        ctx.beginPath();
+        ctx.moveTo(DRIP_X, dripY - 6);   // tip
+        ctx.bezierCurveTo(DRIP_X + 4.5, dripY - 2, DRIP_X + 4.5, dripY + 3, DRIP_X, dripY + 5);
+        ctx.bezierCurveTo(DRIP_X - 4.5, dripY + 3, DRIP_X - 4.5, dripY - 2, DRIP_X, dripY - 6);
+        ctx.fill();
+      }
+
+      // ── Floor puddle ──
+      const pw = puddleR, ph = puddleR * 0.28;
+      const pudGrad = ctx.createRadialGradient(DRIP_X, DRIP_FLOOR_Y, 0, DRIP_X, DRIP_FLOOR_Y, pw);
+      pudGrad.addColorStop(0,   'rgba(100,155,200,0.38)');
+      pudGrad.addColorStop(0.55,'rgba(75,125,175,0.22)');
+      pudGrad.addColorStop(1,   'rgba(50,100,150,0)');
+      ctx.fillStyle = pudGrad;
+      ctx.beginPath();
+      ctx.ellipse(DRIP_X, DRIP_FLOOR_Y, pw, ph, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Sheen highlight
+      ctx.fillStyle = 'rgba(200,225,245,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(DRIP_X - pw * 0.25, DRIP_FLOOR_Y - ph * 0.2, pw * 0.38, ph * 0.45, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Ripple rings when drop lands ──
+      if (rippleT > 0) {
+        const alpha = rippleT / 35;
+        ctx.strokeStyle = `rgba(120,175,215,${alpha * 0.55})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(DRIP_X, DRIP_FLOOR_Y, rippleR, rippleR * 0.28, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        if (rippleR > 8) {
+          ctx.strokeStyle = `rgba(120,175,215,${alpha * 0.28})`;
+          ctx.beginPath();
+          ctx.ellipse(DRIP_X, DRIP_FLOOR_Y, rippleR * 0.55, rippleR * 0.55 * 0.28, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
     function drawHatStand() {
       const hsx = 742, hsy = 300;
 
@@ -1895,6 +1987,29 @@
         if (r.x > 340) { r.x -= 340; }
       });
 
+      // ── Ceiling leak update ──
+      if (dripFalling) {
+        dripY += DRIP_SPEED;
+        if (dripY >= DRIP_FLOOR_Y) {
+          dripFalling = false;
+          dripY       = DRIP_TOP_Y;
+          dripWait    = DRIP_WAIT;
+          puddleR     = Math.min(puddleR + 1.2, 38);
+          rippleT     = 35;
+          rippleR     = 2;
+        }
+      } else {
+        dripWait--;
+        if (dripWait <= 0) {
+          dripFalling = true;
+          dripY       = DRIP_TOP_Y;
+        }
+      }
+      if (rippleT > 0) {
+        rippleT--;
+        rippleR = (1 - rippleT / 35) * (puddleR + 14);
+      }
+
       lichStateT++;
 
       if (lichState === 'teleport') {
@@ -1970,6 +2085,7 @@
       drawCalendar();
       drawWindow();
       drawCeilingLight();
+      drawLeak();
       drawLaundryPile();
       drawPizzaBoxes();
       drawTable();
