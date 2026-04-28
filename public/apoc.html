@@ -136,8 +136,8 @@
   let apocDir   = 1;     // 1=right, -1=left
   let apocState = 'walk';
   let apocStateT = 0;
-  const WALK_MIN   = 240;
-  const WALK_MAX   = 660;
+  const WALK_MIN   = 220;
+  const WALK_MAX   = 560;
   const WALK_SPEED = 1.5;
   const IDLE_PAUSE = 150; // frames to pause at walls
 
@@ -250,14 +250,30 @@
 
   // ── ZONES ────────────────────────────────────────────────────────────────────
   const ZONES = [
-    { id:'whiteboard',  x:218, y:104, w:318, h:198, label:'Whiteboard',          cursor:'pointer' },
-    { id:'monet',       x:618, y:104, w:160, h:128, label:'Monet Painting',      cursor:'pointer' },
-    { id:'poster',      x:34,  y:106, w:133, h:172, label:'Motivational Poster', cursor:'pointer' },
-    { id:'bookshelf',   x:0,   y:178, w:142, h:222, label:'Bookshelf',           cursor:'pointer' },
-    { id:'tps-reports', x:178, y:305, w:118, h:38,  label:'TPS Reports',         cursor:'pointer' },
-    { id:'computer',    x:342, y:258, w:168, h:118, label:'Computer',            cursor:'pointer' },
-    { id:'fax',         x:716, y:258, w:138, h:108, label:'Fax Machine',         cursor:'pointer' },
-    { id:'guitar',      x:888, y:196, w:88,  h:238, label:'Guitar',              cursor:'pointer' },
+    // Back wall
+    { id:'poster',      x:32,  y:108, w:126, h:172, label:'Motivational Poster', cursor:'pointer' },
+    { id:'window',      x:166, y:95,  w:320, h:290, label:'City View',           cursor:'pointer' },
+    { id:'guitar',      x:494, y:206, w:58,  h:228, label:'Guitar',              cursor:'pointer' },
+    { id:'monet',       x:578, y:106, w:158, h:134, label:'Monet Painting',      cursor:'pointer' },
+    // Shelf 1 books (bx=0, shelf y=186, books start x=4)
+    { id:'book-aw',     x:3,   y:184, w:17,  h:48,  label:'The Art of War',           cursor:'pointer' },
+    { id:'book-gg',     x:20,  y:184, w:18,  h:48,  label:'Good to Great',            cursor:'pointer' },
+    { id:'book-pr',     x:38,  y:184, w:16,  h:48,  label:'Principles',               cursor:'pointer' },
+    { id:'book-zo',     x:54,  y:184, w:15,  h:48,  label:'Zero to One',              cursor:'pointer' },
+    { id:'book-tf',     x:69,  y:184, w:18,  h:48,  label:'Thinking Fast & Slow',     cursor:'pointer' },
+    { id:'book-ah',     x:87,  y:184, w:15,  h:48,  label:'Atomic Habits',            cursor:'pointer' },
+    { id:'book-48',     x:102, y:184, w:16,  h:48,  label:'48 Laws of Power',         cursor:'pointer' },
+    // Shelf 2 books (shelf y=242, books start x=4)
+    { id:'book-ow',     x:3,   y:240, w:18,  h:48,  label:'On War',                   cursor:'pointer' },
+    { id:'book-tp',     x:21,  y:240, w:16,  h:48,  label:'The Prince',               cursor:'pointer' },
+    { id:'book-med',    x:37,  y:240, w:15,  h:48,  label:'Meditations',              cursor:'pointer' },
+    { id:'book-gal',    x:52,  y:240, w:18,  h:48,  label:'The New Industrial State', cursor:'pointer' },
+    { id:'pindoll',     x:86,  y:237, w:36,  h:45,  label:'Pin Doll',                 cursor:'pointer' },
+    // Floor / desk items
+    { id:'whiteboard',  x:330, y:218, w:152, h:188, label:'Whiteboard',          cursor:'pointer' },
+    { id:'tps-reports', x:606, y:352, w:106, h:42,  label:'TPS Reports',         cursor:'pointer' },
+    { id:'computer',    x:728, y:287, w:168, h:96,  label:'Computer',            cursor:'pointer' },
+    { id:'fax',         x:876, y:318, w:98,  h:78,  label:'Fax Machine',         cursor:'pointer' },
   ];
 
   let hoveredZone = null;
@@ -349,7 +365,7 @@
   </div>
   <div style="background:#1c1c26;border:1px solid rgba(200,168,64,0.25);border-radius:3px;padding:12px 16px;text-align:left;">
     <div style="font-size:0.9rem;font-weight:600;color:#c8a840;margin-bottom:4px;">Nymphéas (Water Lilies) — c. 1906</div>
-    <div style="font-size:0.8rem;color:#a09080;line-height:1.6;">Oil on canvas. Acquired at Sotheby's, Paris, 2019. One of approximately 250 paintings in Monet's Water Lilies series. This one is real.<br><br><em style="color:#7a7060;font-size:0.75rem;">— "It makes me feel things I can't explain in a board meeting."</em></div>
+    <div style="font-size:0.8rem;color:#a09080;line-height:1.6;">A genuine Monet. This must have cost millions.<br><br><em style="color:#7a7060;font-size:0.75rem;">— "It makes me feel things I can't explain in a board meeting."</em></div>
   </div>
 </div>`
     },
@@ -368,46 +384,43 @@
   </div>
 </div>`
     },
-    bookshelf: {
-      icon: '📚', title: 'The Bookshelf',
-      html: `<div style="white-space:normal;">
-  <div style="margin-bottom:16px;">
-    <div style="font-size:0.78rem;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Shelf 1 — Strategy &amp; Finance</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-      ${[['#8b0000','THE ART OF WAR'],['#1a3a6e','GOOD TO GREAT'],['#2a5e2a','PRINCIPLES'],['#5a3a00','ZERO TO ONE'],['#3a1a5e','THINKING FAST &amp; SLOW'],['#1a1a1a','ATOMIC HABITS']].map(([c,t])=>`<div style="background:${c};color:#fff;font-size:0.65rem;padding:4px 7px;border-radius:2px;font-weight:600;letter-spacing:0.04em;">${t}</div>`).join('')}
-    </div>
-  </div>
-  <div style="margin-bottom:16px;">
-    <div style="font-size:0.78rem;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Shelf 2 — Warfare &amp; History</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-      ${[['#4a1a00','ON WAR — CLAUSEWITZ'],['#002a4a','THE PRINCE'],['#1a3a1a','MEDITATIONS'],['#4a3a00','THE 48 LAWS OF POWER'],['#2a0a2a','GALBRAITH: THE NEW INDUSTRIAL STATE']].map(([c,t])=>`<div style="background:${c};color:#fff;font-size:0.65rem;padding:4px 7px;border-radius:2px;font-weight:600;letter-spacing:0.04em;">${t}</div>`).join('')}
-    </div>
-  </div>
-  <div style="background:#1c1c26;border:1px solid rgba(255,180,200,0.2);border-radius:4px;padding:14px 16px;margin-bottom:12px;">
-    <div style="font-size:0.82rem;font-weight:600;color:#e8a0b8;margin-bottom:6px;">🪡 Hidden: Fashion Pin Doll</div>
-    <div style="font-size:0.82rem;color:#b09080;line-height:1.65;">Tucked behind the Galbraith — a small wire-and-fabric dress form, maybe 8 inches tall. The pins are still in it, holding the remnants of a fitted jacket pattern. The fabric is dusty. The shape is perfect.</div>
-    <div style="font-size:0.75rem;color:#7a6858;margin-top:8px;font-style:italic;">"It belonged to my first mentor. She said every good designer needs a proper form to work from. I haven't put it away. I haven't taken it out, either."</div>
-  </div>
-  <div style="font-size:0.75rem;color:#666;font-style:italic;">Also: two sketchbooks with no labels. The spines face inward.</div>
-</div>`
-    },
+    // ── individual books ──────────────────────────────────────────────────────
+    'book-aw': { icon:'📕', title:'The Art of War — Sun Tzu', html:`<div style="white-space:normal"><div style="background:#200808;border-left:4px solid #8b0000;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Supreme excellence consists in breaking the enemy's resistance without fighting."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Multiple copies. One on this shelf, one on the desk, one in her bag. The margins are full. Page 31 is circled so many times the pen went through the page.<br><br><span style="color:#c8a840;font-style:italic;">Post-it on inside cover: "Phase 3 strategy — resistance mapping. Don't fight it. ROUTE AROUND IT."</span></div></div>` },
+    'book-gg': { icon:'📘', title:'Good to Great — Jim Collins', html:`<div style="white-space:normal"><div style="background:#080818;border-left:4px solid #1a3a6e;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Good is the enemy of great."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">First sentence underlined. Then underlined again in a different pen. Then starred. Then the whole page is bracketed with "WE ARE NOT SETTLING FOR GOOD" written vertically in the margin.<br><br>She has read this seven times. She says eight, but the spine creasing suggests seven.</div></div>` },
+    'book-pr': { icon:'📗', title:'Principles — Ray Dalio', html:`<div style="white-space:normal"><div style="background:#081808;border-left:4px solid #2a5e2a;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Pain + Reflection = Progress."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">That equation is circled three times, underlined twice, starred, and then copied onto a separate sticky note that is now on the whiteboard.<br><br>She sent this book to the Lich. He texted back: "is this a self-help book." She did not respond for three days.</div></div>` },
+    'book-zo': { icon:'📙', title:'Zero to One — Peter Thiel', html:`<div style="white-space:normal"><div style="background:#181008;border-left:4px solid #5a3a00;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"The most contrarian thing of all is not to oppose the crowd but to think for yourself."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Page 64 is dog-eared. Margin note: "yes — but step two is still domination." A smaller note below that: "be honest about step two."<br><br>She agrees with about 70% of this book and has detailed notes disputing the rest.</div></div>` },
+    'book-tf': { icon:'📓', title:'Thinking, Fast and Slow — Kahneman', html:`<div style="white-space:normal"><div style="background:#100818;border-left:4px solid #3a1a5e;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Nothing in life is as important as you think it is while you are thinking about it."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">That sentence has a single, careful question mark written next to it. Then: "Disagree. World domination IS this important. (re-read ch. 4.)"<br><br>She bought this to understand how the Brutes make decisions. She now understands why they submitted rocks as status reports. She is not comforted.</div></div>` },
+    'book-ah': { icon:'📒', title:'Atomic Habits — James Clear', html:`<div style="white-space:normal"><div style="background:#080808;border-left:4px solid #444;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"You do not rise to the level of your goals. You fall to the level of your systems."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Heavily underlined. "SYSTEMS." is written in the margin with an arrow pointing to a separate note that says "the TPS system is exactly this."<br><br>She gave copies to all 48 minions. Brute #4 used his as a doorstop. Brute #4 has been assigned portal maintenance.</div></div>` },
+    'book-48': { icon:'📔', title:'The 48 Laws of Power — Robert Greene', html:`<div style="white-space:normal"><div style="background:#180808;border-left:4px solid #4a2a00;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Law 1: Never Outshine the Master."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Written in the margin next to Law 1: "I AM the master. Irrelevant. Moving on."<br><br>All 48 laws have annotations. Law 15 (Crush Your Enemy Totally) has two sticky notes and a diagram. Law 46 (Never Appear Too Perfect) is crossed out with "No." She has thought about it, and no.</div></div>` },
+    'book-ow': { icon:'📕', title:'On War — Clausewitz', html:`<div style="white-space:normal"><div style="background:#180a02;border-left:4px solid #4a1a00;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"War is the continuation of politics by other means."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">That sentence is highlighted, then rewritten in red pen in the margin: <em>"World domination is the continuation of brand strategy by other means."</em><br><br>She has thought about this a lot. She stands by the rewrite.</div></div>` },
+    'book-tp': { icon:'📘', title:'The Prince — Machiavelli', html:`<div style="white-space:normal"><div style="background:#020810;border-left:4px solid #002a4a;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"It is better to be feared than loved, if you cannot be both."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Underlined. Then below it, in her handwriting: "Working on the 'both' option. Team morale survey TBD."<br><br>The survey has not been conducted. She drafted it twice. Both drafts are in the recycling bin under the desk. She may draft a third.</div></div>` },
+    'book-med': { icon:'📗', title:'Meditations — Marcus Aurelius', html:`<div style="white-space:normal"><div style="background:#02100a;border-left:4px solid #1a3a1a;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"You have power over your mind, not outside events. Realize this, and you will find strength."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">The tone of the annotations here is different. Quieter. No underlines, no rebuttals — just checkmarks.<br><br>There's a small coffee stain on the cover. She read this one during the portal incident. "Helped." That's all it says on the inside cover. Just: helped.</div></div>` },
+    'book-gal': { icon:'📓', title:'The New Industrial State — Galbraith', html:`<div style="white-space:normal"><div style="background:#100210;border-left:4px solid #2a0a2a;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"The enemy of the conventional wisdom is not ideas but the march of events."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Margin note: "Economic power + organizational power = total power. Dark Legion scale: Q4."<br><br>The pin doll is behind this book. She hasn't moved Galbraith in a while.</div></div>` },
+    pindoll: { icon:'🪡', title:'Fashion Pin Doll', html:`<div style="white-space:normal"><div style="background:#1c1018;border:1px solid rgba(255,180,200,0.2);border-radius:4px;padding:16px 18px;margin-bottom:12px"><div style="font-size:0.88rem;color:#e8a0b8;font-weight:600;margin-bottom:8px;">Wire-and-fabric dress form — approx. 8 inches</div><div style="font-size:0.82rem;color:#b09080;line-height:1.7">The pins are still in it. There's the remnant of a fitted jacket pattern chalked onto the fabric — a cropped single-button silhouette, structured shoulders. The chalk has faded but the shape is still there. The shape is still perfect.</div></div><div style="font-size:0.82rem;color:#a09080;line-height:1.7"><p style="margin:0 0 10px">It belonged to her first mentor. Gave it to her at graduation. Said every good designer needs a proper form to work from.</p><p style="margin:0 0 10px">The collection it was part of was called Fracture. Spring/Summer. She had three pieces in the Parsons show that year. The judges said her draping technique was exceptional.</p><p style="margin:0;font-style:italic;color:#7a6858">"I haven't put it away. I haven't taken it out, either."</p></div></div>` },
+    // ── window ───────────────────────────────────────────────────────────────
+    window: { icon:'🌆', title:'47th Floor — City View', html:`<div style="white-space:normal"><div style="background:linear-gradient(180deg,#050810,#0a1020,#0c1828);border-radius:4px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden;min-height:100px"><svg width="100%" height="120" viewBox="0 0 520 120" preserveAspectRatio="xMidYMid slice" style="display:block;border-radius:2px"><defs><linearGradient id="nsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#05080e"/><stop offset="100%" stop-color="#0c1828"/></linearGradient></defs><rect width="520" height="120" fill="url(#nsky)"/><circle cx="420" cy="22" r="14" fill="rgba(200,200,160,0.12)"/><ellipse cx="420" cy="30" rx="40" ry="14" fill="rgba(200,200,120,0.04)"/>${[{x:0,w:38,h:90},{x:40,w:22,h:70},{x:65,w:30,h:100},{x:97,w:18,h:60},{x:118,w:40,h:85},{x:161,w:24,h:108},{x:188,w:18,h:72},{x:210,w:35,h:95},{x:248,w:20,h:65},{x:272,w:44,h:112},{x:320,w:22,h:80},{x:346,w:30,h:92},{x:380,w:18,h:68},{x:402,w:36,h:88},{x:441,w:26,h:74},{x:470,w:28,h:96},{x:500,w:20,h:60}].map(b=>`<rect x="${b.x}" y="${120-b.h}" width="${b.w}" height="${b.h}" fill="#0a0c12"/>`).join('')}${Array.from({length:60},(_,i)=>{const bx=Math.floor(Math.random()*500),by=Math.floor(Math.random()*100),a=0.4+Math.random()*0.5;return`<rect x="${bx}" y="${by}" width="2" height="3" fill="rgba(255,240,180,${a})"/>`}).join('')}</svg></div><div style="font-size:0.85rem;color:#a09080;line-height:1.75"><p style="margin:0 0 10px">Forty-seven floors down, the streets are lit and moving. From up here it all looks manageable. Organized. Like a plan waiting to be executed.</p><p style="margin:0 0 10px">She's mapped every block. She knows which buildings have structural vulnerabilities, which transit lines run longest without backup, which neighborhoods would capitulate first and which would need convincing.</p><p style="margin:0;font-style:italic;color:#7a6858">The city doesn't know yet. It will.</p></div></div>` },
     'tps-reports': {
       icon: '📄', title: '',
-      html: `<div style="white-space:normal;background:#f8f6f0;border-radius:3px;padding:24px 28px;font-family:Arial,sans-serif;font-size:0.85rem;color:#1a1a1a;border:1px solid #ddd;">
-  <div style="text-align:center;border-bottom:2px solid #8b0000;padding-bottom:12px;margin-bottom:16px;">
-    <div style="font-size:0.65rem;letter-spacing:0.15em;color:#8b0000;text-transform:uppercase;margin-bottom:4px;">Dark Legion Enterprises — Internal</div>
-    <div style="font-size:1.1rem;font-weight:700;letter-spacing:0.06em;">T P S  R E P O R T</div>
-    <div style="font-size:0.7rem;color:#666;margin-top:4px;">Tactical Progress Summary — Q2 Dark Ops</div>
+      html: `<div style="white-space:normal;background:#f8f6f0;border-radius:3px;padding:22px 26px;font-family:Arial,sans-serif;font-size:0.82rem;color:#1a1a1a;border:1px solid #ddd;">
+  <div style="text-align:center;border-bottom:2px solid #8b0000;padding-bottom:10px;margin-bottom:14px;">
+    <div style="font-size:0.62rem;letter-spacing:0.15em;color:#8b0000;text-transform:uppercase;margin-bottom:3px;">Dark Legion Enterprises — IEEE 829 Compliant</div>
+    <div style="font-size:1.05rem;font-weight:700;letter-spacing:0.06em;">TEST PROCEDURE SPECIFICATION</div>
+    <div style="font-size:0.68rem;color:#555;margin-top:3px;">TPS Report No. Q2-DARKOPS-047 &nbsp;|&nbsp; Rev 3.1 &nbsp;|&nbsp; Cover Sheet: <strong style="color:#1a7a1a;">ATTACHED ✓</strong></div>
   </div>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:0.8rem;">
-    <tr style="background:#f0ece0;"><td style="padding:4px 8px;font-weight:600;width:40%;">Reporting Period:</td><td style="padding:4px 8px;">April 1 – June 30</td></tr>
-    <tr><td style="padding:4px 8px;font-weight:600;">Department:</td><td style="padding:4px 8px;">Global Subjugation — Phase 3</td></tr>
-    <tr style="background:#f0ece0;"><td style="padding:4px 8px;font-weight:600;">Submitted by:</td><td style="padding:4px 8px;">Brute #11 (acting liaison)</td></tr>
-    <tr><td style="padding:4px 8px;font-weight:600;">Cover Sheet:</td><td style="padding:4px 8px;color:#8b0000;font-weight:600;">YES ✓</td></tr>
+  <div style="font-size:0.75rem;color:#666;background:#f0ece0;border-left:3px solid #8b0000;padding:8px 10px;margin-bottom:12px;line-height:1.6;">
+    <strong>IEEE 829 — Test Procedure Specification</strong><br>
+    Describes how the tester will physically run the test, the physical set-up required, and the procedure steps to be followed. The standard defines <strong>ten procedure steps</strong> that may be applied when running a test.
+  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:0.78rem;">
+    <tr style="background:#f0ece0;"><td style="padding:3px 8px;font-weight:600;width:38%;">Test Environment:</td><td style="padding:3px 8px;">Eastern Provinces, Sectors 4–7</td></tr>
+    <tr><td style="padding:3px 8px;font-weight:600;">Personnel Required:</td><td style="padding:3px 8px;">12 Brutes (field); 1 Dark Enchanter (<span style="color:#cc2222;">VACANT</span>)</td></tr>
+    <tr style="background:#f0ece0;"><td style="padding:3px 8px;font-weight:600;">Submitted by:</td><td style="padding:3px 8px;">Brute #11 (acting liaison)</td></tr>
+    <tr><td style="padding:3px 8px;font-weight:600;">Equipment:</td><td style="padding:3px 8px;">Siege apparatus, portal array, crosscut saw (<span style="color:#cc2222;">MISSING</span>)</td></tr>
   </table>
-  <div style="font-size:0.8rem;margin-bottom:10px;"><strong>Executive Summary:</strong> Things are progressing. Most of them. The portal had an issue (resolved). The Brutes completed their assigned sectors (mostly). One sector was left "mostly done," which is not done.</div>
-  <div style="font-size:0.8rem;margin-bottom:10px;"><strong>Issues:</strong><br>• Brute #4 filed a counter-report disputing these findings<br>• The printer was jammed (see fax room for update)<br>• Dark Enchanter position remains unfilled</div>
-  <div style="border-top:1px solid #ddd;padding-top:10px;font-size:0.72rem;color:#666;font-style:italic;">Did you get the memo about the cover sheets? We're putting cover sheets on all TPS reports now. There's a memo about it. There's also a memo about the memo. — Management</div>
+  <div style="font-size:0.78rem;margin-bottom:10px;"><strong>Procedure Steps (IEEE 829, 10-step):</strong><br>
+  1. Log into command system &nbsp; 2. Confirm environment (§2) &nbsp; 3. Execute invasion protocol (INV-PROTO-2.4) &nbsp; 4. Record outcomes &nbsp; 5. Attach cover sheet &nbsp; <span style="color:#888;">6–10. See above. That covers it.</span></div>
+  <div style="font-size:0.78rem;margin-bottom:10px;"><strong>Results:</strong> PASS: Sectors 4, 5, 6 ✓ &nbsp;|&nbsp; <span style="color:#cc2222;">FAIL: Sector 7</span> ("mostly done" — Brute #9) &nbsp;|&nbsp; PENDING: Ritual containment</div>
+  <div style="border-top:1px solid #ddd;padding-top:9px;font-size:0.7rem;color:#888;font-style:italic;line-height:1.6;">"After <em>Office Space</em>, 'TPS report' has come to connote pointless, mindless paperwork — a literacy practice that is a meaningless exercise imposed upon employees by an inept and uncaring management."<br><span style="color:#555;font-style:normal;">Written in margin: <strong>We are not inept. The cover sheets are important. — A.</strong></span></div>
 </div>`
     },
     computer: {
@@ -603,88 +616,206 @@
     ctx.fillRect(0, 0, W, H);
   }
 
-  // ── WHITEBOARD ───────────────────────────────────────────────────────────────
+  // ── CITY WINDOW ─────────────────────────────────────────────────────────────
+  function drawWindow() {
+    const wx = 166, wy = 95, ww = 320, wh = 290;
+    const hov = hoveredZone && hoveredZone.id === 'window';
+
+    // Window frame (dark metal)
+    ctx.fillStyle = '#1a1a24';
+    ctx.fillRect(wx - 8, wy - 6, ww + 16, wh + 12);
+    // Metal cross-bar and sill
+    ctx.fillStyle = '#242430';
+    ctx.fillRect(wx - 4, wy - 2, ww + 8, wh + 6);
+
+    // Glass — night sky gradient
+    const skyGrad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+    skyGrad.addColorStop(0,   '#05080e');
+    skyGrad.addColorStop(0.6, '#080d1a');
+    skyGrad.addColorStop(1,   '#0c1828');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(wx, wy, ww, wh);
+
+    // City glow on horizon
+    const horizGlow = ctx.createRadialGradient(wx + ww * 0.5, wy + wh * 0.82, 0, wx + ww * 0.5, wy + wh * 0.82, 180);
+    horizGlow.addColorStop(0, 'rgba(80,120,200,0.12)');
+    horizGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = horizGlow;
+    ctx.fillRect(wx, wy, ww, wh);
+
+    // Moon
+    ctx.fillStyle = 'rgba(210,210,170,0.18)';
+    ctx.beginPath(); ctx.arc(wx + ww * 0.82, wy + 28, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(210,210,160,0.12)';
+    ctx.beginPath(); ctx.arc(wx + ww * 0.82, wy + 28, 26, 0, Math.PI * 2); ctx.fill();
+
+    // Clip drawing to glass pane
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(wx, wy, ww, wh);
+    ctx.clip();
+
+    // Building silhouettes (back-to-front layers)
+    const buildings = [
+      // far: short, narrow
+      {x:0,   w:38, h:0.48}, {x:42,  w:22, h:0.38}, {x:66,  w:28, h:0.56},
+      {x:97,  w:18, h:0.32}, {x:118, w:40, h:0.46}, {x:161, w:22, h:0.60},
+      {x:187, w:18, h:0.40}, {x:210, w:34, h:0.52}, {x:247, w:20, h:0.36},
+      {x:272, w:44, h:0.64}, {x:320, w:22, h:0.44}, {x:346, w:28, h:0.50},
+      {x:382, w:18, h:0.38}, {x:402, w:35, h:0.48}, {x:440, w:24, h:0.42},
+    ];
+    buildings.forEach(b => {
+      const bh = Math.floor(wh * b.h);
+      ctx.fillStyle = '#06080e';
+      ctx.fillRect(wx + b.x, wy + wh - bh, b.w, bh);
+    });
+
+    // Mid-ground buildings (taller)
+    const midBuildings = [
+      {x:10,  w:32, h:0.72}, {x:55,  w:26, h:0.58}, {x:92,  w:20, h:0.68},
+      {x:150, w:38, h:0.82}, {x:198, w:16, h:0.62}, {x:224, w:42, h:0.76},
+      {x:275, w:24, h:0.70}, {x:308, w:18, h:0.55}, {x:338, w:32, h:0.78},
+    ];
+    midBuildings.forEach(b => {
+      const bh = Math.floor(wh * b.h);
+      ctx.fillStyle = '#080c14';
+      ctx.fillRect(wx + b.x, wy + wh - bh, b.w, bh);
+    });
+
+    // Building windows (lit up)
+    for (let i = 0; i < 90; i++) {
+      const bx2 = wx + 4 + (i * 67 % (ww - 8));
+      const by2 = wy + 30 + (i * 53 % (wh - 50));
+      const alpha = 0.3 + (i % 5) * 0.12;
+      const warm = i % 3 === 0;
+      ctx.fillStyle = warm ? `rgba(255,230,150,${alpha})` : `rgba(180,210,255,${alpha})`;
+      ctx.fillRect(bx2, by2, 2, 3);
+    }
+
+    // Rain streaks (subtle, animated)
+    const rOffset = (frame * 4) % wh;
+    ctx.strokeStyle = 'rgba(150,180,220,0.06)';
+    ctx.lineWidth = 0.6;
+    for (let i = 0; i < 18; i++) {
+      const rx = wx + (i * 97 % ww);
+      const ry = wy + ((rOffset + i * 43) % wh);
+      ctx.beginPath();
+      ctx.moveTo(rx - 1, ry);
+      ctx.lineTo(rx + 1, ry + 14);
+      ctx.stroke();
+    }
+
+    // Window pane dividers
+    ctx.strokeStyle = 'rgba(30,30,48,0.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(wx + ww / 2, wy); ctx.lineTo(wx + ww / 2, wy + wh); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx, wy + wh * 0.45); ctx.lineTo(wx + ww, wy + wh * 0.45); ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(40,40,60,0.7)';
+    ctx.strokeRect(wx, wy, ww, wh);
+
+    ctx.restore();
+
+    // Window sill at bottom
+    ctx.fillStyle = '#2a2830';
+    ctx.fillRect(wx - 6, wy + wh, ww + 12, 8);
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.5)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(wx - 9, wy - 8, ww + 18, wh + 18);
+    }
+  }
+
+  // ── WHITEBOARD (EASEL) ───────────────────────────────────────────────────────
   function drawWhiteboard() {
-    const wx = 218, wy = 106, ww = 316, wh = 196;
+    const wx = 334, wy = 228, ww = 148, wh = 122;
     const hov = hoveredZone && hoveredZone.id === 'whiteboard';
+    const floorY = 388;
 
-    // Frame
-    const frameGrad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
-    frameGrad.addColorStop(0, '#2a2010');
-    frameGrad.addColorStop(1, '#1e1808');
-    ctx.fillStyle = frameGrad;
-    rrect(wx - 6, wy - 6, ww + 12, wh + 12, 3);
+    // ── Easel legs ──
+    const legL_top  = [wx + 6,     wy + wh + 2];
+    const legR_top  = [wx + ww - 6, wy + wh + 2];
+    const legL_bot  = [wx - 18,     floorY];
+    const legR_bot  = [wx + ww + 18, floorY];
+    const legB_bot  = [wx + ww / 2,  floorY - 4];
+
+    ctx.strokeStyle = '#2a1e10'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    // Front legs
+    ctx.beginPath(); ctx.moveTo(...legL_top); ctx.lineTo(...legL_bot); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(...legR_top); ctx.lineTo(...legR_bot); ctx.stroke();
+    // Back leg (center)
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(wx + ww / 2, wy + wh + 2); ctx.lineTo(...legB_bot); ctx.stroke();
+    // Cross brace
+    const brY = wy + wh + 50;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(wx - 6, brY); ctx.lineTo(wx + ww + 6, brY); ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // ── Board frame ──
+    ctx.fillStyle = '#2a2010';
+    rrect(wx - 5, wy - 5, ww + 10, wh + 10, 3);
     ctx.fill();
-    // Tray
+    // Marker tray
     ctx.fillStyle = '#1a1206';
-    ctx.fillRect(wx - 4, wy + wh + 4, ww + 8, 10);
+    ctx.fillRect(wx - 3, wy + wh + 4, ww + 6, 8);
+    ['#cc2222','#2244aa','#1a7a1a'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.ellipse(wx + 10 + i * 10, wy + wh + 8, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+    });
 
-    // Board surface
-    ctx.fillStyle = '#ede9d8';
+    // ── Board surface ──
+    ctx.fillStyle = '#ede9d6';
     rrect(wx, wy, ww, wh, 2);
     ctx.fill();
 
-    // Grid faint lines
-    ctx.strokeStyle = 'rgba(180,180,160,0.25)';
+    // Grid lines
+    ctx.strokeStyle = 'rgba(180,178,155,0.2)';
     ctx.lineWidth = 0.5;
-    for (let x = wx + 25; x < wx + ww; x += 25) {
-      ctx.beginPath(); ctx.moveTo(x, wy + 2); ctx.lineTo(x, wy + wh - 2); ctx.stroke();
+    for (let x = wx + 18; x < wx + ww; x += 18) {
+      ctx.beginPath(); ctx.moveTo(x, wy + 1); ctx.lineTo(x, wy + wh - 1); ctx.stroke();
     }
-    for (let y = wy + 20; y < wy + wh; y += 20) {
-      ctx.beginPath(); ctx.moveTo(wx + 2, y); ctx.lineTo(wx + ww - 2, y); ctx.stroke();
+    for (let y = wy + 14; y < wy + wh; y += 14) {
+      ctx.beginPath(); ctx.moveTo(wx + 1, y); ctx.lineTo(wx + ww - 1, y); ctx.stroke();
     }
 
     // Title
     ctx.fillStyle = '#8b0000';
-    ctx.font = 'bold 10px Arial';
+    ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('CITY TAKEOVER TIMELINE — 2026', wx + ww / 2, wy + 15);
+    ctx.fillText('CITY TAKEOVER 2026', wx + ww / 2, wy + 11);
     ctx.textAlign = 'left';
 
-    // Phase boxes
+    // Phase rows (compact)
     const phases = [
-      { label:'PHASE 1', color:'#1a7a1a', status:'✓ COMPLETE', x:wx+10, y:wy+24 },
-      { label:'PHASE 2', color:'#1a7a1a', status:'✓ COMPLETE', x:wx+10 + ww/2, y:wy+24 },
-      { label:'PHASE 3', color:'#cc6600', status:'⟳ IN PROGRESS', x:wx+10, y:wy+24+60 },
-      { label:'PHASE 4', color:'#888',     status:'◻ PENDING',     x:wx+10 + ww/2, y:wy+24+60 },
+      { label:'PH1', color:'#1a7a1a', status:'✓ DONE', x:wx + 6,  y:wy + 18 },
+      { label:'PH2', color:'#1a7a1a', status:'✓ DONE', x:wx + 6,  y:wy + 44 },
+      { label:'PH3', color:'#cc6600', status:'⟳ NOW',  x:wx + 6,  y:wy + 70 },
+      { label:'PH4', color:'#888',    status:'◻ TBD',  x:wx + 6,  y:wy + 96 },
     ];
-    const bw = ww/2 - 18, bh = 48;
     phases.forEach(p => {
-      ctx.strokeStyle = p.color; ctx.lineWidth = 1.2;
-      rrect(p.x, p.y, bw, bh, 3); ctx.stroke();
-      ctx.fillStyle = p.color; ctx.font = 'bold 7.5px Arial';
-      ctx.fillText(p.label, p.x + 5, p.y + 13);
-      ctx.fillStyle = '#333'; ctx.font = '6.5px Arial';
-      ctx.fillText(p.status, p.x + 5, p.y + 26);
+      ctx.strokeStyle = p.color; ctx.lineWidth = 1;
+      rrect(p.x, p.y, 64, 20, 2); ctx.stroke();
+      ctx.fillStyle = p.color; ctx.font = 'bold 6px Arial';
+      ctx.fillText(p.label, p.x + 4, p.y + 10);
+      ctx.fillStyle = '#333'; ctx.font = '5.5px Arial';
+      ctx.fillText(p.status, p.x + 4, p.y + 18);
     });
 
-    // Connecting arrows in red marker
-    ctx.strokeStyle = '#cc2222'; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(wx + 60, wy + 32);
-    ctx.lineTo(wx + 90, wy + 32);
-    ctx.lineTo(wx + 90, wy + 88);
-    ctx.lineTo(wx + 70, wy + 88);
-    ctx.stroke();
-
-    // Some handwritten notes
+    // Margin notes (right side, cramped handwriting)
     ctx.fillStyle = '#2244aa';
-    ctx.font = 'italic 7px Arial';
-    ctx.fillText('need dark enchanter!!', wx + 14, wy + 155);
-    ctx.fillText('→ follow up w/ Lich', wx + 14, wy + 166);
+    ctx.font = 'italic 5.5px Arial';
+    ctx.fillText('need', wx + 80, wy + 30);
+    ctx.fillText('enchanter!', wx + 78, wy + 38);
     ctx.fillStyle = '#8b0000';
-    ctx.fillText('Phase 3 deadline: Q3', wx + ww/2 + 8, wy + 155);
-
-    // Marker tray dots
-    ['#cc2222','#2244aa','#1a7a1a','#000'].forEach((c, i) => {
-      ctx.fillStyle = c;
-      ctx.beginPath(); ctx.ellipse(wx + 14 + i * 12, wy + wh + 8, 3.5, 2.5, 0, 0, Math.PI*2); ctx.fill();
-    });
+    ctx.fillText('Q3 deadline', wx + 78, wy + 70);
+    ctx.fillText('→ Lich???', wx + 80, wy + 80);
 
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.6)';
       ctx.lineWidth = 2;
-      rrect(wx - 7, wy - 7, ww + 14, wh + 13, 4);
+      rrect(wx - 6, wy - 6, ww + 12, wh + 170, 4);
       ctx.stroke();
     }
   }
@@ -815,69 +946,73 @@
   }
 
   // ── BOOKSHELF ────────────────────────────────────────────────────────────────
+  // Pre-computed book heights (fixed — never recalculate in draw loop)
+  const SHELF1 = [
+    { id:'book-aw',  w:15, c:'#8b0000', t:'AW',  h:44 },
+    { id:'book-gg',  w:16, c:'#1a3a6e', t:'GG',  h:46 },
+    { id:'book-pr',  w:14, c:'#2a5e2a', t:'PR',  h:43 },
+    { id:'book-zo',  w:13, c:'#5a3a00', t:'ZO',  h:47 },
+    { id:'book-tf',  w:16, c:'#3a1a5e', t:'TF',  h:45 },
+    { id:'book-ah',  w:13, c:'#1a1a1a', t:'AH',  h:44 },
+    { id:'book-48',  w:14, c:'#4a2a00', t:'48',  h:46 },
+  ];
+  const SHELF2 = [
+    { id:'book-ow',  w:16, c:'#4a1a00', t:'OW',  h:46 },
+    { id:'book-tp',  w:14, c:'#002a4a', t:'TP',  h:44 },
+    { id:'book-med', w:13, c:'#1a3a1a', t:'MD',  h:47 },
+    { id:'book-gal', w:16, c:'#2a0a2a', t:'GAL', h:45 },
+  ];
+
   function drawBookshelf() {
     const bx = 0, by = 178, bw = 142, bh = 222;
-    const hov = hoveredZone && hoveredZone.id === 'bookshelf';
 
-    // Shelf unit sides
+    // Shelf unit back panel
     const woodGrad = ctx.createLinearGradient(bx, by, bx + bw, by);
     woodGrad.addColorStop(0, '#1a0e06');
     woodGrad.addColorStop(1, '#221408');
     ctx.fillStyle = woodGrad;
     ctx.fillRect(bx, by, bw, bh);
-    // Right side panel
     ctx.fillStyle = '#2a1a0a';
-    ctx.fillRect(bx + bw - 8, by, 8, bh);
+    ctx.fillRect(bx + bw - 8, by, 8, bh); // right side panel
 
-    // Shelves
-    const shelfY = [by, by + 56, by + 116, by + 176, by + bh - 6];
-    shelfY.forEach(sy => {
+    // Shelf boards
+    [by, by + 56, by + 116, by + 176, by + bh - 6].forEach(sy => {
       ctx.fillStyle = '#301e0e';
       ctx.fillRect(bx, sy, bw - 8, 8);
       ctx.fillStyle = 'rgba(255,220,120,0.04)';
       ctx.fillRect(bx, sy, bw - 8, 2);
     });
 
-    // Books on shelf 1 (finance/strategy)
-    const shelf1Books = [
-      { w:10, c:'#8b0000', t:'AW' }, { w:12, c:'#1a3a6e', t:'GG' },
-      { w:10, c:'#2a5e2a', t:'PR' }, { w:9, c:'#5a3a00', t:'ZO' },
-      { w:11, c:'#3a1a5e', t:'TF' }, { w:9, c:'#1a1a1a', t:'AH' },
-      { w:10, c:'#4a2a00', t:'48' },
-    ];
+    // Shelf 1 books
     let bkx = bx + 4;
-    shelf1Books.forEach(b => {
-      const bookH = 42 + Math.floor(Math.random() * 8);
-      ctx.fillStyle = b.c;
-      ctx.fillRect(bkx, by + 8, b.w, bookH);
+    SHELF1.forEach(b => {
+      const hovB = hoveredZone && hoveredZone.id === b.id;
+      ctx.fillStyle = hovB ? lightenColor(b.c) : b.c;
+      ctx.fillRect(bkx, by + 8, b.w, b.h);
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(bkx, by + 8, 1, bookH);
+      ctx.fillRect(bkx, by + 8, 1, b.h);
       ctx.save();
-      ctx.translate(bkx + b.w/2, by + 8 + bookH/2);
-      ctx.rotate(-Math.PI/2);
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.translate(bkx + b.w / 2, by + 8 + b.h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.font = 'bold 5px Arial'; ctx.textAlign = 'center';
       ctx.fillText(b.t, 0, 2);
       ctx.restore();
       bkx += b.w + 1;
     });
 
-    // Books on shelf 2 — more books + fashion pin doll on right
-    const shelf2Books = [
-      { w:12, c:'#4a1a00', t:'OW' }, { w:10, c:'#002a4a', t:'TP' },
-      { w:9,  c:'#1a3a1a', t:'MD' }, { w:11, c:'#4a3a00', t:'48' },
-    ];
+    // Shelf 2 books
     let bkx2 = bx + 4;
-    shelf2Books.forEach(b => {
-      const bookH = 44;
-      ctx.fillStyle = b.c;
-      ctx.fillRect(bkx2, by + 64, b.w, bookH);
+    SHELF2.forEach(b => {
+      const hovB = hoveredZone && hoveredZone.id === b.id;
+      ctx.fillStyle = hovB ? lightenColor(b.c) : b.c;
+      ctx.fillRect(bkx2, by + 64, b.w, b.h);
       ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      ctx.fillRect(bkx2, by + 64, 1, bookH);
+      ctx.fillRect(bkx2, by + 64, 1, b.h);
       ctx.save();
-      ctx.translate(bkx2 + b.w/2, by + 64 + bookH/2);
-      ctx.rotate(-Math.PI/2);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.translate(bkx2 + b.w / 2, by + 64 + b.h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.font = 'bold 5px Arial'; ctx.textAlign = 'center';
       ctx.fillText(b.t, 0, 2);
       ctx.restore();
@@ -885,309 +1020,254 @@
     });
 
     // Pin doll (shelf 2, right side)
-    const dx = bx + 92, dy = by + 62;
-    // Body
-    ctx.fillStyle = '#d4b896';
+    const dx = bx + 88, dy = by + 62;
+    const hovDoll = hoveredZone && hoveredZone.id === 'pindoll';
+    ctx.fillStyle = hovDoll ? '#e8ccaa' : '#d4b896';
     ctx.fillRect(dx + 6, dy + 14, 10, 18);
-    // Shoulders
     ctx.fillRect(dx + 2, dy + 14, 18, 6);
-    // Head
-    ctx.beginPath(); ctx.arc(dx + 11, dy + 10, 5, 0, Math.PI*2);
-    ctx.fillStyle = '#d4b896'; ctx.fill();
-    // Stand
+    ctx.beginPath(); ctx.arc(dx + 11, dy + 10, 5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#4a4a4a';
     ctx.fillRect(dx + 8, dy + 32, 6, 4);
     ctx.fillRect(dx + 4, dy + 36, 14, 3);
-    // Pins (little dots)
     ['#cc2222','#2244cc','#22cc22'].forEach((c, i) => {
       ctx.fillStyle = c;
-      ctx.beginPath(); ctx.arc(dx + 4 + i * 6, dy + 18, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(dx + 4 + i * 6, dy + 18, 1.5, 0, Math.PI * 2); ctx.fill();
     });
-    // Hidden sketchbooks
+
+    // Sketchbooks (shelf 3, spines facing inward)
     ctx.fillStyle = '#2a2a3a';
     ctx.fillRect(bx + 4, by + 124, 18, 44);
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(bx + 23, by + 126, 16, 42);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.font = '5px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('▮', bx + 13, by + 148);
-    ctx.textAlign = 'left';
-
-    if (hov) {
-      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
-      ctx.lineWidth = 2;
-      rrect(bx, by, bw, bh, 0);
-      ctx.stroke();
-    }
   }
 
-  // ── CREDENZA + FAX ───────────────────────────────────────────────────────────
-  function drawCredenza() {
-    // Credenza body
-    const cx = 714, cy = 258, cw = 196, ch = 110;
-    ctx.fillStyle = '#1a0e06';
-    rrect(cx, cy, cw, ch, 3);
-    ctx.fill();
-    // Surface sheen
-    ctx.fillStyle = 'rgba(255,200,100,0.04)';
-    ctx.fillRect(cx + 4, cy + 4, cw - 8, 12);
-    // Front panel lines
-    ctx.strokeStyle = 'rgba(255,200,100,0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx + cw/2, cy + 20); ctx.lineTo(cx + cw/2, cy + ch - 4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx, cy + ch - 26); ctx.lineTo(cx + cw, cy + ch - 26); ctx.stroke();
-    // Handles
-    [cx + cw/4, cx + 3*cw/4].forEach(hx => {
-      ctx.fillStyle = '#3a2a18';
-      ctx.fillRect(hx - 8, cy + ch - 18, 16, 5);
-    });
-
-    // Fax machine on top
-    const hov = hoveredZone && hoveredZone.id === 'fax';
-    const fx = cx + 18, fy = cy - 52, fw = 100, fh = 58;
-    // Fax body
-    ctx.fillStyle = '#c8c2b8';
-    rrect(fx, fy, fw, fh, 4);
-    ctx.fill();
-    ctx.fillStyle = '#b8b2a8';
-    rrect(fx + 2, fy + 2, fw - 4, fh - 4, 3);
-    ctx.fill();
-    // LCD
-    ctx.fillStyle = '#2a3a2a';
-    rrect(fx + 8, fy + 8, fw - 16, 14, 2);
-    ctx.fill();
-    ctx.fillStyle = '#88cc88';
-    ctx.font = '6px monospace'; ctx.textAlign = 'left';
-    ctx.fillText('1 NEW FAX', fx + 11, fy + 18);
-    // Buttons
-    ['#e8e0d0','#2a8a2a','#8a2a2a'].forEach((c, i) => {
-      ctx.fillStyle = c;
-      rrect(fx + 8 + i * 16, fy + 28, 12, 7, 2);
-      ctx.fill();
-    });
-    // Paper out-tray with curling paper
-    ctx.fillStyle = '#f0f0e8';
-    ctx.fillRect(fx + 10, fy - 12, fw - 20, 4);
-    ctx.fillStyle = '#e8e8e0';
-    ctx.fillRect(fx + 18, fy - 20, fw - 36, 12);
-    // "PENNY" text on fax paper
-    ctx.fillStyle = '#555';
-    ctx.font = '5px monospace';
-    ctx.fillText('FAX: TREASURY RPT', fx + 20, fy - 12);
-    ctx.textAlign = 'left';
-
-    if (hov) {
-      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
-      ctx.lineWidth = 2;
-      rrect(cx - 2, fy - 22, cw + 4, ch + 22 + 2, 4);
-      ctx.stroke();
-    }
+  function lightenColor(hex) {
+    // Simple hex lightener for hover effect
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, ((n >> 16) & 0xff) + 40);
+    const g = Math.min(255, ((n >> 8)  & 0xff) + 40);
+    const b2= Math.min(255, ( n        & 0xff) + 40);
+    return `rgb(${r},${g},${b2})`;
   }
 
-  // ── DESK ─────────────────────────────────────────────────────────────────────
+  // (credenza removed — fax now lives on the angled desk)
+
+  // ── DESK (right side, angled — near-left corner closest to viewer) ──────────
+  // Corners: FL=front-left, FR=front-right, BR=back-right, BL=back-left
+  const D = {
+    FL: [598, 402], FR: [978, 370],
+    BR: [960, 312], BL: [580, 344],
+  };
+
   function drawDesk() {
-    // Desk top surface
-    const deskTopGrad = ctx.createLinearGradient(150, 320, 150, 395);
-    deskTopGrad.addColorStop(0, '#281808');
-    deskTopGrad.addColorStop(1, '#1e1206');
-    ctx.fillStyle = deskTopGrad;
-    // Slightly trapezoidal for perspective effect
+    // ── Top surface ──
+    const topGrad = ctx.createLinearGradient(D.BL[0], D.BL[1], D.FL[0], D.FL[1]);
+    topGrad.addColorStop(0, '#241608');
+    topGrad.addColorStop(1, '#301e0a');
+    ctx.fillStyle = topGrad;
     ctx.beginPath();
-    ctx.moveTo(155, 330);
-    ctx.lineTo(845, 330);
-    ctx.lineTo(810, 395);
-    ctx.lineTo(190, 395);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(...D.FL); ctx.lineTo(...D.FR);
+    ctx.lineTo(...D.BR); ctx.lineTo(...D.BL);
+    ctx.closePath(); ctx.fill();
 
-    // Leather inlay
-    ctx.fillStyle = '#121e12';
+    // Leather inlay (inner parallelogram)
+    ctx.fillStyle = '#0e1a0e';
     ctx.beginPath();
-    ctx.moveTo(220, 334);
-    ctx.lineTo(780, 334);
-    ctx.lineTo(755, 388);
-    ctx.lineTo(245, 388);
-    ctx.closePath();
-    ctx.fill();
-    // Leather stitching lines
-    ctx.strokeStyle = 'rgba(40,60,40,0.6)';
-    ctx.lineWidth = 0.8;
-    ctx.strokeRect(235, 337, 510, 47);
+    ctx.moveTo(D.FL[0] + 18, D.FL[1] - 4);
+    ctx.lineTo(D.FR[0] - 12, D.FR[1] - 2);
+    ctx.lineTo(D.BR[0] - 12, D.BR[1] + 4);
+    ctx.lineTo(D.BL[0] + 18, D.BL[1] + 2);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,70,40,0.4)';
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
 
-    // Desk face (front panel)
-    const facGrad = ctx.createLinearGradient(0, 395, 0, 460);
-    facGrad.addColorStop(0, '#200e04');
-    facGrad.addColorStop(1, '#180c04');
+    // Top surface edge highlight
+    ctx.strokeStyle = 'rgba(255,200,80,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(...D.FL); ctx.lineTo(...D.FR);
+    ctx.lineTo(...D.BR); ctx.lineTo(...D.BL);
+    ctx.closePath(); ctx.stroke();
+
+    // ── Front face (near edge, facing viewer) ──
+    const facGrad = ctx.createLinearGradient(0, D.FL[1], 0, D.FL[1] + 62);
+    facGrad.addColorStop(0, '#1e0e04');
+    facGrad.addColorStop(1, '#160a04');
     ctx.fillStyle = facGrad;
     ctx.beginPath();
-    ctx.moveTo(190, 395);
-    ctx.lineTo(810, 395);
-    ctx.lineTo(810, 460);
-    ctx.lineTo(190, 460);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(...D.FL);
+    ctx.lineTo(...D.FR);
+    ctx.lineTo(D.FR[0], D.FR[1] + 62);
+    ctx.lineTo(D.FL[0], D.FL[1] + 66);
+    ctx.closePath(); ctx.fill();
 
-    // Front panel detail lines
-    ctx.strokeStyle = 'rgba(255,200,100,0.06)';
+    // Front face detail lines
+    ctx.strokeStyle = 'rgba(255,190,80,0.07)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(500, 400); ctx.lineTo(500, 456); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(190, 425); ctx.lineTo(810, 425); ctx.stroke();
+    // Horizontal mid-rail
+    const midY1 = D.FL[1] + 33, midY2 = D.FR[1] + 30;
+    ctx.beginPath(); ctx.moveTo(D.FL[0], midY1); ctx.lineTo(D.FR[0], midY2); ctx.stroke();
+    // Vertical divider
+    const midX = (D.FL[0] + D.FR[0]) / 2, midYmid = (D.FL[1] + D.FR[1]) / 2;
+    ctx.beginPath(); ctx.moveTo(midX, midYmid); ctx.lineTo(midX, midYmid + 64); ctx.stroke();
 
-    // Drawer pulls
-    [345, 655].forEach(hx => {
-      ctx.fillStyle = '#4a3a20';
-      rrect(hx - 20, 434, 40, 8, 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,210,100,0.25)';
-      rrect(hx - 18, 435, 36, 4, 1);
-      ctx.fill();
+    // Drawer pulls (two, on front face)
+    [[D.FL[0] + 100, D.FL[1] + 40], [midX + 80, midYmid + 38]].forEach(([hx, hy]) => {
+      ctx.fillStyle = '#3a2a14';
+      rrect(hx, hy, 36, 7, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,210,80,0.22)';
+      rrect(hx + 2, hy + 1, 32, 3, 1); ctx.fill();
     });
 
-    // Desk sides (thin strips)
-    ctx.fillStyle = '#1a0e06';
-    ctx.beginPath(); ctx.moveTo(155, 330); ctx.lineTo(190, 395); ctx.lineTo(190, 460); ctx.lineTo(155, 460); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(845, 330); ctx.lineTo(810, 395); ctx.lineTo(810, 460); ctx.lineTo(845, 460); ctx.closePath(); ctx.fill();
+    // ── Left face (thin visible sliver on left end) ──
+    ctx.fillStyle = '#140a04';
+    ctx.beginPath();
+    ctx.moveTo(...D.BL);
+    ctx.lineTo(...D.FL);
+    ctx.lineTo(D.FL[0], D.FL[1] + 66);
+    ctx.lineTo(D.BL[0], D.BL[1] + 58);
+    ctx.closePath(); ctx.fill();
   }
 
-  // ── COMPUTER ────────────────────────────────────────────────────────────────
+  // ── COMPUTER (on desk, center-right area) ───────────────────────────────────
   function drawComputer() {
     const hov = hoveredZone && hoveredZone.id === 'computer';
-    // Monitor stand
-    ctx.fillStyle = '#1a1a20';
-    ctx.fillRect(448, 380, 24, 12);
-    ctx.fillRect(432, 390, 56, 5);
+    // Stand base (on desk surface)
+    ctx.fillStyle = '#1a1a22';
+    ctx.fillRect(798, 358, 22, 14);
+    ctx.fillRect(783, 370, 52, 5);
     // Monitor body
     ctx.fillStyle = '#141418';
-    rrect(342, 258, 166, 122, 6);
+    rrect(728, 288, 166, 96, 6);
     ctx.fill();
     // Screen
     ctx.fillStyle = '#0a0e16';
-    rrect(350, 265, 150, 104, 3);
+    rrect(736, 295, 150, 80, 3);
     ctx.fill();
     // Screen glow
-    const scrGlow = ctx.createRadialGradient(425, 317, 0, 425, 317, 80);
-    scrGlow.addColorStop(0, 'rgba(0,80,180,0.15)');
+    const scrGlow = ctx.createRadialGradient(811, 335, 0, 811, 335, 70);
+    scrGlow.addColorStop(0, 'rgba(0,80,180,0.14)');
     scrGlow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = scrGlow;
-    ctx.fillRect(350, 265, 150, 104);
-    // Screen content (spreadsheet-ish)
+    ctx.fillRect(736, 295, 150, 80);
+    // Screen content
     ctx.fillStyle = 'rgba(0,180,60,0.8)';
     ctx.font = '5.5px monospace';
-    ['CONQUEST_STATUS......OK', 'FEAR_INDEX..........▲18%', 'PHASE_3.........PENDING', 'ENCHANTER...VACANT 94d', '> _'].forEach((line, i) => {
-      ctx.fillText(line, 355, 279 + i * 12);
+    ['CONQUEST_STATUS...OK', 'FEAR_INDEX.......▲18%', 'PHASE_3......PENDING', 'ENCHANTER..VACANT 94d', '> _'].forEach((line, i) => {
+      ctx.fillText(line, 740, 308 + i * 12);
     });
     // Power light
     const pulse = 0.6 + Math.sin(frame * 0.04) * 0.3;
     ctx.fillStyle = `rgba(0,200,100,${pulse})`;
-    ctx.beginPath(); ctx.arc(420, 364, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(808, 381, 2.5, 0, Math.PI * 2); ctx.fill();
 
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.55)';
       ctx.lineWidth = 2;
-      rrect(340, 256, 170, 126, 7);
+      rrect(726, 286, 170, 98, 7);
       ctx.stroke();
     }
   }
 
-  // ── TPS REPORTS ─────────────────────────────────────────────────────────────
+  // ── TPS REPORTS (on desk, left side) ────────────────────────────────────────
   function drawTPSReports() {
     const hov = hoveredZone && hoveredZone.id === 'tps-reports';
-    const tx = 178, ty = 340;
-    // Stack of papers
+    const tx = 608, ty = 370;
     for (let i = 3; i >= 0; i--) {
       ctx.fillStyle = i % 2 === 0 ? '#f0ece4' : '#e8e4dc';
-      ctx.fillRect(tx + i, ty - i, 112, 4 + i);
-      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(tx + i, ty - i, 112, 4 + i);
+      ctx.fillRect(tx + i, ty - i, 104, 3 + i);
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 0.5;
+      ctx.strokeRect(tx + i, ty - i, 104, 3 + i);
     }
-    // Top sheet with label
+    // Top sheet
     ctx.fillStyle = '#f8f4ec';
-    ctx.fillRect(tx, ty - 4, 112, 26);
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(tx, ty - 4, 112, 26);
-    // Cover sheet text
+    ctx.fillRect(tx, ty - 4, 104, 24);
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 0.5;
+    ctx.strokeRect(tx, ty - 4, 104, 24);
     ctx.fillStyle = '#8b0000';
-    ctx.font = 'bold 5.5px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('TPS REPORT — Q2 DARK OPS', tx + 56, ty + 6);
-    ctx.fillStyle = '#555';
-    ctx.font = '5px Arial';
-    ctx.fillText('CONFIDENTIAL — COVER SHEET REQUIRED', tx + 56, ty + 16);
+    ctx.font = 'bold 5px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('TPS REPORT — Q2', tx + 52, ty + 5);
+    ctx.fillStyle = '#555'; ctx.font = '4.5px Arial';
+    ctx.fillText('COVER SHEET: ATTACHED ✓', tx + 52, ty + 14);
     ctx.textAlign = 'left';
-    // Red stamp
-    ctx.strokeStyle = 'rgba(139,0,0,0.55)'; ctx.lineWidth = 1;
-    ctx.strokeRect(tx + 72, ty - 2, 34, 12);
-    ctx.fillStyle = 'rgba(139,0,0,0.55)';
-    ctx.font = 'bold 5px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('CONFIDENTIAL', tx + 89, ty + 6);
-    ctx.textAlign = 'left';
-
     if (hov) {
-      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(tx - 2, ty - 6, 116, 30);
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)'; ctx.lineWidth = 2;
+      ctx.strokeRect(tx - 2, ty - 6, 108, 28);
     }
   }
 
-  // ── GUITAR ───────────────────────────────────────────────────────────────────
+  // ── FAX MACHINE (on desk right end) ─────────────────────────────────────────
+  function drawFaxOnDesk() {
+    const hov = hoveredZone && hoveredZone.id === 'fax';
+    const fx = 878, fy = 322, fw = 94, fh = 62;
+    ctx.fillStyle = '#c0bab0';
+    rrect(fx, fy, fw, fh, 4); ctx.fill();
+    ctx.fillStyle = '#b0aaa0';
+    rrect(fx + 2, fy + 2, fw - 4, fh - 4, 3); ctx.fill();
+    // LCD
+    ctx.fillStyle = '#2a3a2a';
+    rrect(fx + 8, fy + 8, fw - 16, 12, 2); ctx.fill();
+    ctx.fillStyle = '#88cc88';
+    ctx.font = '5.5px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('1 NEW FAX', fx + 11, fy + 17);
+    // Buttons
+    ['#e0d8c8','#2a8a2a','#8a2a2a'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      rrect(fx + 8 + i * 14, fy + 26, 10, 6, 2); ctx.fill();
+    });
+    // Paper sticking out top
+    ctx.fillStyle = '#f0f0e8';
+    ctx.fillRect(fx + 12, fy - 10, fw - 24, 4);
+    ctx.fillStyle = '#e8e8e0';
+    ctx.fillRect(fx + 18, fy - 18, fw - 36, 10);
+    ctx.fillStyle = '#666';
+    ctx.font = '4.5px monospace';
+    ctx.fillText('FAX: TREASURY RPT', fx + 19, fy - 10);
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)'; ctx.lineWidth = 2;
+      rrect(fx - 2, fy - 20, fw + 4, fh + 22, 4); ctx.stroke();
+    }
+  }
+
+  // ── GUITAR (leaning against back wall, between window and Monet) ─────────────
   function drawGuitar() {
     const hov = hoveredZone && hoveredZone.id === 'guitar';
-    const gx = 933, gy = 204;
+    const gx = 521, gy = 118;
 
-    // Body (lower bout)
-    const bodyGrad = ctx.createRadialGradient(gx, gy + 190, 0, gx, gy + 190, 42);
+    // Smaller — guitar is against back wall (smaller scale)
+    const sc = 0.55; // back-wall scale
+    const bodyGrad = ctx.createRadialGradient(gx, gy + 190 * sc, 0, gx, gy + 190 * sc, 42 * sc);
     bodyGrad.addColorStop(0, '#c87828');
     bodyGrad.addColorStop(0.5, '#a86018');
     bodyGrad.addColorStop(1, '#7a4010');
     ctx.fillStyle = bodyGrad;
-    ctx.beginPath(); ctx.ellipse(gx, gy + 192, 38, 44, 0, 0, Math.PI * 2); ctx.fill();
-    // Body upper bout
-    ctx.beginPath(); ctx.ellipse(gx, gy + 148, 28, 34, 0, 0, Math.PI * 2); ctx.fill();
-    // Body edge binding
-    ctx.strokeStyle = 'rgba(255,220,140,0.5)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.ellipse(gx, gy + 192, 38, 44, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(gx, gy + 148, 28, 34, 0, 0, Math.PI * 2); ctx.stroke();
-    // Sound hole
+    ctx.beginPath(); ctx.ellipse(gx, gy + 192 * sc, 38 * sc, 44 * sc, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(gx, gy + 148 * sc, 28 * sc, 34 * sc, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,140,0.45)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(gx, gy + 192 * sc, 38 * sc, 44 * sc, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(gx, gy + 148 * sc, 28 * sc, 34 * sc, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = '#1a0c04';
-    ctx.beginPath(); ctx.arc(gx, gy + 168, 10, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,200,100,0.35)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(gx, gy + 168, 10, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(gx, gy + 168, 12, 0, Math.PI * 2); ctx.stroke();
-    // Neck
+    ctx.beginPath(); ctx.arc(gx, gy + 168 * sc, 10 * sc, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#8a5018';
-    ctx.fillRect(gx - 6, gy + 110, 12, 80);
-    ctx.fillRect(gx - 5, gy, 10, 115);
-    // Frets
-    ctx.strokeStyle = 'rgba(220,200,160,0.5)'; ctx.lineWidth = 1;
-    for (let f = 0; f < 8; f++) {
-      const fy2 = gy + 20 + f * 12;
-      ctx.beginPath(); ctx.moveTo(gx - 5, fy2); ctx.lineTo(gx + 5, fy2); ctx.stroke();
+    ctx.fillRect(gx - 6 * sc, gy + 110 * sc, 12 * sc, 80 * sc);
+    ctx.fillRect(gx - 5 * sc, gy, 10 * sc, 115 * sc);
+    ctx.strokeStyle = 'rgba(220,200,160,0.45)'; ctx.lineWidth = 0.8;
+    for (let f = 0; f < 7; f++) {
+      const fy2 = gy + (20 + f * 12) * sc;
+      ctx.beginPath(); ctx.moveTo(gx - 5 * sc, fy2); ctx.lineTo(gx + 5 * sc, fy2); ctx.stroke();
     }
-    // Headstock
     ctx.fillStyle = '#8a5018';
-    ctx.fillRect(gx - 7, gy - 26, 14, 28);
-    // Tuning pegs
-    ['#888','#888','#888'].forEach((c, i) => {
-      ctx.fillStyle = c;
-      ctx.beginPath(); ctx.arc(gx - 10, gy - 5 - i * 7, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(gx + 10, gy - 5 - i * 7, 3, 0, Math.PI * 2); ctx.fill();
-    });
-    // Capo on 3rd fret
-    ctx.fillStyle = '#4a4a4a';
-    ctx.fillRect(gx - 7, gy + 38, 14, 4);
-
-    // Lean shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath(); ctx.ellipse(gx + 8, gy + 234, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(gx - 7 * sc, gy - 16, 14 * sc, 20);
+    // Capo
+    ctx.fillStyle = '#555';
+    ctx.fillRect(gx - 6 * sc, gy + 28, 12 * sc, 3);
 
     if (hov) {
-      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
-      ctx.lineWidth = 2;
-      rrect(gx - 42, gy - 30, 84, 268, 4);
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)'; ctx.lineWidth = 2;
+      rrect(gx - 26, gy - 18, 52, 242, 3); ctx.stroke();
     }
   }
 
@@ -1226,7 +1306,8 @@
 
     const SPR = apocState === 'walk' ? SIDE : FRONT;
 
-    if (apocDir === -1 && apocState === 'walk') {
+    // SIDE sprite faces LEFT by default — mirror when walking right
+    if (apocDir === 1 && apocState === 'walk') {
       ctx.save();
       ctx.translate(DRAW_X + DRAW_W, 0);
       ctx.scale(-1, 1);
@@ -1358,15 +1439,19 @@
   function draw() {
     ctx.clearRect(0, 0, W, H);
     drawRoom();
+    // Back wall art (drawn before character)
+    drawWindow();
     drawPoster();
-    drawWhiteboard();
+    drawGuitar();
     drawMonet();
+    // Floor objects (back to front)
     drawBookshelf();
-    drawCredenza();
+    drawWhiteboard();
     drawDesk();
     drawTPSReports();
+    drawFaxOnDesk();
     drawComputer();
-    drawGuitar();
+    // Character + UI
     drawApocalyptic();
     drawSpeechBubble();
     drawZoneLabel();
