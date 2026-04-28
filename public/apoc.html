@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apocalyptic's War Room — Wolfdragon World</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Oswald:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0e0e14; color: #e8e0d0; font-family: 'Segoe UI', Arial, sans-serif; overflow-x: hidden; }
+
+    /* ── NAV ── */
+    #top-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: #0a0a10;
+      border-bottom: 1px solid rgba(180,20,20,0.25);
+    }
+    #top-nav a.home-link {
+      color: #c8a840; text-decoration: none; font-size: 0.85rem;
+      letter-spacing: 0.06em; opacity: 0.8; transition: opacity 0.15s;
+    }
+    #top-nav a.home-link:hover { opacity: 1; }
+    #top-nav .room-title {
+      font-size: 0.9rem; font-weight: 600; letter-spacing: 0.12em;
+      color: #cc2222; text-transform: uppercase;
+    }
+    #top-nav .spacer { width: 120px; }
+
+    /* ── CANVAS WRAPPER ── */
+    #canvas-wrap {
+      width: 100%; max-width: 1400px; margin: 18px auto 0;
+      padding: 0 16px;
+    }
+    #room {
+      display: block; width: 100%; height: auto;
+      border: 1px solid rgba(180,20,20,0.2);
+      border-radius: 4px;
+      box-shadow: 0 0 60px rgba(140,0,0,0.18), 0 4px 24px rgba(0,0,0,0.7);
+      cursor: default;
+    }
+
+    /* ── MODAL ── */
+    #inspect-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.78); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    #inspect-modal.open { display: flex; }
+    #inspect-inner {
+      background: #16161e; border: 1px solid rgba(180,20,20,0.35);
+      border-radius: 6px; width: min(580px, 92vw);
+      max-height: 85vh; display: flex; flex-direction: column;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.85);
+      overflow: hidden;
+    }
+    #inspect-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    #inspect-icon { font-size: 1.5rem; }
+    #inspect-title { font-size: 1rem; font-weight: 600; color: #e8e0d0; flex: 1; }
+    #inspect-title:empty { display: none; }
+    #inspect-close {
+      background: none; border: none; color: #888; font-size: 1.4rem;
+      cursor: pointer; line-height: 1; padding: 2px 4px;
+      transition: color 0.15s;
+    }
+    #inspect-close:hover { color: #e8e0d0; }
+    #inspect-body {
+      padding: 18px; overflow-y: auto; flex: 1;
+    }
+    .inspect-content {
+      font-size: 0.92rem; line-height: 1.65; color: #c8c0b0;
+      white-space: pre-wrap;
+    }
+    .modal-hint {
+      font-size: 0.75rem; color: #666; text-align: center;
+      padding: 10px 0 4px; border-top: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+
+    /* Scrollbar */
+    #inspect-body::-webkit-scrollbar { width: 6px; }
+    #inspect-body::-webkit-scrollbar-track { background: #12121a; }
+    #inspect-body::-webkit-scrollbar-thumb { background: #3a2020; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<nav id="top-nav">
+  <a class="home-link" href="/">← Wolfdragon World</a>
+  <div class="room-title">Apocalyptic's War Room</div>
+  <div class="spacer"></div>
+</nav>
+
+<div id="canvas-wrap">
+  <canvas id="room" width="1000" height="560"></canvas>
+</div>
+
+<div id="inspect-modal" role="dialog" aria-modal="true">
+  <div id="inspect-inner">
+    <div id="inspect-header">
+      <span id="inspect-icon"></span>
+      <span id="inspect-title"></span>
+      <button id="inspect-close" aria-label="Close">×</button>
+    </div>
+    <div id="inspect-body">
+      <div class="inspect-content" id="inspect-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── CANVAS SETUP ────────────────────────────────────────────────────────────
+  const canvas = document.getElementById('room');
+  const ctx    = canvas.getContext('2d');
+  const W = 1000, H = 560;
+  let frame = 0;
+
+  // ── SPRITE ──────────────────────────────────────────────────────────────────
+  const apocImg = new Image();
+  apocImg.src   = '/images/boss-apoc.png';
+  let spriteReady = false;
+  apocImg.onload = () => { spriteReady = true; };
+
+  const FRONT = { sx:13,  sy:43, sw:499, sh:490 };
+  const SIDE  = { sx:512, sy:26, sw:491, sh:510 };
+  const BASE_W = 245;
+
+  // ── CHARACTER STATE ──────────────────────────────────────────────────────────
+  let apocX     = 420;
+  let apocY     = 440;   // fixed depth Y
+  let apocDir   = 1;     // 1=right, -1=left
+  let apocState = 'walk';
+  let apocStateT = 0;
+  const WALK_MIN   = 240;
+  const WALK_MAX   = 660;
+  const WALK_SPEED = 1.5;
+  const IDLE_PAUSE = 150; // frames to pause at walls
+
+  function getDepthScale(y) {
+    const frac = Math.max(0, Math.min(1, (y - 270) / (460 - 270)));
+    return 0.62 + 0.38 * frac;
+  }
+
+  // ── SPEECH BUBBLES ──────────────────────────────────────────────────────────
+  const SPEECHES = [
+    // World domination
+    "The five-year plan is on track. I say 'five-year' loosely. We're on a four-year-eight-month timeline right now.",
+    "The eastern provinces are secured. The western situation is... developing.",
+    "I need to rewrite the mission statement. 'Total global subjugation' is accurate but it's not landing emotionally.",
+    "Quarterly numbers are strong. Conquest is up 18%. Fear index at an all-time high. Good quarter.",
+    "I've been thinking about rebranding the dark legion. Something cleaner. More modern. Still evil. But the logo needs work.",
+    "Phase three requires significant logistical coordination. The dark portal network has reliability issues. Filed a ticket. Still waiting.",
+    "The problem with world domination is there's no one left to dominate once you're done. I'm working on a sustainable model.",
+    "I have a vision board. It's classified. But it's very focused. Color-coded.",
+    "'Supreme Overlord' tests better than 'Evil Dictator' in focus groups. We're pivoting the title.",
+    "The city takeover timeline is aggressive but achievable. The key is consistency. Show up. Execute. Dominate.",
+    // Minions / Brutes
+    "I asked the Brutes to submit status reports by Friday. Four submitted rocks. One submitted a wolf skull. The fifth submitted nothing and I almost respect that.",
+    "Team morale is a work in progress. This is a privilege. Not everyone gets to work for the winning side.",
+    "I sent a very clear email about the new invasion protocol. Twenty-two 'got it' replies. Four 'what does this mean' replies. Classic.",
+    "The Brutes cannot do AI prompts. Last week one of them typed 'FIRE' into the chat box eleven times and then ate the keyboard.",
+    "I have an open-door policy. Figuratively. The door requires a passphrase. But in spirit — open.",
+    "We need better onboarding. Three minions this week asked me what 'mandatory' means. It means mandatory.",
+    "I scheduled a team building exercise. No one came because it conflicted with the siege I also scheduled. That's on me.",
+    "A Brute submitted a performance improvement plan for ME. I don't know where he got the template. I'm impressed and also going to deal with that.",
+    "Minion retention is a real issue. You have to invest in your people. Even if your people are semi-sentient creatures of the void.",
+    "I read every single TPS report. All forty-eight. Every week. I am the only person alive who reads the TPS reports. Documented fact.",
+    // Lich
+    "The Lich has real talent. Real, genuine magical ability. He just doesn't take it seriously. It's frustrating to watch.",
+    "He turned down the sixty-forty split again. He wants to do card tricks in a two-thousand seat theater. I respect the vision. Not the priority.",
+    "I've offered him a title twice. Senior Dark Enchanter, First Class. He said 'that sounds like a lot of paperwork.' It is not a lot of paperwork.",
+    "The Lich missed his third shift this week. I sent a memo. I am now following up through the power of paper mail.",
+    "His magic act is actually very good. I went once — for reconnaissance. I stayed for the whole show. That doesn't mean anything.",
+    "I need someone for the ritual containment spells. The Lich could do it in his sleep. He knows this. That's what makes it frustrating.",
+    "He keeps saying he'll 'think about it.' That's been three months of thinking. The longest think in recorded evil history.",
+    "My saw is still missing. That's a $400 industrial crosscut saw. I need it back.",
+    // Spider
+    "Spider has the strategic instincts. When she's focused, she's exceptional. The problem is she's focused about 40% of the time.",
+    "I asked Spider to compile the reconnaissance report. She sent me a meme. It was a good meme. That is not the point.",
+    "Spider and the Lich together are a chaos multiplier. Individually manageable. Together, somehow worse than the sum of their parts.",
+    "Spider texted me at 2 AM to ask if I thought spiders 'felt embarrassed.' I answered because I was awake working. I'm always awake working.",
+    "I believe in Spider. I just need her to believe in the calendar system.",
+    // Sharon
+    "Sharon asked me to take Friday off. I said I'd see what I could do. I cannot do anything. The eastern campaign does not pause for Fridays.",
+    "I told Sharon I'd be home by eight. It's eleven forty-two. I've sent three 'leaving soon' texts. This is a known pattern.",
+    "Sharon does improv on Friday nights. I've been meaning to go for four months. Soon.",
+    "She thinks I suspect her improv group of something. I don't. They just seem very well-organized for a comedy group. They have a shared calendar.",
+    "Sharon said I need to 'let go of control sometimes.' Filing it under things to address in Q4.",
+    "I got Sharon flowers. She asked if they were from the Whole Foods near the lair. I said no. They were from the Whole Foods near the lair.",
+    "Sharon is genuinely more talented than me in six different ways. I find that both inspiring and slightly destabilizing.",
+    "I owe Sharon a real weekend. Not a 'checking my phone every eight minutes' weekend. A real one. It's going in the calendar.",
+    // Discipline
+    "Consistency over intensity. I wake up at 5 AM every morning. The world doesn't wait and neither do I.",
+    "The compound effect is real. Small decisions, compounded daily. That's how you build an empire. One day at a time.",
+    "I don't believe in work-life balance. I believe in work-life integration. They're different. One of them I invented.",
+    "I visualize the conquered world every morning for eleven minutes. It works. The data supports it.",
+    "Discipline is freedom. The schedule is not a cage. The schedule is the architecture of power.",
+    "I read sixty-two books last year. Forty finance. Fourteen strategy. Eight were fashion history. For research.",
+    "Rest is recovery. I sleep exactly six hours twelve minutes. Optimized.",
+    "Failure is data. I don't have failures. I have very instructive data points.",
+    // Wolfdragon
+    "Wolfdragon is a lot. She really is. But she shows up. In a world of people who don't show up, I notice that.",
+    "I'll give Wolfdragon this: her energy is genuine. Unregulated and occasionally alarming, but genuine.",
+    "Wolfdragon sent me a motivational video this morning. Forty-seven seconds. I watched all forty-seven seconds. I felt something.",
+    "She challenges my assumption that enthusiasm has limits.",
+    "She asked if she could join the leadership team. I said we'd revisit it. I've been revisiting it in my head ever since.",
+    // Bahamas / deferred life
+    "I booked a trip to the Bahamas sixteen months ago. The reservation is still active. I choose to see that as optimism.",
+    "I'll take a real vacation after Phase Three. Phase Two ended eight months ago. I have not started Phase Three. Administratively.",
+    "There's a spa in the Bahamas that does volcanic stone treatments. Sharon sent me the brochure. I've read it twice. Most relaxed I've been all year.",
+    "I said I'd learn Portuguese. Downloaded the app six months ago. I'm on lesson two. I can say 'hello' and 'where is the library.'",
+    "At some point you have to stop deferring the life you said you wanted and actually go live it. I'm processing that. It's in progress.",
+    // Fashion
+    "I used to sketch patterns. Evenings, mostly. Womenswear, mostly. The structured kind. The kind with intention. I was good.",
+    "The fashion show at Parsons — I had three pieces in it. The judges said my draping technique was exceptional.",
+    "I still keep the sketchbooks. They're behind the Galbraith on that shelf. I don't look at them. But I don't throw them away.",
+    "The pin doll belonged to my first mentor. She gave it to me when I graduated. I still think about the craft sometimes.",
+    "There's a version of my life where I'm running a fashion house in Milan. She seems happy. Very underpaid, probably. But happy.",
+    "I was designing a collection when everything changed direction. It was called 'Fracture.' Very relevant in retrospect.",
+    "The cut of a good jacket and the architecture of a siege strategy aren't that different. Both require precision, structure, and knowing where the seams go.",
+    // Misc
+    "Someone keeps using the fax to send the same penny cartoon every week. I've narrowed it down to seventeen suspects.",
+    "I have a Monet. A real one. Not a print. An actual Monet. Bought it at auction in 2019. It makes me feel things.",
+    "Dave Matthews has a song called 'The Space Between.' I've listened to it forty times this month and I'm still not sure what it's about.",
+    "I care about my people. I want this to be a place people are proud to work. Is that unusual for a supreme overlord?",
+    "The motivational poster was a gift from the team. It says 'Don't Stop.' I did not expect to be moved by that. I was moved by that.",
+    "Every morning I make a list. Every night I review it. The Bahamas has been carried forward sixteen times.",
+    "I have a very specific vision for what this looks like when it's finished. Clean. Organized. The world runs well. Under my direction, obviously.",
+    "*quiet* Sometimes when everyone's gone and it's just me and the city plans... I think this is actually fine. I'm fine. We're going to be fine. *pause* Back to work.",
+  ];
+
+  function shuffleDeck() {
+    const arr = SPEECHES.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  let speechDeck = shuffleDeck();
+  let speechDeckPos = 0;
+  let speechIdx = speechDeck[0];
+  let speechTimer = 0;
+  const SPEECH_INTERVAL = 520;
+
+  // ── ZONES ────────────────────────────────────────────────────────────────────
+  const ZONES = [
+    { id:'whiteboard',  x:218, y:104, w:318, h:198, label:'Whiteboard',          cursor:'pointer' },
+    { id:'monet',       x:618, y:104, w:160, h:128, label:'Monet Painting',      cursor:'pointer' },
+    { id:'poster',      x:34,  y:106, w:133, h:172, label:'Motivational Poster', cursor:'pointer' },
+    { id:'bookshelf',   x:0,   y:178, w:142, h:222, label:'Bookshelf',           cursor:'pointer' },
+    { id:'tps-reports', x:178, y:305, w:118, h:38,  label:'TPS Reports',         cursor:'pointer' },
+    { id:'computer',    x:342, y:258, w:168, h:118, label:'Computer',            cursor:'pointer' },
+    { id:'fax',         x:716, y:258, w:138, h:108, label:'Fax Machine',         cursor:'pointer' },
+    { id:'guitar',      x:888, y:196, w:88,  h:238, label:'Guitar',              cursor:'pointer' },
+  ];
+
+  let hoveredZone = null;
+
+  function canvasScale() {
+    const rect = canvas.getBoundingClientRect();
+    return { sx: rect.width / W, sy: rect.height / H, rect };
+  }
+  function toLogical(ex, ey) {
+    const { sx, sy, rect } = canvasScale();
+    return { lx: (ex - rect.left) / sx, ly: (ey - rect.top) / sy };
+  }
+  function zoneAt(lx, ly) {
+    for (const z of ZONES) {
+      if (lx >= z.x && lx <= z.x + z.w && ly >= z.y && ly <= z.y + z.h) return z;
+    }
+    return null;
+  }
+
+  // ── INSPECT MODAL ────────────────────────────────────────────────────────────
+  const modal   = document.getElementById('inspect-modal');
+  const iIcon   = document.getElementById('inspect-icon');
+  const iTitle  = document.getElementById('inspect-title');
+  const iContent= document.getElementById('inspect-content');
+  const iClose  = document.getElementById('inspect-close');
+
+  const INSPECT_DATA = {
+    whiteboard: {
+      icon: '📋', title: 'War Room Whiteboard',
+      html: `<div style="white-space:normal;background:#f0ede0;border-radius:4px;padding:22px 24px;font-family:Arial,sans-serif;min-height:280px;position:relative;border:8px solid #2a1808;box-shadow:inset 0 0 0 2px #3a2010;">
+  <div style="position:absolute;top:8px;right:12px;font-size:0.65rem;color:#c8a060;letter-spacing:0.08em;text-transform:uppercase;">CLASSIFIED — WAR ROOM COPY</div>
+  <div style="font-size:1.05rem;font-weight:700;text-align:center;color:#1a1a1a;border-bottom:2px solid #8b0000;padding-bottom:8px;margin-bottom:14px;letter-spacing:0.05em;">CITY TAKEOVER TIMELINE — 2026</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:rgba(0,120,0,0.08);border:1px solid rgba(0,120,0,0.3);border-radius:3px;padding:8px;">
+      <div style="font-weight:700;font-size:0.78rem;color:#1a6e1a;margin-bottom:4px;">✓ PHASE 1 — COMPLETE</div>
+      <div style="font-size:0.75rem;color:#333;line-height:1.5;">Eastern Provinces secured<br>Dark portal network installed<br>Fear index: baseline established</div>
+    </div>
+    <div style="background:rgba(0,120,0,0.08);border:1px solid rgba(0,120,0,0.3);border-radius:3px;padding:8px;">
+      <div style="font-weight:700;font-size:0.78rem;color:#1a6e1a;margin-bottom:4px;">✓ PHASE 2 — COMPLETE</div>
+      <div style="font-size:0.75rem;color:#333;line-height:1.5;">Western corridor (mostly)<br>Minion onboarding system<br>TPS reporting protocol</div>
+    </div>
+    <div style="background:rgba(180,40,0,0.07);border:1px solid rgba(180,40,0,0.3);border-radius:3px;padding:8px;">
+      <div style="font-weight:700;font-size:0.78rem;color:#8b2000;margin-bottom:4px;">⟳ PHASE 3 — IN PROGRESS</div>
+      <div style="font-size:0.75rem;color:#333;line-height:1.5;">Metropolitan centers<br>Financial infrastructure<br>Dark enchanter (PENDING — Lich)</div>
+    </div>
+    <div style="background:rgba(0,0,0,0.04);border:1px solid #ccc;border-radius:3px;padding:8px;">
+      <div style="font-weight:700;font-size:0.78rem;color:#555;margin-bottom:4px;">◻ PHASE 4 — NOT STARTED</div>
+      <div style="font-size:0.75rem;color:#777;line-height:1.5;">Global consolidation<br>Sustainable domination model<br>Rebrand (logo TBD)</div>
+    </div>
+  </div>
+  <div style="font-size:0.72rem;color:#8b0000;font-style:italic;border-top:1px solid #ddd;padding-top:8px;">Note: Phase 3 timeline depends on securing dark magic talent. The Lich has been contacted. Follow-up memo sent. Awaiting response. — A.</div>
+</div>`
+    },
+    monet: {
+      icon: '🖼️', title: 'Nymphéas — Claude Monet',
+      html: `<div style="white-space:normal;text-align:center;padding:8px 0;">
+  <div style="background:linear-gradient(160deg,#1a3040,#2a4858,#1e4030,#2a3820,#3a2818);border-radius:4px;padding:28px 20px 22px;margin-bottom:14px;position:relative;overflow:hidden;">
+    <!-- Impressionist water lilies simulation -->
+    <svg width="320" height="180" viewBox="0 0 320 180" style="display:block;margin:0 auto;border-radius:2px;">
+      <defs>
+        <radialGradient id="sky1" cx="50%" cy="30%" r="70%"><stop offset="0%" stop-color="#4a7aa0"/><stop offset="100%" stop-color="#1a3a5a"/></radialGradient>
+        <radialGradient id="glow1" cx="30%" cy="50%" r="50%"><stop offset="0%" stop-color="rgba(255,230,150,0.3)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/></radialGradient>
+      </defs>
+      <rect width="320" height="180" fill="url(#sky1)"/>
+      <rect width="320" height="180" fill="url(#glow1)"/>
+      <!-- Water reflections -->
+      <ellipse cx="80" cy="130" rx="55" ry="12" fill="rgba(100,160,200,0.4)"/>
+      <ellipse cx="220" cy="140" rx="65" ry="10" fill="rgba(80,140,180,0.35)"/>
+      <ellipse cx="155" cy="110" rx="80" ry="8" fill="rgba(60,120,160,0.3)"/>
+      <!-- Lily pads -->
+      <ellipse cx="70" cy="128" rx="22" ry="10" fill="#2d6e2d" opacity="0.9"/>
+      <ellipse cx="175" cy="138" rx="28" ry="11" fill="#1e5a1e" opacity="0.85"/>
+      <ellipse cx="255" cy="122" rx="18" ry="8" fill="#2a642a" opacity="0.9"/>
+      <ellipse cx="120" cy="148" rx="20" ry="8" fill="#355e35" opacity="0.8"/>
+      <!-- Flowers -->
+      <ellipse cx="70" cy="122" rx="7" ry="5" fill="#f0c8d0" opacity="0.95"/>
+      <ellipse cx="175" cy="132" rx="9" ry="6" fill="#f8d8e0" opacity="0.9"/>
+      <ellipse cx="255" cy="117" rx="6" ry="4" fill="#fce8f0" opacity="0.95"/>
+      <ellipse cx="120" cy="142" rx="7" ry="5" fill="#e8c0c8" opacity="0.9"/>
+      <!-- Dabs of color (impressionist) -->
+      <ellipse cx="40" cy="90" rx="18" ry="28" fill="rgba(140,190,160,0.5)"/>
+      <ellipse cx="290" cy="80" rx="20" ry="32" fill="rgba(120,170,140,0.45)"/>
+      <ellipse cx="160" cy="70" rx="30" ry="20" fill="rgba(180,220,200,0.3)"/>
+      <!-- Light shimmer -->
+      <ellipse cx="140" cy="95" rx="40" ry="15" fill="rgba(255,240,180,0.12)"/>
+      <ellipse cx="200" cy="105" rx="35" ry="12" fill="rgba(255,230,150,0.1)"/>
+    </svg>
+    <div style="position:absolute;bottom:8px;right:12px;font-family:serif;font-style:italic;font-size:0.7rem;color:rgba(255,255,255,0.5);">C. Monet</div>
+  </div>
+  <div style="background:#1c1c26;border:1px solid rgba(200,168,64,0.25);border-radius:3px;padding:12px 16px;text-align:left;">
+    <div style="font-size:0.9rem;font-weight:600;color:#c8a840;margin-bottom:4px;">Nymphéas (Water Lilies) — c. 1906</div>
+    <div style="font-size:0.8rem;color:#a09080;line-height:1.6;">Oil on canvas. Acquired at Sotheby's, Paris, 2019. One of approximately 250 paintings in Monet's Water Lilies series. This one is real.<br><br><em style="color:#7a7060;font-size:0.75rem;">— "It makes me feel things I can't explain in a board meeting."</em></div>
+  </div>
+</div>`
+    },
+    poster: {
+      icon: '💪', title: 'Motivational Poster',
+      html: `<div style="white-space:normal;text-align:center;">
+  <div style="background:linear-gradient(180deg,#080810,#0e0e18,#0a0a14);border-radius:4px;padding:36px 24px 28px;margin-bottom:14px;border:3px solid #1a1a28;">
+    <div style="font-family:'Oswald',Arial,sans-serif;font-size:0.65rem;letter-spacing:0.25em;color:#cc2222;text-transform:uppercase;margin-bottom:18px;opacity:0.8;">Dark Legion Enterprises</div>
+    <div style="font-family:'Oswald',Arial,sans-serif;font-size:3.2rem;font-weight:600;color:#ffffff;letter-spacing:0.08em;line-height:1;margin-bottom:6px;text-shadow:0 0 40px rgba(200,168,64,0.3);">DON'T</div>
+    <div style="font-family:'Oswald',Arial,sans-serif;font-size:3.2rem;font-weight:600;color:#c8a840;letter-spacing:0.08em;line-height:1;margin-bottom:28px;text-shadow:0 0 40px rgba(200,168,64,0.5);">STOP.</div>
+    <div style="width:40px;height:1px;background:rgba(200,168,64,0.4);margin:0 auto 18px;"></div>
+    <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.12em;line-height:1.7;">THE ONLY FAILURE IS<br>STOPPING BEFORE YOU'RE DONE.</div>
+  </div>
+  <div style="font-size:0.78rem;color:#7a7060;font-style:italic;padding: 0 8px;">
+    A gift from the team. Signed on the back by all forty-eight minions. Even Brute #4, whose signature is just a fist impression in the cardboard.
+  </div>
+</div>`
+    },
+    bookshelf: {
+      icon: '📚', title: 'The Bookshelf',
+      html: `<div style="white-space:normal;">
+  <div style="margin-bottom:16px;">
+    <div style="font-size:0.78rem;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Shelf 1 — Strategy &amp; Finance</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${[['#8b0000','THE ART OF WAR'],['#1a3a6e','GOOD TO GREAT'],['#2a5e2a','PRINCIPLES'],['#5a3a00','ZERO TO ONE'],['#3a1a5e','THINKING FAST &amp; SLOW'],['#1a1a1a','ATOMIC HABITS']].map(([c,t])=>`<div style="background:${c};color:#fff;font-size:0.65rem;padding:4px 7px;border-radius:2px;font-weight:600;letter-spacing:0.04em;">${t}</div>`).join('')}
+    </div>
+  </div>
+  <div style="margin-bottom:16px;">
+    <div style="font-size:0.78rem;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Shelf 2 — Warfare &amp; History</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${[['#4a1a00','ON WAR — CLAUSEWITZ'],['#002a4a','THE PRINCE'],['#1a3a1a','MEDITATIONS'],['#4a3a00','THE 48 LAWS OF POWER'],['#2a0a2a','GALBRAITH: THE NEW INDUSTRIAL STATE']].map(([c,t])=>`<div style="background:${c};color:#fff;font-size:0.65rem;padding:4px 7px;border-radius:2px;font-weight:600;letter-spacing:0.04em;">${t}</div>`).join('')}
+    </div>
+  </div>
+  <div style="background:#1c1c26;border:1px solid rgba(255,180,200,0.2);border-radius:4px;padding:14px 16px;margin-bottom:12px;">
+    <div style="font-size:0.82rem;font-weight:600;color:#e8a0b8;margin-bottom:6px;">🪡 Hidden: Fashion Pin Doll</div>
+    <div style="font-size:0.82rem;color:#b09080;line-height:1.65;">Tucked behind the Galbraith — a small wire-and-fabric dress form, maybe 8 inches tall. The pins are still in it, holding the remnants of a fitted jacket pattern. The fabric is dusty. The shape is perfect.</div>
+    <div style="font-size:0.75rem;color:#7a6858;margin-top:8px;font-style:italic;">"It belonged to my first mentor. She said every good designer needs a proper form to work from. I haven't put it away. I haven't taken it out, either."</div>
+  </div>
+  <div style="font-size:0.75rem;color:#666;font-style:italic;">Also: two sketchbooks with no labels. The spines face inward.</div>
+</div>`
+    },
+    'tps-reports': {
+      icon: '📄', title: '',
+      html: `<div style="white-space:normal;background:#f8f6f0;border-radius:3px;padding:24px 28px;font-family:Arial,sans-serif;font-size:0.85rem;color:#1a1a1a;border:1px solid #ddd;">
+  <div style="text-align:center;border-bottom:2px solid #8b0000;padding-bottom:12px;margin-bottom:16px;">
+    <div style="font-size:0.65rem;letter-spacing:0.15em;color:#8b0000;text-transform:uppercase;margin-bottom:4px;">Dark Legion Enterprises — Internal</div>
+    <div style="font-size:1.1rem;font-weight:700;letter-spacing:0.06em;">T P S  R E P O R T</div>
+    <div style="font-size:0.7rem;color:#666;margin-top:4px;">Tactical Progress Summary — Q2 Dark Ops</div>
+  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:0.8rem;">
+    <tr style="background:#f0ece0;"><td style="padding:4px 8px;font-weight:600;width:40%;">Reporting Period:</td><td style="padding:4px 8px;">April 1 – June 30</td></tr>
+    <tr><td style="padding:4px 8px;font-weight:600;">Department:</td><td style="padding:4px 8px;">Global Subjugation — Phase 3</td></tr>
+    <tr style="background:#f0ece0;"><td style="padding:4px 8px;font-weight:600;">Submitted by:</td><td style="padding:4px 8px;">Brute #11 (acting liaison)</td></tr>
+    <tr><td style="padding:4px 8px;font-weight:600;">Cover Sheet:</td><td style="padding:4px 8px;color:#8b0000;font-weight:600;">YES ✓</td></tr>
+  </table>
+  <div style="font-size:0.8rem;margin-bottom:10px;"><strong>Executive Summary:</strong> Things are progressing. Most of them. The portal had an issue (resolved). The Brutes completed their assigned sectors (mostly). One sector was left "mostly done," which is not done.</div>
+  <div style="font-size:0.8rem;margin-bottom:10px;"><strong>Issues:</strong><br>• Brute #4 filed a counter-report disputing these findings<br>• The printer was jammed (see fax room for update)<br>• Dark Enchanter position remains unfilled</div>
+  <div style="border-top:1px solid #ddd;padding-top:10px;font-size:0.72rem;color:#666;font-style:italic;">Did you get the memo about the cover sheets? We're putting cover sheets on all TPS reports now. There's a memo about it. There's also a memo about the memo. — Management</div>
+</div>`
+    },
+    computer: {
+      icon: '💻', title: 'Dark Legion Command Console',
+      html: `<div style="white-space:normal;background:#0a0e0a;border-radius:4px;padding:18px 20px;font-family:'Courier New',monospace;font-size:0.8rem;color:#00cc44;border:1px solid #1a3a1a;">
+  <div style="color:#888;font-size:0.7rem;margin-bottom:10px;border-bottom:1px solid #1a3a1a;padding-bottom:6px;">DARK LEGION COMMAND CONSOLE v4.7.2 — SECURE SESSION</div>
+  <div style="margin-bottom:8px;"><span style="color:#cc2222;">CONQUEST_STATUS</span> ═══════════════════</div>
+  <div style="margin-bottom:4px;">Eastern Provinces........<span style="color:#00cc44;">SECURED [100%]</span></div>
+  <div style="margin-bottom:4px;">Western Corridor.........<span style="color:#cc8800;">IN PROGRESS [67%]</span></div>
+  <div style="margin-bottom:4px;">Metropolitan Centers.....<span style="color:#cc8800;">PHASE 3 — PENDING</span></div>
+  <div style="margin-bottom:4px;">Global Domination........<span style="color:#555;">PHASE 4 — NOT STARTED</span></div>
+  <div style="margin-bottom:12px;margin-top:8px;"><span style="color:#cc2222;">PERSONNEL</span> ══════════════════════════</div>
+  <div style="margin-bottom:4px;">Active Minions...........<span style="color:#00cc44;">48</span></div>
+  <div style="margin-bottom:4px;">Brutes (field)...........<span style="color:#00cc44;">12</span></div>
+  <div style="margin-bottom:4px;">Dark Enchanter...........<span style="color:#cc2222;">VACANT [3 months]</span></div>
+  <div style="margin-bottom:4px;">Fear Index...............<span style="color:#00cc44;">▲ 18% QoQ</span></div>
+  <div style="margin-bottom:12px;margin-top:8px;"><span style="color:#cc2222;">ALERTS</span> ═══════════════════════════════</div>
+  <div style="color:#cc8800;margin-bottom:4px;">⚠ Dark Enchanter position unfilled — 94 days</div>
+  <div style="color:#cc8800;margin-bottom:4px;">⚠ Crosscut saw (supply closet) — missing</div>
+  <div style="color:#cc2222;margin-bottom:4px;">✗ Phase 3 kickoff meeting — rescheduled 4x</div>
+  <div style="margin-top:10px;color:#555;">▮</div>
+</div>`
+    },
+    fax: {
+      icon: '📠', title: '',
+      html: `<div style="white-space:normal;background:#f5f3ec;border-radius:3px;padding:22px 26px;font-family:'Courier New',monospace;font-size:0.8rem;color:#1a1a1a;border:1px solid #ccc;">
+  <div style="text-align:center;border-bottom:1px solid #888;padding-bottom:10px;margin-bottom:14px;">
+    <div style="font-size:0.65rem;letter-spacing:0.1em;color:#555;">★★★ FAX TRANSMISSION ★★★</div>
+    <div style="font-size:0.65rem;color:#888;">Received: Tuesday, 11:48 PM — 1 page</div>
+  </div>
+  <div style="margin-bottom:10px;font-size:0.75rem;line-height:1.5;">
+    <strong>FROM:</strong> Dark Legion Treasury Dept (Brute #4 — Acting Comptroller)<br>
+    <strong>TO:</strong> Supreme Overlord Apocalyptic<br>
+    <strong>RE:</strong> Accounting Irregularity — Tribute Processing System<br>
+  </div>
+  <div style="border-top:1px solid #ccc;padding-top:10px;line-height:1.75;font-size:0.78rem;">
+    <p style="margin:0 0 10px;">Dear Supreme Overlord,</p>
+    <p style="margin:0 0 10px;">We have identified a recurring accounting discrepancy in the tribute collection system. Over the past 47 weeks, fractions of gold coin (0.0000001 to 0.0000009 coins per transaction) have been rounding inconsistently into an unregistered sub-account.</p>
+    <p style="margin:0 0 10px;"><strong>Total diverted: 0.03 gold coins.</strong></p>
+    <p style="margin:0 0 10px;">The sub-account is registered to a user named "RICHMAN" with the listed address: <em>"The Cave, Third Alcove."</em></p>
+    <p style="margin:0 0 10px;">We raised this with IT Wizard #7, who confirmed the issue was "intentional, kind of." He has been reassigned to portal maintenance.</p>
+    <p style="margin:0 0 10px;">We recommend a full audit. Also the printer is jammed again.</p>
+    <p style="margin:0 0 14px;">Regards,<br>Dark Legion Treasury Department<br><em>(Brute #4, Acting Comptroller)</em></p>
+    <div style="font-size:0.7rem;color:#666;border-top:1px dashed #bbb;padding-top:8px;">
+      P.S. The printer has been jammed for six weeks.<br>
+      P.P.S. We set the printer on fire. The problem is resolved.
+    </div>
+  </div>
+</div>`
+    },
+    guitar: {
+      icon: '🎸', title: 'Acoustic Guitar',
+      html: `<div style="white-space:normal;">
+  <div style="background:#1c1408;border:1px solid rgba(200,150,60,0.2);border-radius:4px;padding:16px 18px;margin-bottom:14px;">
+    <div style="font-size:0.9rem;font-weight:600;color:#c8a840;margin-bottom:4px;">Taylor 314ce — Sitka Spruce / Sapele</div>
+    <div style="font-size:0.82rem;color:#a09070;line-height:1.65;">A mid-range acoustic. Good action. The low E string is slightly flat and has been for three months. There's a capo on the third fret that hasn't moved in a while.</div>
+  </div>
+  <div style="font-size:0.85rem;color:#b0a090;line-height:1.7;">
+    <p style="margin:0 0 10px;">She learned in college. Bought this one in 2017 from a shop in Nashville. Plays on weekends, mostly — or she used to. It mostly just stands here now, which is either sad or aspirational depending on how you look at it.</p>
+    <p style="margin:0 0 10px;">Current rotation: Dave Matthews Band, early Joni Mitchell, and one (1) Taylor Swift song she will not name.</p>
+    <p style="margin:0;">The Space Between. That's the song she keeps coming back to.</p>
+  </div>
+</div>`
+    },
+  };
+
+  function openModal(id) {
+    const d = INSPECT_DATA[id];
+    if (!d) return;
+    if (d.html) {
+      iIcon.textContent  = d.icon || '';
+      iTitle.textContent = d.title || '';
+      iContent.innerHTML = d.html;
+      iContent.style.whiteSpace = 'normal';
+    } else {
+      iIcon.textContent  = d.icon || '';
+      iTitle.textContent = d.title || '';
+      iContent.textContent = d.body || '';
+      iContent.style.whiteSpace = 'pre-wrap';
+    }
+    modal.classList.add('open');
+  }
+  function closeModal() { modal.classList.remove('open'); }
+
+  iClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ── DRAW HELPERS ─────────────────────────────────────────────────────────────
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // ── ROOM ─────────────────────────────────────────────────────────────────────
+  function drawRoom() {
+    // Ceiling
+    const ceilGrad = ctx.createLinearGradient(0, 0, 0, 92);
+    ceilGrad.addColorStop(0, '#0e0e14');
+    ceilGrad.addColorStop(1, '#161620');
+    ctx.fillStyle = ceilGrad;
+    ctx.fillRect(0, 0, W, 92);
+
+    // Ceiling tiles (corporate grid)
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 80) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 92); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(0, 46); ctx.lineTo(W, 46); ctx.stroke();
+
+    // Recessed LED lights
+    [220, 500, 780].forEach(lx => {
+      const pulse = 0.85 + Math.sin(frame * 0.03) * 0.08;
+      ctx.fillStyle = `rgba(230,240,255,${0.12 * pulse})`;
+      ctx.beginPath(); ctx.ellipse(lx, 88, 35, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(200,220,255,${0.35 * pulse})`;
+      ctx.beginPath(); ctx.ellipse(lx, 88, 18, 3, 0, 0, Math.PI * 2); ctx.fill();
+      // Light cone
+      const coneGrad = ctx.createRadialGradient(lx, 90, 0, lx, 90, 280);
+      coneGrad.addColorStop(0, `rgba(220,235,255,${0.07 * pulse})`);
+      coneGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = coneGrad;
+      ctx.beginPath(); ctx.ellipse(lx, 220, 160, 180, 0, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Back wall
+    const wallGrad = ctx.createLinearGradient(0, 92, 0, 388);
+    wallGrad.addColorStop(0, '#1c1c28');
+    wallGrad.addColorStop(1, '#181820');
+    ctx.fillStyle = wallGrad;
+    ctx.fillRect(0, 92, W, 296);
+
+    // Vertical panel lines (wainscoting)
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 1;
+    [165, 330, 500, 665, 835].forEach(px => {
+      ctx.beginPath(); ctx.moveTo(px, 92); ctx.lineTo(px, 388); ctx.stroke();
+    });
+    // Chair rail
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 228); ctx.lineTo(W, 228); ctx.stroke();
+
+    // Red accent strip (evil mood lighting along chair rail)
+    const redStrip = ctx.createLinearGradient(0, 225, 0, 235);
+    redStrip.addColorStop(0, 'rgba(140,0,0,0.0)');
+    redStrip.addColorStop(0.5, 'rgba(140,0,0,0.14)');
+    redStrip.addColorStop(1, 'rgba(140,0,0,0.0)');
+    ctx.fillStyle = redStrip;
+    ctx.fillRect(0, 225, W, 10);
+
+    // Floor
+    const floorGrad = ctx.createLinearGradient(0, 388, 0, H);
+    floorGrad.addColorStop(0, '#1a1208');
+    floorGrad.addColorStop(1, '#120e06');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, 388, W, H - 388);
+
+    // Floor planks (perspective converging lines)
+    ctx.lineWidth = 1;
+    for (let y = 400; y < H; y += 20) {
+      ctx.strokeStyle = `rgba(0,0,0,${0.2 + (y - 400) / (H - 400) * 0.12})`;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    [110, 225, 340, 455, 570, 685, 800, 915].forEach(x => {
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, 388); ctx.lineTo(x, H); ctx.stroke();
+    });
+
+    // Baseboard
+    const bbGrad = ctx.createLinearGradient(0, 378, 0, 392);
+    bbGrad.addColorStop(0, '#1a1010');
+    bbGrad.addColorStop(1, '#221414');
+    ctx.fillStyle = bbGrad;
+    ctx.fillRect(0, 378, W, 14);
+
+    // Ambient red glow from Apoc
+    const apocGlow = ctx.createRadialGradient(apocX, apocY, 0, apocX, apocY, 320);
+    apocGlow.addColorStop(0, 'rgba(180,10,10,0.05)');
+    apocGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = apocGlow;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ── WHITEBOARD ───────────────────────────────────────────────────────────────
+  function drawWhiteboard() {
+    const wx = 218, wy = 106, ww = 316, wh = 196;
+    const hov = hoveredZone && hoveredZone.id === 'whiteboard';
+
+    // Frame
+    const frameGrad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+    frameGrad.addColorStop(0, '#2a2010');
+    frameGrad.addColorStop(1, '#1e1808');
+    ctx.fillStyle = frameGrad;
+    rrect(wx - 6, wy - 6, ww + 12, wh + 12, 3);
+    ctx.fill();
+    // Tray
+    ctx.fillStyle = '#1a1206';
+    ctx.fillRect(wx - 4, wy + wh + 4, ww + 8, 10);
+
+    // Board surface
+    ctx.fillStyle = '#ede9d8';
+    rrect(wx, wy, ww, wh, 2);
+    ctx.fill();
+
+    // Grid faint lines
+    ctx.strokeStyle = 'rgba(180,180,160,0.25)';
+    ctx.lineWidth = 0.5;
+    for (let x = wx + 25; x < wx + ww; x += 25) {
+      ctx.beginPath(); ctx.moveTo(x, wy + 2); ctx.lineTo(x, wy + wh - 2); ctx.stroke();
+    }
+    for (let y = wy + 20; y < wy + wh; y += 20) {
+      ctx.beginPath(); ctx.moveTo(wx + 2, y); ctx.lineTo(wx + ww - 2, y); ctx.stroke();
+    }
+
+    // Title
+    ctx.fillStyle = '#8b0000';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('CITY TAKEOVER TIMELINE — 2026', wx + ww / 2, wy + 15);
+    ctx.textAlign = 'left';
+
+    // Phase boxes
+    const phases = [
+      { label:'PHASE 1', color:'#1a7a1a', status:'✓ COMPLETE', x:wx+10, y:wy+24 },
+      { label:'PHASE 2', color:'#1a7a1a', status:'✓ COMPLETE', x:wx+10 + ww/2, y:wy+24 },
+      { label:'PHASE 3', color:'#cc6600', status:'⟳ IN PROGRESS', x:wx+10, y:wy+24+60 },
+      { label:'PHASE 4', color:'#888',     status:'◻ PENDING',     x:wx+10 + ww/2, y:wy+24+60 },
+    ];
+    const bw = ww/2 - 18, bh = 48;
+    phases.forEach(p => {
+      ctx.strokeStyle = p.color; ctx.lineWidth = 1.2;
+      rrect(p.x, p.y, bw, bh, 3); ctx.stroke();
+      ctx.fillStyle = p.color; ctx.font = 'bold 7.5px Arial';
+      ctx.fillText(p.label, p.x + 5, p.y + 13);
+      ctx.fillStyle = '#333'; ctx.font = '6.5px Arial';
+      ctx.fillText(p.status, p.x + 5, p.y + 26);
+    });
+
+    // Connecting arrows in red marker
+    ctx.strokeStyle = '#cc2222'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(wx + 60, wy + 32);
+    ctx.lineTo(wx + 90, wy + 32);
+    ctx.lineTo(wx + 90, wy + 88);
+    ctx.lineTo(wx + 70, wy + 88);
+    ctx.stroke();
+
+    // Some handwritten notes
+    ctx.fillStyle = '#2244aa';
+    ctx.font = 'italic 7px Arial';
+    ctx.fillText('need dark enchanter!!', wx + 14, wy + 155);
+    ctx.fillText('→ follow up w/ Lich', wx + 14, wy + 166);
+    ctx.fillStyle = '#8b0000';
+    ctx.fillText('Phase 3 deadline: Q3', wx + ww/2 + 8, wy + 155);
+
+    // Marker tray dots
+    ['#cc2222','#2244aa','#1a7a1a','#000'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.ellipse(wx + 14 + i * 12, wy + wh + 8, 3.5, 2.5, 0, 0, Math.PI*2); ctx.fill();
+    });
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.6)';
+      ctx.lineWidth = 2;
+      rrect(wx - 7, wy - 7, ww + 14, wh + 13, 4);
+      ctx.stroke();
+    }
+  }
+
+  // ── MONET PAINTING ───────────────────────────────────────────────────────────
+  function drawMonet() {
+    const mx = 618, my = 106, mw = 158, mh = 126;
+    const hov = hoveredZone && hoveredZone.id === 'monet';
+
+    // Gold ornate frame
+    const frameGrad = ctx.createLinearGradient(mx - 10, my - 10, mx + mw + 10, my + mh + 10);
+    frameGrad.addColorStop(0, '#c8a840');
+    frameGrad.addColorStop(0.5, '#e8c860');
+    frameGrad.addColorStop(1, '#a88828');
+    ctx.fillStyle = frameGrad;
+    rrect(mx - 10, my - 10, mw + 20, mh + 26, 2);
+    ctx.fill();
+    // Inner frame bevel
+    ctx.fillStyle = '#8a6820';
+    rrect(mx - 3, my - 3, mw + 6, mh + 6, 1);
+    ctx.fill();
+
+    // Painting surface (water lilies impressionist)
+    const bgGrad = ctx.createLinearGradient(mx, my, mx, my + mh);
+    bgGrad.addColorStop(0, '#2a4858');
+    bgGrad.addColorStop(0.5, '#1e3a48');
+    bgGrad.addColorStop(1, '#1a3830');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(mx, my, mw, mh);
+
+    // Water shimmer
+    ctx.fillStyle = 'rgba(100,160,200,0.3)';
+    ctx.beginPath(); ctx.ellipse(mx + 50, my + 80, 40, 12, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(80,140,180,0.25)';
+    ctx.beginPath(); ctx.ellipse(mx + 115, my + 90, 35, 10, 0, 0, Math.PI*2); ctx.fill();
+
+    // Lily pads
+    ctx.fillStyle = '#2d6e2d';
+    ctx.beginPath(); ctx.ellipse(mx + 38, my + 78, 18, 8, 0.2, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#1e5a1e';
+    ctx.beginPath(); ctx.ellipse(mx + 110, my + 88, 22, 9, -0.1, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#285228';
+    ctx.beginPath(); ctx.ellipse(mx + 70, my + 95, 14, 6, 0.3, 0, Math.PI*2); ctx.fill();
+
+    // Flowers
+    ctx.fillStyle = '#f0c8d0';
+    ctx.beginPath(); ctx.ellipse(mx + 38, my + 72, 6, 4, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f8d8e0';
+    ctx.beginPath(); ctx.ellipse(mx + 110, my + 82, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+
+    // Impressionist dabs (trees/sky)
+    ctx.fillStyle = 'rgba(140,190,140,0.4)';
+    ctx.beginPath(); ctx.ellipse(mx + 20, my + 40, 15, 28, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(100,160,120,0.35)';
+    ctx.beginPath(); ctx.ellipse(mx + 140, my + 35, 14, 30, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(180,220,200,0.2)';
+    ctx.beginPath(); ctx.ellipse(mx + 80, my + 30, 35, 18, 0, 0, Math.PI*2); ctx.fill();
+
+    // Nameplate
+    ctx.fillStyle = '#a88828';
+    ctx.fillRect(mx + mw/2 - 38, my + mh + 6, 76, 12);
+    ctx.fillStyle = '#1a1208';
+    ctx.font = '6px serif'; ctx.textAlign = 'center';
+    ctx.fillText('Nymphéas — C. Monet, c. 1906', mx + mw/2, my + mh + 14);
+    ctx.textAlign = 'left';
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.7)';
+      ctx.lineWidth = 2;
+      rrect(mx - 11, my - 11, mw + 22, mh + 28, 3);
+      ctx.stroke();
+    }
+  }
+
+  // ── MOTIVATIONAL POSTER ──────────────────────────────────────────────────────
+  function drawPoster() {
+    const px = 34, py = 108, pw = 132, ph = 170;
+    const hov = hoveredZone && hoveredZone.id === 'poster';
+
+    // Black frame
+    ctx.fillStyle = '#0a0a10';
+    rrect(px - 5, py - 5, pw + 10, ph + 10, 2);
+    ctx.fill();
+
+    // Poster background
+    const pGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    pGrad.addColorStop(0, '#080810');
+    pGrad.addColorStop(1, '#0e0e18');
+    ctx.fillStyle = pGrad;
+    ctx.fillRect(px, py, pw, ph);
+
+    // Red brand line
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(px + 10, py + 18, pw - 20, 1.5);
+
+    // "DON'T" text
+    ctx.font = 'bold 22px "Oswald", Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText("DON'T", px + pw / 2, py + 75);
+    // "STOP." text
+    ctx.fillStyle = '#c8a840';
+    ctx.fillText('STOP.', px + pw / 2, py + 102);
+
+    // Divider
+    ctx.strokeStyle = 'rgba(200,168,64,0.3)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(px + 20, py + 115); ctx.lineTo(px + pw - 20, py + 115); ctx.stroke();
+
+    // Small text
+    ctx.font = '6px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillText('THE ONLY FAILURE IS', px + pw / 2, py + 130);
+    ctx.fillText('STOPPING TOO SOON.', px + pw / 2, py + 141);
+
+    // Credit
+    ctx.font = 'italic 6.5px Arial';
+    ctx.fillStyle = 'rgba(200,168,64,0.4)';
+    ctx.fillText('— The Team', px + pw / 2, py + ph - 12);
+
+    ctx.textAlign = 'left';
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.6)';
+      ctx.lineWidth = 2;
+      rrect(px - 6, py - 6, pw + 12, ph + 12, 3);
+      ctx.stroke();
+    }
+  }
+
+  // ── BOOKSHELF ────────────────────────────────────────────────────────────────
+  function drawBookshelf() {
+    const bx = 0, by = 178, bw = 142, bh = 222;
+    const hov = hoveredZone && hoveredZone.id === 'bookshelf';
+
+    // Shelf unit sides
+    const woodGrad = ctx.createLinearGradient(bx, by, bx + bw, by);
+    woodGrad.addColorStop(0, '#1a0e06');
+    woodGrad.addColorStop(1, '#221408');
+    ctx.fillStyle = woodGrad;
+    ctx.fillRect(bx, by, bw, bh);
+    // Right side panel
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(bx + bw - 8, by, 8, bh);
+
+    // Shelves
+    const shelfY = [by, by + 56, by + 116, by + 176, by + bh - 6];
+    shelfY.forEach(sy => {
+      ctx.fillStyle = '#301e0e';
+      ctx.fillRect(bx, sy, bw - 8, 8);
+      ctx.fillStyle = 'rgba(255,220,120,0.04)';
+      ctx.fillRect(bx, sy, bw - 8, 2);
+    });
+
+    // Books on shelf 1 (finance/strategy)
+    const shelf1Books = [
+      { w:10, c:'#8b0000', t:'AW' }, { w:12, c:'#1a3a6e', t:'GG' },
+      { w:10, c:'#2a5e2a', t:'PR' }, { w:9, c:'#5a3a00', t:'ZO' },
+      { w:11, c:'#3a1a5e', t:'TF' }, { w:9, c:'#1a1a1a', t:'AH' },
+      { w:10, c:'#4a2a00', t:'48' },
+    ];
+    let bkx = bx + 4;
+    shelf1Books.forEach(b => {
+      const bookH = 42 + Math.floor(Math.random() * 8);
+      ctx.fillStyle = b.c;
+      ctx.fillRect(bkx, by + 8, b.w, bookH);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(bkx, by + 8, 1, bookH);
+      ctx.save();
+      ctx.translate(bkx + b.w/2, by + 8 + bookH/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = 'bold 5px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(b.t, 0, 2);
+      ctx.restore();
+      bkx += b.w + 1;
+    });
+
+    // Books on shelf 2 — more books + fashion pin doll on right
+    const shelf2Books = [
+      { w:12, c:'#4a1a00', t:'OW' }, { w:10, c:'#002a4a', t:'TP' },
+      { w:9,  c:'#1a3a1a', t:'MD' }, { w:11, c:'#4a3a00', t:'48' },
+    ];
+    let bkx2 = bx + 4;
+    shelf2Books.forEach(b => {
+      const bookH = 44;
+      ctx.fillStyle = b.c;
+      ctx.fillRect(bkx2, by + 64, b.w, bookH);
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.fillRect(bkx2, by + 64, 1, bookH);
+      ctx.save();
+      ctx.translate(bkx2 + b.w/2, by + 64 + bookH/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = 'bold 5px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(b.t, 0, 2);
+      ctx.restore();
+      bkx2 += b.w + 1;
+    });
+
+    // Pin doll (shelf 2, right side)
+    const dx = bx + 92, dy = by + 62;
+    // Body
+    ctx.fillStyle = '#d4b896';
+    ctx.fillRect(dx + 6, dy + 14, 10, 18);
+    // Shoulders
+    ctx.fillRect(dx + 2, dy + 14, 18, 6);
+    // Head
+    ctx.beginPath(); ctx.arc(dx + 11, dy + 10, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#d4b896'; ctx.fill();
+    // Stand
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(dx + 8, dy + 32, 6, 4);
+    ctx.fillRect(dx + 4, dy + 36, 14, 3);
+    // Pins (little dots)
+    ['#cc2222','#2244cc','#22cc22'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(dx + 4 + i * 6, dy + 18, 1.5, 0, Math.PI*2); ctx.fill();
+    });
+    // Hidden sketchbooks
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(bx + 4, by + 124, 18, 44);
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(bx + 23, by + 126, 16, 42);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.font = '5px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('▮', bx + 13, by + 148);
+    ctx.textAlign = 'left';
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
+      ctx.lineWidth = 2;
+      rrect(bx, by, bw, bh, 0);
+      ctx.stroke();
+    }
+  }
+
+  // ── CREDENZA + FAX ───────────────────────────────────────────────────────────
+  function drawCredenza() {
+    // Credenza body
+    const cx = 714, cy = 258, cw = 196, ch = 110;
+    ctx.fillStyle = '#1a0e06';
+    rrect(cx, cy, cw, ch, 3);
+    ctx.fill();
+    // Surface sheen
+    ctx.fillStyle = 'rgba(255,200,100,0.04)';
+    ctx.fillRect(cx + 4, cy + 4, cw - 8, 12);
+    // Front panel lines
+    ctx.strokeStyle = 'rgba(255,200,100,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx + cw/2, cy + 20); ctx.lineTo(cx + cw/2, cy + ch - 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy + ch - 26); ctx.lineTo(cx + cw, cy + ch - 26); ctx.stroke();
+    // Handles
+    [cx + cw/4, cx + 3*cw/4].forEach(hx => {
+      ctx.fillStyle = '#3a2a18';
+      ctx.fillRect(hx - 8, cy + ch - 18, 16, 5);
+    });
+
+    // Fax machine on top
+    const hov = hoveredZone && hoveredZone.id === 'fax';
+    const fx = cx + 18, fy = cy - 52, fw = 100, fh = 58;
+    // Fax body
+    ctx.fillStyle = '#c8c2b8';
+    rrect(fx, fy, fw, fh, 4);
+    ctx.fill();
+    ctx.fillStyle = '#b8b2a8';
+    rrect(fx + 2, fy + 2, fw - 4, fh - 4, 3);
+    ctx.fill();
+    // LCD
+    ctx.fillStyle = '#2a3a2a';
+    rrect(fx + 8, fy + 8, fw - 16, 14, 2);
+    ctx.fill();
+    ctx.fillStyle = '#88cc88';
+    ctx.font = '6px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('1 NEW FAX', fx + 11, fy + 18);
+    // Buttons
+    ['#e8e0d0','#2a8a2a','#8a2a2a'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      rrect(fx + 8 + i * 16, fy + 28, 12, 7, 2);
+      ctx.fill();
+    });
+    // Paper out-tray with curling paper
+    ctx.fillStyle = '#f0f0e8';
+    ctx.fillRect(fx + 10, fy - 12, fw - 20, 4);
+    ctx.fillStyle = '#e8e8e0';
+    ctx.fillRect(fx + 18, fy - 20, fw - 36, 12);
+    // "PENNY" text on fax paper
+    ctx.fillStyle = '#555';
+    ctx.font = '5px monospace';
+    ctx.fillText('FAX: TREASURY RPT', fx + 20, fy - 12);
+    ctx.textAlign = 'left';
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
+      ctx.lineWidth = 2;
+      rrect(cx - 2, fy - 22, cw + 4, ch + 22 + 2, 4);
+      ctx.stroke();
+    }
+  }
+
+  // ── DESK ─────────────────────────────────────────────────────────────────────
+  function drawDesk() {
+    // Desk top surface
+    const deskTopGrad = ctx.createLinearGradient(150, 320, 150, 395);
+    deskTopGrad.addColorStop(0, '#281808');
+    deskTopGrad.addColorStop(1, '#1e1206');
+    ctx.fillStyle = deskTopGrad;
+    // Slightly trapezoidal for perspective effect
+    ctx.beginPath();
+    ctx.moveTo(155, 330);
+    ctx.lineTo(845, 330);
+    ctx.lineTo(810, 395);
+    ctx.lineTo(190, 395);
+    ctx.closePath();
+    ctx.fill();
+
+    // Leather inlay
+    ctx.fillStyle = '#121e12';
+    ctx.beginPath();
+    ctx.moveTo(220, 334);
+    ctx.lineTo(780, 334);
+    ctx.lineTo(755, 388);
+    ctx.lineTo(245, 388);
+    ctx.closePath();
+    ctx.fill();
+    // Leather stitching lines
+    ctx.strokeStyle = 'rgba(40,60,40,0.6)';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(235, 337, 510, 47);
+
+    // Desk face (front panel)
+    const facGrad = ctx.createLinearGradient(0, 395, 0, 460);
+    facGrad.addColorStop(0, '#200e04');
+    facGrad.addColorStop(1, '#180c04');
+    ctx.fillStyle = facGrad;
+    ctx.beginPath();
+    ctx.moveTo(190, 395);
+    ctx.lineTo(810, 395);
+    ctx.lineTo(810, 460);
+    ctx.lineTo(190, 460);
+    ctx.closePath();
+    ctx.fill();
+
+    // Front panel detail lines
+    ctx.strokeStyle = 'rgba(255,200,100,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(500, 400); ctx.lineTo(500, 456); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(190, 425); ctx.lineTo(810, 425); ctx.stroke();
+
+    // Drawer pulls
+    [345, 655].forEach(hx => {
+      ctx.fillStyle = '#4a3a20';
+      rrect(hx - 20, 434, 40, 8, 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,210,100,0.25)';
+      rrect(hx - 18, 435, 36, 4, 1);
+      ctx.fill();
+    });
+
+    // Desk sides (thin strips)
+    ctx.fillStyle = '#1a0e06';
+    ctx.beginPath(); ctx.moveTo(155, 330); ctx.lineTo(190, 395); ctx.lineTo(190, 460); ctx.lineTo(155, 460); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(845, 330); ctx.lineTo(810, 395); ctx.lineTo(810, 460); ctx.lineTo(845, 460); ctx.closePath(); ctx.fill();
+  }
+
+  // ── COMPUTER ────────────────────────────────────────────────────────────────
+  function drawComputer() {
+    const hov = hoveredZone && hoveredZone.id === 'computer';
+    // Monitor stand
+    ctx.fillStyle = '#1a1a20';
+    ctx.fillRect(448, 380, 24, 12);
+    ctx.fillRect(432, 390, 56, 5);
+    // Monitor body
+    ctx.fillStyle = '#141418';
+    rrect(342, 258, 166, 122, 6);
+    ctx.fill();
+    // Screen
+    ctx.fillStyle = '#0a0e16';
+    rrect(350, 265, 150, 104, 3);
+    ctx.fill();
+    // Screen glow
+    const scrGlow = ctx.createRadialGradient(425, 317, 0, 425, 317, 80);
+    scrGlow.addColorStop(0, 'rgba(0,80,180,0.15)');
+    scrGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = scrGlow;
+    ctx.fillRect(350, 265, 150, 104);
+    // Screen content (spreadsheet-ish)
+    ctx.fillStyle = 'rgba(0,180,60,0.8)';
+    ctx.font = '5.5px monospace';
+    ['CONQUEST_STATUS......OK', 'FEAR_INDEX..........▲18%', 'PHASE_3.........PENDING', 'ENCHANTER...VACANT 94d', '> _'].forEach((line, i) => {
+      ctx.fillText(line, 355, 279 + i * 12);
+    });
+    // Power light
+    const pulse = 0.6 + Math.sin(frame * 0.04) * 0.3;
+    ctx.fillStyle = `rgba(0,200,100,${pulse})`;
+    ctx.beginPath(); ctx.arc(420, 364, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
+      ctx.lineWidth = 2;
+      rrect(340, 256, 170, 126, 7);
+      ctx.stroke();
+    }
+  }
+
+  // ── TPS REPORTS ─────────────────────────────────────────────────────────────
+  function drawTPSReports() {
+    const hov = hoveredZone && hoveredZone.id === 'tps-reports';
+    const tx = 178, ty = 340;
+    // Stack of papers
+    for (let i = 3; i >= 0; i--) {
+      ctx.fillStyle = i % 2 === 0 ? '#f0ece4' : '#e8e4dc';
+      ctx.fillRect(tx + i, ty - i, 112, 4 + i);
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(tx + i, ty - i, 112, 4 + i);
+    }
+    // Top sheet with label
+    ctx.fillStyle = '#f8f4ec';
+    ctx.fillRect(tx, ty - 4, 112, 26);
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(tx, ty - 4, 112, 26);
+    // Cover sheet text
+    ctx.fillStyle = '#8b0000';
+    ctx.font = 'bold 5.5px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('TPS REPORT — Q2 DARK OPS', tx + 56, ty + 6);
+    ctx.fillStyle = '#555';
+    ctx.font = '5px Arial';
+    ctx.fillText('CONFIDENTIAL — COVER SHEET REQUIRED', tx + 56, ty + 16);
+    ctx.textAlign = 'left';
+    // Red stamp
+    ctx.strokeStyle = 'rgba(139,0,0,0.55)'; ctx.lineWidth = 1;
+    ctx.strokeRect(tx + 72, ty - 2, 34, 12);
+    ctx.fillStyle = 'rgba(139,0,0,0.55)';
+    ctx.font = 'bold 5px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('CONFIDENTIAL', tx + 89, ty + 6);
+    ctx.textAlign = 'left';
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(tx - 2, ty - 6, 116, 30);
+    }
+  }
+
+  // ── GUITAR ───────────────────────────────────────────────────────────────────
+  function drawGuitar() {
+    const hov = hoveredZone && hoveredZone.id === 'guitar';
+    const gx = 933, gy = 204;
+
+    // Body (lower bout)
+    const bodyGrad = ctx.createRadialGradient(gx, gy + 190, 0, gx, gy + 190, 42);
+    bodyGrad.addColorStop(0, '#c87828');
+    bodyGrad.addColorStop(0.5, '#a86018');
+    bodyGrad.addColorStop(1, '#7a4010');
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath(); ctx.ellipse(gx, gy + 192, 38, 44, 0, 0, Math.PI * 2); ctx.fill();
+    // Body upper bout
+    ctx.beginPath(); ctx.ellipse(gx, gy + 148, 28, 34, 0, 0, Math.PI * 2); ctx.fill();
+    // Body edge binding
+    ctx.strokeStyle = 'rgba(255,220,140,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(gx, gy + 192, 38, 44, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(gx, gy + 148, 28, 34, 0, 0, Math.PI * 2); ctx.stroke();
+    // Sound hole
+    ctx.fillStyle = '#1a0c04';
+    ctx.beginPath(); ctx.arc(gx, gy + 168, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,200,100,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(gx, gy + 168, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(gx, gy + 168, 12, 0, Math.PI * 2); ctx.stroke();
+    // Neck
+    ctx.fillStyle = '#8a5018';
+    ctx.fillRect(gx - 6, gy + 110, 12, 80);
+    ctx.fillRect(gx - 5, gy, 10, 115);
+    // Frets
+    ctx.strokeStyle = 'rgba(220,200,160,0.5)'; ctx.lineWidth = 1;
+    for (let f = 0; f < 8; f++) {
+      const fy2 = gy + 20 + f * 12;
+      ctx.beginPath(); ctx.moveTo(gx - 5, fy2); ctx.lineTo(gx + 5, fy2); ctx.stroke();
+    }
+    // Headstock
+    ctx.fillStyle = '#8a5018';
+    ctx.fillRect(gx - 7, gy - 26, 14, 28);
+    // Tuning pegs
+    ['#888','#888','#888'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(gx - 10, gy - 5 - i * 7, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx + 10, gy - 5 - i * 7, 3, 0, Math.PI * 2); ctx.fill();
+    });
+    // Capo on 3rd fret
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(gx - 7, gy + 38, 14, 4);
+
+    // Lean shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.ellipse(gx + 8, gy + 234, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+    if (hov) {
+      ctx.strokeStyle = 'rgba(200,168,64,0.55)';
+      ctx.lineWidth = 2;
+      rrect(gx - 42, gy - 30, 84, 268, 4);
+      ctx.stroke();
+    }
+  }
+
+  // ── APOCALYPTIC ─────────────────────────────────────────────────────────────
+  function drawApocalyptic() {
+    const depthScale = getDepthScale(apocY);
+    const BASE_H = Math.floor(BASE_W * (apocState === 'walk' ? SIDE.sh / SIDE.sw : FRONT.sh / FRONT.sw));
+    const DRAW_W = Math.floor(BASE_W * depthScale);
+    const DRAW_H = Math.floor(BASE_H * depthScale);
+    const DRAW_X = Math.floor(apocX - DRAW_W / 2);
+    const DRAW_Y = Math.floor(apocY - DRAW_H);
+
+    // Shadow
+    ctx.fillStyle = `rgba(0,0,0,${0.25 * depthScale})`;
+    ctx.beginPath();
+    ctx.ellipse(apocX, apocY + 4, 30 * depthScale, 8 * depthScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subtle crimson aura when idle
+    if (apocState === 'idle') {
+      const aura = ctx.createRadialGradient(apocX, DRAW_Y + DRAW_H / 2, 0, apocX, DRAW_Y + DRAW_H / 2, 60 * depthScale);
+      const pa = 0.04 + Math.sin(frame * 0.05) * 0.025;
+      aura.addColorStop(0, `rgba(180,20,20,${pa})`);
+      aura.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.ellipse(apocX, DRAW_Y + DRAW_H / 2, 60 * depthScale, 60 * depthScale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (!spriteReady) {
+      ctx.fillStyle = '#cc2222';
+      ctx.fillRect(DRAW_X, DRAW_Y, DRAW_W, DRAW_H);
+      return;
+    }
+
+    const SPR = apocState === 'walk' ? SIDE : FRONT;
+
+    if (apocDir === -1 && apocState === 'walk') {
+      ctx.save();
+      ctx.translate(DRAW_X + DRAW_W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(apocImg, SPR.sx, SPR.sy, SPR.sw, SPR.sh, 0, DRAW_Y, DRAW_W, DRAW_H);
+      ctx.restore();
+    } else {
+      ctx.drawImage(apocImg, SPR.sx, SPR.sy, SPR.sw, SPR.sh, DRAW_X, DRAW_Y, DRAW_W, DRAW_H);
+    }
+  }
+
+  // ── SPEECH BUBBLE ────────────────────────────────────────────────────────────
+  function drawSpeechBubble() {
+    const depthScale = getDepthScale(apocY);
+    const BASE_H = Math.floor(BASE_W * (apocState === 'walk' ? SIDE.sh / SIDE.sw : FRONT.sh / FRONT.sw));
+    const DRAW_H = Math.floor(BASE_H * depthScale);
+    const bubX = apocX;
+    const bubY = apocY - DRAW_H - 14;
+    const text = SPEECHES[speechIdx];
+    if (!text) return;
+
+    const font = '16px "Segoe UI", Arial, sans-serif';
+    ctx.font = font;
+    const maxW = 310, lineH = 22, padX = 16, padY = 12;
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW - padX * 2) {
+        if (cur) lines.push(cur);
+        cur = w;
+      } else { cur = test; }
+    });
+    if (cur) lines.push(cur);
+
+    const bw = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2);
+    const bh = lines.length * lineH + padY * 2;
+    const bx = Math.max(8, Math.min(W - bw - 8, bubX - bw / 2));
+    const by = Math.max(8, bubY - bh - 10);
+
+    // Bubble fill
+    ctx.fillStyle = 'rgba(12,10,20,0.93)';
+    rrect(bx, by, bw, bh, 10);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,20,20,0.7)';
+    ctx.lineWidth = 1.5;
+    rrect(bx, by, bw, bh, 10);
+    ctx.stroke();
+
+    // Tail
+    const tailX = Math.max(bx + 16, Math.min(bx + bw - 16, bubX));
+    ctx.fillStyle = 'rgba(12,10,20,0.93)';
+    ctx.beginPath();
+    ctx.moveTo(tailX - 7, by + bh);
+    ctx.lineTo(tailX + 7, by + bh);
+    ctx.lineTo(bubX, by + bh + 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,20,20,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(tailX - 7, by + bh);
+    ctx.lineTo(bubX, by + bh + 10);
+    ctx.moveTo(tailX + 7, by + bh);
+    ctx.lineTo(bubX, by + bh + 10);
+    ctx.stroke();
+
+    // Text
+    ctx.font = font;
+    ctx.fillStyle = '#e8e0d0';
+    lines.forEach((l, i) => {
+      ctx.fillText(l, bx + padX, by + padY + i * lineH + 13);
+    });
+  }
+
+  // ── ZONE LABELS ──────────────────────────────────────────────────────────────
+  function drawZoneLabel() {
+    if (!hoveredZone) return;
+    const z = hoveredZone;
+    const lx = z.x + z.w / 2, ly = z.y - 8;
+    const label = z.label;
+    ctx.font = '12px "Segoe UI", Arial';
+    const tw = ctx.measureText(label).width;
+    const px2 = 8, py2 = 5;
+    const bx2 = Math.max(4, Math.min(W - tw - px2 * 2 - 4, lx - (tw + px2 * 2) / 2));
+    const by2 = Math.max(4, ly - 24);
+    ctx.fillStyle = 'rgba(12,10,20,0.88)';
+    rrect(bx2, by2, tw + px2 * 2, 22, 5);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,20,20,0.5)';
+    ctx.lineWidth = 1;
+    rrect(bx2, by2, tw + px2 * 2, 22, 5);
+    ctx.stroke();
+    ctx.fillStyle = '#e8e0d0';
+    ctx.fillText(label, bx2 + px2, by2 + 15);
+  }
+
+  // ── MAIN LOOP ────────────────────────────────────────────────────────────────
+  function update() {
+    // Character movement
+    if (apocState === 'walk') {
+      apocX += apocDir * WALK_SPEED;
+      if (apocX >= WALK_MAX || apocX <= WALK_MIN) {
+        apocX = Math.max(WALK_MIN, Math.min(WALK_MAX, apocX));
+        apocState = 'idle';
+        apocStateT = 0;
+      }
+    } else {
+      apocStateT++;
+      if (apocStateT >= IDLE_PAUSE) {
+        apocDir = apocX <= WALK_MIN + 10 ? 1 : -1;
+        apocState = 'walk';
+      }
+    }
+
+    // Speech bubble cycling
+    speechTimer++;
+    if (speechTimer >= SPEECH_INTERVAL) {
+      speechTimer = 0;
+      speechDeckPos++;
+      if (speechDeckPos >= speechDeck.length) {
+        speechDeck = shuffleDeck();
+        speechDeckPos = 0;
+      }
+      speechIdx = speechDeck[speechDeckPos];
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawRoom();
+    drawPoster();
+    drawWhiteboard();
+    drawMonet();
+    drawBookshelf();
+    drawCredenza();
+    drawDesk();
+    drawTPSReports();
+    drawComputer();
+    drawGuitar();
+    drawApocalyptic();
+    drawSpeechBubble();
+    drawZoneLabel();
+  }
+
+  function loop() {
+    update();
+    draw();
+    frame++;
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // ── INPUT ────────────────────────────────────────────────────────────────────
+  canvas.addEventListener('mousemove', e => {
+    const { lx, ly } = toLogical(e.clientX, e.clientY);
+    hoveredZone = zoneAt(lx, ly);
+    canvas.style.cursor = hoveredZone ? 'pointer' : 'default';
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    hoveredZone = null;
+    canvas.style.cursor = 'default';
+  });
+
+  canvas.addEventListener('click', e => {
+    const { lx, ly } = toLogical(e.clientX, e.clientY);
+    const z = zoneAt(lx, ly);
+    if (z) openModal(z.id);
+  });
+</script>
+</body>
+</html>
