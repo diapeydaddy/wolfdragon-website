@@ -239,6 +239,44 @@
       display: block;
     }
 
+    /* ── VOICEMAIL NAV ARROWS ── */
+    .vm-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .vm-hint {
+      flex: 1;
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      color: #554466;
+      text-transform: uppercase;
+    }
+
+    .vm-arrow {
+      background: #1a0a2a;
+      border: 1px solid #3a1a5a;
+      color: var(--purple-glow);
+      font-size: 1.1rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+      line-height: 1;
+    }
+
+    .vm-arrow:hover {
+      background: #2a0a44;
+      border-color: var(--purple-glow);
+    }
+
     /* ── BULLETIN BOARD MODAL ── */
     .board-items { display: flex; flex-direction: column; gap: 14px; }
     .board-paper {
@@ -1736,16 +1774,8 @@
 
       switch (zone.id) {
         case 'phone': {
-          const vm = VOICEMAILS[vmIndex % VOICEMAILS.length];
-          const num = vmIndex % VOICEMAILS.length + 1;
-          document.getElementById('inspect-icon').textContent  = '📱';
-          document.getElementById('inspect-title').textContent = `Voicemail ${num} of ${VOICEMAILS.length}`;
-          document.getElementById('inspect-body').innerHTML =
-            `<div style="font-size:0.72rem;letter-spacing:0.1em;color:#aa66ff;text-transform:uppercase;margin-bottom:8px">${vm.from} · ${vm.duration}</div>` +
-            `<div style="font-family:'Special Elite',serif;font-size:0.95rem;line-height:1.6;color:#e8e0cc">${vm.body}</div>` +
-            `<div style="margin-top:14px;font-size:0.68rem;letter-spacing:0.15em;color:#554466;text-transform:uppercase">Click phone again for next message →</div>`;
+          showVoicemail(vmIndex);
           openModal('inspect-modal');
-          vmIndex++;
           break;
         }
         case 'board':
@@ -1768,6 +1798,38 @@
           }
           break;
       }
+    });
+
+    // ── VOICEMAIL NAVIGATION ─────────────────────────────────────
+    function showVoicemail(idx) {
+      idx = Math.max(0, Math.min(VOICEMAILS.length - 1, idx));
+      vmIndex = idx;
+      const vm  = VOICEMAILS[idx];
+      const tot = VOICEMAILS.length;
+
+      document.getElementById('inspect-icon').textContent  = '📱';
+      document.getElementById('inspect-title').textContent = `Voicemail ${idx + 1} of ${tot}`;
+
+      const hasLeft  = idx > 0;
+      const hasRight = idx < tot - 1;
+
+      const leftBtn  = hasLeft  ? `<button class="vm-arrow" data-vmdir="-1">←</button>` : '';
+      const rightBtn = hasRight ? `<button class="vm-arrow" data-vmdir="1">→</button>`  : '';
+      const hint     = (!hasLeft && hasRight)
+        ? `<span class="vm-hint">Click → for next voicemail</span>`
+        : `<span class="vm-hint"></span>`;
+
+      document.getElementById('inspect-body').innerHTML =
+        `<div style="font-size:0.72rem;letter-spacing:0.1em;color:#aa66ff;text-transform:uppercase;margin-bottom:8px">${vm.from} · ${vm.duration}</div>` +
+        `<div style="font-family:'Special Elite',serif;font-size:0.95rem;line-height:1.6;color:#e8e0cc">${vm.body}</div>` +
+        `<div class="vm-nav">${hint}${leftBtn}${rightBtn}</div>`;
+    }
+
+    // Arrow delegation — works for any vm-arrow button injected into inspect-body
+    document.getElementById('inspect-body').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-vmdir]');
+      if (!btn) return;
+      showVoicemail(vmIndex + parseInt(btn.dataset.vmdir, 10));
     });
 
     // ── MODAL LOGIC ──────────────────────────────────────────────
