@@ -230,6 +230,7 @@
       font-size: 1rem;
       color: var(--cream);
       line-height: 1.6;
+      white-space: pre-wrap;
     }
 
     .inspect-icon {
@@ -661,11 +662,17 @@
       "Magic at its core is just: here is a thing you cannot explain. Sit with that. It's fine that you can't explain it.",
       "I'm going to be honest with myself. The rope trick needs work. The card work is actually solid. Build from the card work.",
       "*very long pause* ...I should really do that laundry.",
+      // The sweater
+      "I still have Dani's mom's Christmas sweater. The green one with the little reindeer. I am keeping it. It is mine now. She will have to pry it from my cold, undead hands. It is a genuinely very nice sweater.",
     ];
 
     // ── CLICK ZONES (logical coords, scale handled on click) ───
     const ZONES = [
       { id:'phone',   x:605, y:285, w:72,  h:64,  label:'Phone (6 New Voicemails)',  cursor:'pointer' },
+      { id:'env0',    x:453, y:308, w:50,  h:44,  label:'Letter — Past Due Bill',    cursor:'pointer' },
+      { id:'env1',    x:484, y:306, w:50,  h:44,  label:'Letter — Past Due Bill',    cursor:'pointer' },
+      { id:'env2',    x:515, y:308, w:50,  h:44,  label:'Letter — Past Due Bill',    cursor:'pointer' },
+      { id:'env3',    x:546, y:305, w:50,  h:44,  label:'Letter — From Dani',        cursor:'pointer' },
       { id:'laundry', x:20,  y:390, w:190, h:120, label:'Laundry Pile',              cursor:'pointer' },
       { id:'pizza',   x:215, y:400, w:100, h:80,  label:'Pizza Boxes',               cursor:'pointer' },
       { id:'hat',     x:740, y:310, w:110, h:180, label:'Magic Hat & Wand',           cursor:'pointer' },
@@ -715,7 +722,27 @@
         icon: '🌧️',
         title: 'The City at Night',
         body: 'Rain again. The streetlights blur into long orange smears on the wet asphalt below.\n\nFrom up here the city looks like it has no idea who he is. Which is true. But he\'s working on it.'
-      }
+      },
+      env0: {
+        icon: '✉️',
+        title: 'PAST DUE — Necromantic Utilities',
+        body: 'Account #00-LCH-7782\nService: Spectral Power & Dark Energy Grid\n\nAmount Due: $312.44\nDays Overdue: 47\n\n"FAILURE TO REMIT PAYMENT WILL RESULT IN DISCONNECTION OF ALL SPECTRAL SERVICES INCLUDING BUT NOT LIMITED TO: ambient darkness, cold spot maintenance, and ethereal echo effects.\n\nThis is your THIRD notice. We do not enjoy sending these."'
+      },
+      env1: {
+        icon: '✉️',
+        title: 'PAST DUE — Shadowrealm Internet Services',
+        body: 'Plan: Dark Web Standard ($49.99/mo)\nPast Due Balance: $149.97 (3 months)\n\n"Your connection to the interdimensional spectral plane will be suspended within 5 business days.\n\nNOTE: We understand you have been occupied with the attempted conquest of the northern district. Payment is still required regardless of conquest outcome."'
+      },
+      env2: {
+        icon: '✉️',
+        title: 'PAST DUE — Dungeon Supply Co.',
+        body: 'Invoice #D-4491 — SECOND NOTICE\n\nSkull candles (×12) .............. $48.00\nBlack altar cloth ................... $22.00\nFog machine repair ................ $85.00\n─────────────────────────────\nTOTAL OVERDUE: $155.00\n\n"We value your business and appreciate your commitment to the dark arts. Please pay your bill."'
+      },
+      env3: {
+        icon: '💌',
+        title: 'Letter — From Dani',
+        body: '"Hey.\n\nI know this is weird and I\'m not trying to make it a whole thing. I just realized I never got my mom\'s Christmas sweater back — the green one with the little reindeer on it? She keeps asking me about it every time I see her and honestly I\'m running out of excuses.\n\nIf you still have it, could you just drop it in the mail? You can keep the ornament. I know you liked that ornament.\n\nI hope you\'re doing okay.\n\n— Dani"'
+      },
     };
 
     // ── CANVAS SCALE ────────────────────────────────────────────
@@ -1384,6 +1411,112 @@
       }
     }
 
+    function drawEnvelopes() {
+      // 4 envelopes on the table between the playing cards and the phone
+      // Table top at ty=348; envelope bottoms rest on the surface
+      const tableY = 348;
+      const ew = 50, eh = 32;
+
+      const ENVS = [
+        { cx: 478, rot: -0.09, bill: true  },
+        { cx: 508, rot:  0.04, bill: true  },
+        { cx: 539, rot:  0.11, bill: true  },
+        { cx: 569, rot: -0.06, bill: false }, // Dani's letter
+      ];
+      const IDS = ['env0','env1','env2','env3'];
+
+      ENVS.forEach((env, i) => {
+        ctx.save();
+        ctx.translate(env.cx, tableY - 2);
+        ctx.rotate(env.rot);
+
+        const ex = -ew / 2, ey = -eh;
+
+        // Drop shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        rrect(ex + 2, ey + 3, ew, eh, 2);
+        ctx.fill();
+
+        // Envelope body
+        const bodyColor = env.bill ? '#f0ede6' : '#f4eaf2';
+        rrect(ex, ey, ew, eh, 2);
+        ctx.fillStyle = bodyColor;
+        ctx.fill();
+        ctx.strokeStyle = env.bill ? 'rgba(0,0,0,0.16)' : 'rgba(150,70,130,0.28)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // Interior fold lines — V from corners to center (classic envelope look)
+        const midX = ex + ew / 2, midY = ey + eh * 0.58;
+        ctx.strokeStyle = env.bill ? 'rgba(0,0,0,0.09)' : 'rgba(160,70,140,0.13)';
+        ctx.lineWidth = 0.6;
+        // Bottom V
+        ctx.beginPath();
+        ctx.moveTo(ex,      ey + eh);
+        ctx.lineTo(midX,    midY);
+        ctx.lineTo(ex + ew, ey + eh);
+        ctx.stroke();
+        // Side chevrons
+        ctx.beginPath();
+        ctx.moveTo(ex,      ey);
+        ctx.lineTo(midX,    midY);
+        ctx.moveTo(ex + ew, ey);
+        ctx.lineTo(midX,    midY);
+        ctx.stroke();
+
+        // Top flap (closed, slightly darker)
+        const flapColor = env.bill ? '#e6ddd2' : '#e8d8e6';
+        ctx.beginPath();
+        ctx.moveTo(ex,      ey);
+        ctx.lineTo(midX,    ey + eh * 0.42);
+        ctx.lineTo(ex + ew, ey);
+        ctx.closePath();
+        ctx.fillStyle = flapColor;
+        ctx.fill();
+        ctx.strokeStyle = env.bill ? 'rgba(0,0,0,0.10)' : 'rgba(150,70,130,0.20)';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+
+        if (env.bill) {
+          // Red "PAST DUE" rubber-stamp, slightly tilted
+          ctx.save();
+          ctx.translate(ex + ew * 0.66, ey + eh * 0.68);
+          ctx.rotate(0.28);
+          ctx.strokeStyle = 'rgba(175,18,18,0.72)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(-13, -6, 26, 11);
+          ctx.fillStyle = 'rgba(175,18,18,0.72)';
+          ctx.font = 'bold 5.5px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('PAST DUE', 0, 2.5);
+          ctx.textAlign = 'left';
+          ctx.restore();
+        } else {
+          // Small wax-seal style heart for Dani's letter
+          ctx.save();
+          ctx.translate(ex + ew * 0.66, ey + eh * 0.65);
+          ctx.fillStyle = 'rgba(190,60,110,0.55)';
+          ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(230,160,190,0.9)';
+          ctx.font = '7px serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('♥', 0, 2.5);
+          ctx.textAlign = 'left';
+          ctx.restore();
+        }
+
+        // Hover highlight
+        if (hoveredZone && hoveredZone.id === IDS[i]) {
+          ctx.strokeStyle = 'rgba(180,80,255,0.55)';
+          ctx.lineWidth = 1.5;
+          rrect(ex - 2, ey - 2, ew + 4, eh + 4, 3);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      });
+    }
+
     function drawHatStand() {
       const hsx = 742, hsy = 300;
 
@@ -1726,6 +1859,7 @@
       drawLaundryPile();
       drawPizzaBoxes();
       drawTable();
+      drawEnvelopes();
       drawPhone();
       drawHatStand();
       drawTV();
@@ -1784,6 +1918,10 @@
         case 'calendar':
           openModal('cal-modal');
           break;
+        case 'env0':
+        case 'env1':
+        case 'env2':
+        case 'env3':
         case 'laundry':
         case 'pizza':
         case 'hat':
