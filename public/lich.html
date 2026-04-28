@@ -559,18 +559,9 @@
     let lichTelePhase = 0;    // 0=fading out, 1=fading in
     let speechTimer = 0;
     const SPEECH_INTERVAL = 540; // ~9 seconds at 60fps
-    // Shuffle speech indices so every line is heard before any repeats
-    function shuffleDeck() {
-      const arr = SPEECHES.map((_, i) => i);
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
-    let speechDeck = shuffleDeck();
+    let speechDeck = [];
     let speechDeckPos = 0;
-    let speechIdx = speechDeck[0];
+    let speechIdx = 0;
     let vmIndex = 0;          // which voicemail to show next
     let envIndex = 0;         // which envelope to show next
 
@@ -677,6 +668,18 @@
       // The sweater
       "I still have Dani's mom's Christmas sweater. The green one with the little reindeer. I am keeping it. It is mine now. She will have to pry it from my cold, undead hands. It is a genuinely very nice sweater.",
     ];
+
+    // Shuffle speech indices after SPEECHES is defined
+    function shuffleDeck() {
+      const arr = SPEECHES.map((_, i) => i);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    speechDeck = shuffleDeck();
+    speechIdx  = speechDeck[0];
 
     // ── CLICK ZONES (logical coords, scale handled on click) ───
     const ZONES = [
