@@ -569,12 +569,12 @@
     const DRIP_X       = 718;   // between desk (x≈690) and hat stand (x≈742)
     const DRIP_TOP_Y   = 93;    // ceiling surface
     const DRIP_FLOOR_Y = 402;   // where drop hits floor
-    const DRIP_SPEED   = 1.4;   // px per frame
+    const DRIP_SPEED   = 8;     // px per frame — fast drop
     const DRIP_WAIT    = 200;   // frames between drops (~3.3s)
     let dripY       = DRIP_TOP_Y;
     let dripFalling = false;
     let dripWait    = 80;       // short initial delay so it drips quickly on load
-    let puddleR     = 6;        // puddle radius — grows with each drop
+    let puddleR     = 30;       // puddle radius — starts larger, grows with each drop
     let rippleT     = 0;        // countdown for ripple animation
     let rippleR     = 0;        // current ripple radius
 
@@ -608,7 +608,7 @@
       "Vegas. I know everyone says it. But I mean it differently.",
       "Apocalyptic wants to partner on world domination again. He always does this when he's bored.",
       "The Rusty Nail crowd was actually INTO it last Friday. Seven people. Five clapped.",
-      "*practices card vanish* ...okay. WHERE did it go.",
+      "*practices card vanish* ...okay. WHERE did it go?",
       "If I'm gonna do 45 minutes I need to stop doing the same three tricks in different order.",
       // Bad magic trick ideas
       "New trick: I put a card in an envelope, seal it, mail it to myself. Three days later it arrives. 'Is THIS your card?' The suspense alone is worth it.",
@@ -631,7 +631,7 @@
       "The faucet dripped 47 times while I was trying to sleep. I counted. Then I was too awake to practice.",
       "Landlord says he'll fix the heating 'soon.' It's been 'soon' since October. I've named the cold draft Gerald.",
       "There's a spider in the bathroom. I've also named him Gerald. Two Geralds in this apartment. Overpopulated.",
-      "The upstairs neighbor rearranges furniture every night at midnight. What are they building up there.",
+      "The upstairs neighbor rearranges furniture every night at midnight. What are they building up there?",
       "I should eat a vegetable at some point. Maybe this weekend.",
       "Mom asked if I'm eating right. I said yes. I have been eating pizza. Technically pizza has tomato.",
       "Paid the electric bill. The bill collector can wait, but darkness is immediate. Priorities.",
@@ -641,7 +641,7 @@
       "I should just call Mom back. The thing is, once I call back it opens... a whole thing. You can't unopen the thing.",
       // Apocalyptic
       "60-40 world split. I don't want the world, man. I want a 2,000-seat theater. Completely different ask.",
-      "Apocalyptic texted again. 'Have you thought about it.' Yes. The answer is still no. Thank you for the offer.",
+      "Apocalyptic texted again. 'Have you thought about it?' Yes. The answer is still no. Thank you for the offer.",
       "I wonder if Apocalyptic is okay. Like actually okay. The world domination thing seems like it costs a lot emotionally.",
       "He said 'miss hanging out.' That's the most honest thing Apocalyptic has ever said to me. Somewhere under the evil there's just a guy.",
       // Vegas
@@ -1665,15 +1665,7 @@
 
       // ── Falling drop ──
       if (dripFalling) {
-        // Thread from ceiling to just above the drop
-        ctx.strokeStyle = 'rgba(140,185,220,0.35)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(DRIP_X, DRIP_TOP_Y);
-        ctx.lineTo(DRIP_X, dripY - 5);
-        ctx.stroke();
-
-        // Teardrop shape (rounded bottom, pointed top)
+        // Teardrop shape (rounded bottom, pointed top) — no thread, drops fast
         const dg = ctx.createRadialGradient(DRIP_X - 1, dripY - 1, 0, DRIP_X, dripY + 2, 7);
         dg.addColorStop(0, 'rgba(210,235,250,0.90)');
         dg.addColorStop(1, 'rgba(90,150,200,0.55)');
@@ -1994,7 +1986,7 @@
           dripFalling = false;
           dripY       = DRIP_TOP_Y;
           dripWait    = DRIP_WAIT;
-          puddleR     = Math.min(puddleR + 1.2, 38);
+          puddleR     = Math.min(puddleR + 2, 190);
           rippleT     = 35;
           rippleR     = 2;
         }
