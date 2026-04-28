@@ -1131,60 +1131,128 @@
       ctx.beginPath(); ctx.ellipse(x, 66, 80, 80, 0, 0, Math.PI * 2); ctx.fill();
     }
 
+    function getSkyPhase() {
+      const h = new Date().getHours() + new Date().getMinutes() / 60;
+      if (h >= 5.5  && h < 7.5)  return 'dawn';
+      if (h >= 7.5  && h < 18.5) return 'day';
+      if (h >= 18.5 && h < 20.5) return 'dusk';
+      return 'night';
+    }
+
     function drawWindow() {
       const wx = 330, wy = 100, ww = 340, wh = 250;
       const RAIN_AREA_X = wx + 12;
+      const phase = getSkyPhase();
+
+      // Sky gradient per phase — this is a rainy apartment, so day is overcast gray-blue
+      const SKY = {
+        night: ['#02020e', '#030312', '#050518'],
+        dawn:  ['#050308', '#100810', '#18101a'],
+        day:   ['#1a2840', '#22324e', '#2a3a58'],  // overcast, muted blue-gray
+        dusk:  ['#080308', '#140808', '#1c0e10'],
+      };
+      const sc = SKY[phase];
 
       // Window frame outer
       ctx.fillStyle = '#1e1608';
       ctx.fillRect(wx, wy, ww, wh);
 
-      // Window glass (night sky)
+      // Window glass — sky gradient
       const skyGrad = ctx.createLinearGradient(wx + 12, wy + 12, wx + 12, wy + wh - 12);
-      skyGrad.addColorStop(0, '#02020e');
-      skyGrad.addColorStop(1, '#050518');
+      skyGrad.addColorStop(0, sc[0]);
+      skyGrad.addColorStop(0.55, sc[1]);
+      skyGrad.addColorStop(1,   sc[2]);
       ctx.fillStyle = skyGrad;
       ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
 
-      // City lights (buildings as dark rectangles with lit windows)
+      // Clip to glass pane
       ctx.save();
       ctx.beginPath();
       ctx.rect(wx + 12, wy + 12, ww - 24, wh - 24);
       ctx.clip();
 
-      // Building silhouettes
+      // Horizon glow (varies by phase)
+      const hGrad = ctx.createLinearGradient(wx + 12, wy + wh - 90, wx + 12, wy + wh - 12);
+      if (phase === 'night') {
+        hGrad.addColorStop(0, 'rgba(255,120,40,0.08)');
+      } else if (phase === 'dawn') {
+        hGrad.addColorStop(0, 'rgba(255,100,30,0.30)');
+      } else if (phase === 'day') {
+        hGrad.addColorStop(0, 'rgba(120,160,220,0.20)');
+      } else {
+        hGrad.addColorStop(0, 'rgba(255,70,10,0.38)');
+      }
+      hGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = hGrad;
+      ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
+
+      // Moon (night only)
+      if (phase === 'night') {
+        ctx.fillStyle = 'rgba(180,190,220,0.16)';
+        ctx.beginPath(); ctx.arc(wx + ww - 60, wy + 40, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(180,190,210,0.08)';
+        ctx.beginPath(); ctx.arc(wx + ww - 60, wy + 40, 28, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Dawn sun cresting low
+      if (phase === 'dawn') {
+        const sg = ctx.createRadialGradient(wx + 80, wy + wh - 40, 0, wx + 80, wy + wh - 40, 70);
+        sg.addColorStop(0, 'rgba(255,160,40,0.55)');
+        sg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = sg; ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
+        ctx.fillStyle = 'rgba(255,200,80,0.8)';
+        ctx.beginPath(); ctx.arc(wx + 80, wy + wh - 40, 10, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Dusk sun setting
+      if (phase === 'dusk') {
+        const sg = ctx.createRadialGradient(wx + ww - 80, wy + wh - 50, 0, wx + ww - 80, wy + wh - 50, 85);
+        sg.addColorStop(0, 'rgba(255,90,10,0.58)');
+        sg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = sg; ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
+        ctx.fillStyle = 'rgba(255,130,20,0.85)';
+        ctx.beginPath(); ctx.arc(wx + ww - 80, wy + wh - 50, 12, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Heavy clouds (day = overcast; subtle shapes at other phases)
+      if (phase === 'day') {
+        ctx.fillStyle = 'rgba(100,130,180,0.14)';
+        [[wx + 50, wy + 30, 80, 28], [wx + 170, wy + 22, 100, 32], [wx + 290, wy + 35, 70, 22]].forEach(([cx2, cy2, cw2, ch2]) => {
+          ctx.beginPath(); ctx.ellipse(cx2, cy2, cw2, ch2, 0, 0, Math.PI * 2); ctx.fill();
+        });
+        // Overcast diffuse light
+        ctx.fillStyle = 'rgba(120,150,200,0.06)';
+        ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
+      }
+
+      // Building silhouettes — lighter/visible during day
+      const bldCol = phase === 'day' ? '#101e36' : '#060614';
       const buildings = [
-        {x:wx+12, y:wy+wh-80, w:55, h:80},
+        {x:wx+12, y:wy+wh-80,  w:55, h:80 },
         {x:wx+75, y:wy+wh-130, w:45, h:130},
-        {x:wx+128, y:wy+wh-90, w:60, h:90},
-        {x:wx+196, y:wy+wh-160, w:55, h:160},
-        {x:wx+259, y:wy+wh-110, w:45, h:110},
-        {x:wx+312, y:wy+wh-75, w:56, h:75},
+        {x:wx+128,y:wy+wh-90,  w:60, h:90 },
+        {x:wx+196,y:wy+wh-160, w:55, h:160},
+        {x:wx+259,y:wy+wh-110, w:45, h:110},
+        {x:wx+312,y:wy+wh-75,  w:56, h:75 },
       ];
       buildings.forEach(b => {
-        ctx.fillStyle = '#060614';
+        ctx.fillStyle = bldCol;
         ctx.fillRect(b.x, b.y, b.w, b.h);
       });
 
-      // City window lights
+      // City window lights — dim at day, bright at night
+      const lightScale = phase === 'day' ? 0.08 : 1.0;
       cityLights.forEach(cl => {
-        let alpha = 1;
-        if (cl.blink) alpha = Math.sin(frame * 0.05 + cl.blinkT) > 0 ? 0.9 : 0.1;
+        let alpha = lightScale;
+        if (cl.blink && phase !== 'day') alpha = Math.sin(frame * 0.05 + cl.blinkT) > 0 ? 0.9 : 0.1;
         ctx.globalAlpha = alpha;
         ctx.fillStyle = cl.col;
         ctx.fillRect(cl.x, cl.y, cl.w, cl.h);
         ctx.globalAlpha = 1;
       });
 
-      // Distant glow on horizon
-      const hGrad = ctx.createLinearGradient(wx+12, wy+wh-90, wx+12, wy+wh-12);
-      hGrad.addColorStop(0, 'rgba(255,120,40,0.08)');
-      hGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = hGrad;
-      ctx.fillRect(wx+12, wy+12, ww-24, wh-24);
-
-      // Rain
-      ctx.strokeStyle = 'rgba(180,200,255,0.18)';
+      // Rain (always — it's always raining outside this apartment)
+      ctx.strokeStyle = phase === 'day' ? 'rgba(160,180,220,0.22)' : 'rgba(180,200,255,0.18)';
       ctx.lineWidth = 1;
       rainDrops.forEach(r => {
         const rx = RAIN_AREA_X + r.x;

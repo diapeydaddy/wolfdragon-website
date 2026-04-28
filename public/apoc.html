@@ -251,10 +251,10 @@
   // ── ZONES ────────────────────────────────────────────────────────────────────
   const ZONES = [
     // Back wall
-    { id:'poster',      x:748, y:108, w:128, h:172, label:'Motivational Poster', cursor:'pointer' },
+    { id:'poster',      x:758, y:108, w:128, h:172, label:'Motivational Poster', cursor:'pointer' },
     { id:'window',      x:166, y:95,  w:320, h:290, label:'City View',           cursor:'pointer' },
-    { id:'guitar',      x:494, y:206, w:58,  h:228, label:'Guitar',              cursor:'pointer' },
-    { id:'monet',       x:578, y:106, w:158, h:134, label:'Monet Painting',      cursor:'pointer' },
+    { id:'guitar',      x:488, y:206, w:54,  h:228, label:'Guitar',              cursor:'pointer' },
+    { id:'monet',       x:554, y:104, w:146, h:132, label:'Monet Painting',      cursor:'pointer' },
     // Shelf 1 books (bx=0, shelf y=186, books start x=4)
     { id:'book-aw',     x:3,   y:184, w:17,  h:48,  label:'The Art of War',           cursor:'pointer' },
     { id:'book-gg',     x:20,  y:184, w:18,  h:48,  label:'Good to Great',            cursor:'pointer' },
@@ -617,38 +617,91 @@
     ctx.fillRect(0, 0, W, H);
   }
 
+  // ── SKY PHASE (time-aware) ───────────────────────────────────────────────────
+  function getSkyPhase() {
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    if (h >= 5.5  && h < 7.5)  return 'dawn';
+    if (h >= 7.5  && h < 18.5) return 'day';
+    if (h >= 18.5 && h < 20.5) return 'dusk';
+    return 'night';
+  }
+
   // ── CITY WINDOW ─────────────────────────────────────────────────────────────
   function drawWindow() {
     const wx = 166, wy = 95, ww = 320, wh = 290;
     const hov = hoveredZone && hoveredZone.id === 'window';
+    const phase = getSkyPhase();
+
+    // Sky gradient colors per phase
+    const SKY = {
+      night: ['#05080e', '#080d1a', '#0c1828'],
+      dawn:  ['#08040e', '#1c0a18', '#2e1428'],
+      day:   ['#1a3a6a', '#2a5282', '#3a6898'],
+      dusk:  ['#0c040e', '#1c0808', '#2e1018'],
+    };
+    const sc = SKY[phase];
 
     // Window frame (dark metal)
     ctx.fillStyle = '#1a1a24';
     ctx.fillRect(wx - 8, wy - 6, ww + 16, wh + 12);
-    // Metal cross-bar and sill
     ctx.fillStyle = '#242430';
     ctx.fillRect(wx - 4, wy - 2, ww + 8, wh + 6);
 
-    // Glass — night sky gradient
+    // Glass — sky gradient
     const skyGrad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
-    skyGrad.addColorStop(0,   '#05080e');
-    skyGrad.addColorStop(0.6, '#080d1a');
-    skyGrad.addColorStop(1,   '#0c1828');
+    skyGrad.addColorStop(0,   sc[0]);
+    skyGrad.addColorStop(0.6, sc[1]);
+    skyGrad.addColorStop(1,   sc[2]);
     ctx.fillStyle = skyGrad;
     ctx.fillRect(wx, wy, ww, wh);
 
-    // City glow on horizon
-    const horizGlow = ctx.createRadialGradient(wx + ww * 0.5, wy + wh * 0.82, 0, wx + ww * 0.5, wy + wh * 0.82, 180);
-    horizGlow.addColorStop(0, 'rgba(80,120,200,0.12)');
+    // Horizon glow (varies by phase)
+    const horizColors = {
+      night: 'rgba(80,120,200,0.12)',
+      dawn:  'rgba(255,100,40,0.30)',
+      day:   'rgba(180,210,255,0.18)',
+      dusk:  'rgba(255,70,15,0.36)',
+    };
+    const horizGlow = ctx.createRadialGradient(wx + ww * 0.5, wy + wh * 0.82, 0, wx + ww * 0.5, wy + wh * 0.82, 200);
+    horizGlow.addColorStop(0, horizColors[phase]);
     horizGlow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = horizGlow;
     ctx.fillRect(wx, wy, ww, wh);
 
-    // Moon
-    ctx.fillStyle = 'rgba(210,210,170,0.18)';
-    ctx.beginPath(); ctx.arc(wx + ww * 0.82, wy + 28, 14, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(210,210,160,0.12)';
-    ctx.beginPath(); ctx.arc(wx + ww * 0.82, wy + 28, 26, 0, Math.PI * 2); ctx.fill();
+    // Celestial body: moon at night, sun at others
+    if (phase === 'night') {
+      ctx.fillStyle = 'rgba(210,210,170,0.18)';
+      ctx.beginPath(); ctx.arc(wx + ww * 0.82, wy + 28, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(210,210,160,0.12)';
+      ctx.beginPath(); ctx.arc(wx + ww * 0.82, wy + 28, 26, 0, Math.PI * 2); ctx.fill();
+    } else if (phase === 'dawn') {
+      // Sun just cresting the skyline, left side
+      const sy = wy + wh * 0.76;
+      const sg = ctx.createRadialGradient(wx + ww * 0.22, sy, 0, wx + ww * 0.22, sy, 90);
+      sg.addColorStop(0, 'rgba(255,180,50,0.65)');
+      sg.addColorStop(0.4, 'rgba(255,80,15,0.28)');
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg; ctx.fillRect(wx, wy, ww, wh);
+      ctx.fillStyle = 'rgba(255,210,90,0.92)';
+      ctx.beginPath(); ctx.arc(wx + ww * 0.22, sy, 13, 0, Math.PI * 2); ctx.fill();
+    } else if (phase === 'day') {
+      // Sun high in the blue sky
+      const sg = ctx.createRadialGradient(wx + ww * 0.72, wy + 38, 0, wx + ww * 0.72, wy + 38, 60);
+      sg.addColorStop(0, 'rgba(255,252,220,0.65)');
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg; ctx.fillRect(wx, wy, ww, wh);
+      ctx.fillStyle = 'rgba(255,255,225,0.96)';
+      ctx.beginPath(); ctx.arc(wx + ww * 0.72, wy + 38, 14, 0, Math.PI * 2); ctx.fill();
+    } else { // dusk
+      const sy = wy + wh * 0.70;
+      const sg = ctx.createRadialGradient(wx + ww * 0.62, sy, 0, wx + ww * 0.62, sy, 110);
+      sg.addColorStop(0, 'rgba(255,110,20,0.62)');
+      sg.addColorStop(0.45, 'rgba(200,30,10,0.28)');
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg; ctx.fillRect(wx, wy, ww, wh);
+      ctx.fillStyle = 'rgba(255,155,35,0.92)';
+      ctx.beginPath(); ctx.arc(wx + ww * 0.62, sy, 17, 0, Math.PI * 2); ctx.fill();
+    }
 
     // Clip drawing to glass pane
     ctx.save();
@@ -656,9 +709,11 @@
     ctx.rect(wx, wy, ww, wh);
     ctx.clip();
 
-    // Building silhouettes (back-to-front layers)
+    // Building silhouettes — darker/lighter by phase
+    const bFar = phase === 'day' ? '#0e1a36' : '#06080e';
+    const bMid = phase === 'day' ? '#121e3e' : '#080c14';
+
     const buildings = [
-      // far: short, narrow
       {x:0,   w:38, h:0.48}, {x:42,  w:22, h:0.38}, {x:66,  w:28, h:0.56},
       {x:97,  w:18, h:0.32}, {x:118, w:40, h:0.46}, {x:161, w:22, h:0.60},
       {x:187, w:18, h:0.40}, {x:210, w:34, h:0.52}, {x:247, w:20, h:0.36},
@@ -667,11 +722,10 @@
     ];
     buildings.forEach(b => {
       const bh = Math.floor(wh * b.h);
-      ctx.fillStyle = '#06080e';
+      ctx.fillStyle = bFar;
       ctx.fillRect(wx + b.x, wy + wh - bh, b.w, bh);
     });
 
-    // Mid-ground buildings (taller)
     const midBuildings = [
       {x:10,  w:32, h:0.72}, {x:55,  w:26, h:0.58}, {x:92,  w:20, h:0.68},
       {x:150, w:38, h:0.82}, {x:198, w:16, h:0.62}, {x:224, w:42, h:0.76},
@@ -679,21 +733,31 @@
     ];
     midBuildings.forEach(b => {
       const bh = Math.floor(wh * b.h);
-      ctx.fillStyle = '#080c14';
+      ctx.fillStyle = bMid;
       ctx.fillRect(wx + b.x, wy + wh - bh, b.w, bh);
     });
 
-    // Building windows (lit up)
+    // Building windows — dim during day, bright at night
+    const winBase = phase === 'day' ? 0.06 : 0.30;
     for (let i = 0; i < 90; i++) {
       const bx2 = wx + 4 + (i * 67 % (ww - 8));
       const by2 = wy + 30 + (i * 53 % (wh - 50));
-      const alpha = 0.3 + (i % 5) * 0.12;
+      const alpha = winBase + (i % 5) * (phase === 'day' ? 0.02 : 0.10);
       const warm = i % 3 === 0;
       ctx.fillStyle = warm ? `rgba(255,230,150,${alpha})` : `rgba(180,210,255,${alpha})`;
       ctx.fillRect(bx2, by2, 2, 3);
     }
 
-    // Rain streaks (subtle, animated)
+    // Clouds (day + dawn + dusk)
+    if (phase !== 'night') {
+      const cloudAlpha = phase === 'day' ? 0.18 : 0.10;
+      ctx.fillStyle = phase === 'day' ? `rgba(180,210,255,${cloudAlpha})` : `rgba(255,160,100,${cloudAlpha})`;
+      [[wx + 38, wy + 50, 52, 18], [wx + 148, wy + 33, 66, 20], [wx + 248, wy + 60, 50, 15]].forEach(([cx2, cy2, cw2, ch2]) => {
+        ctx.beginPath(); ctx.ellipse(cx2, cy2, cw2, ch2, 0, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+
+    // Rain streaks (always — it's always raining up here)
     const rOffset = (frame * 4) % wh;
     ctx.strokeStyle = 'rgba(150,180,220,0.06)';
     ctx.lineWidth = 0.6;
@@ -823,7 +887,7 @@
 
   // ── MONET PAINTING ───────────────────────────────────────────────────────────
   function drawMonet() {
-    const mx = 618, my = 106, mw = 158, mh = 126;
+    const mx = 563, my = 106, mw = 140, mh = 114;
     const hov = hoveredZone && hoveredZone.id === 'monet';
 
     // Gold ornate frame
@@ -832,7 +896,7 @@
     frameGrad.addColorStop(0.5, '#e8c860');
     frameGrad.addColorStop(1, '#a88828');
     ctx.fillStyle = frameGrad;
-    rrect(mx - 10, my - 10, mw + 20, mh + 26, 2);
+    rrect(mx - 10, my - 10, mw + 20, mh + 24, 2);
     ctx.fill();
     // Inner frame bevel
     ctx.fillStyle = '#8a6820';
@@ -849,35 +913,35 @@
 
     // Water shimmer
     ctx.fillStyle = 'rgba(100,160,200,0.3)';
-    ctx.beginPath(); ctx.ellipse(mx + 50, my + 80, 40, 12, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 44, my + 72, 36, 11, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = 'rgba(80,140,180,0.25)';
-    ctx.beginPath(); ctx.ellipse(mx + 115, my + 90, 35, 10, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 102, my + 82, 31, 9, 0, 0, Math.PI*2); ctx.fill();
 
     // Lily pads
     ctx.fillStyle = '#2d6e2d';
-    ctx.beginPath(); ctx.ellipse(mx + 38, my + 78, 18, 8, 0.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 34, my + 70, 16, 7, 0.2, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#1e5a1e';
-    ctx.beginPath(); ctx.ellipse(mx + 110, my + 88, 22, 9, -0.1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 97, my + 80, 20, 8, -0.1, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#285228';
-    ctx.beginPath(); ctx.ellipse(mx + 70, my + 95, 14, 6, 0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 62, my + 86, 12, 5, 0.3, 0, Math.PI*2); ctx.fill();
 
     // Flowers
     ctx.fillStyle = '#f0c8d0';
-    ctx.beginPath(); ctx.ellipse(mx + 38, my + 72, 6, 4, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 34, my + 65, 5, 4, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#f8d8e0';
-    ctx.beginPath(); ctx.ellipse(mx + 110, my + 82, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 97, my + 74, 6, 5, 0, 0, Math.PI*2); ctx.fill();
 
     // Impressionist dabs (trees/sky)
     ctx.fillStyle = 'rgba(140,190,140,0.4)';
-    ctx.beginPath(); ctx.ellipse(mx + 20, my + 40, 15, 28, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 18, my + 36, 13, 25, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = 'rgba(100,160,120,0.35)';
-    ctx.beginPath(); ctx.ellipse(mx + 140, my + 35, 14, 30, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 124, my + 32, 13, 27, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = 'rgba(180,220,200,0.2)';
-    ctx.beginPath(); ctx.ellipse(mx + 80, my + 30, 35, 18, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mx + 70, my + 27, 32, 16, 0, 0, Math.PI*2); ctx.fill();
 
     // Nameplate
     ctx.fillStyle = '#a88828';
-    ctx.fillRect(mx + mw/2 - 38, my + mh + 6, 76, 12);
+    ctx.fillRect(mx + mw/2 - 36, my + mh + 6, 72, 12);
     ctx.fillStyle = '#1a1208';
     ctx.font = '6px serif'; ctx.textAlign = 'center';
     ctx.fillText('Nymphéas — C. Monet, c. 1906', mx + mw/2, my + mh + 14);
@@ -886,14 +950,14 @@
     if (hov) {
       ctx.strokeStyle = 'rgba(200,168,64,0.7)';
       ctx.lineWidth = 2;
-      rrect(mx - 11, my - 11, mw + 22, mh + 28, 3);
+      rrect(mx - 11, my - 11, mw + 22, mh + 26, 3);
       ctx.stroke();
     }
   }
 
   // ── MOTIVATIONAL POSTER ──────────────────────────────────────────────────────
   function drawPoster() {
-    const px = 750, py = 108, pw = 126, ph = 170;
+    const px = 760, py = 108, pw = 126, ph = 170;
     const hov = hoveredZone && hoveredZone.id === 'poster';
 
     // Black frame
@@ -1318,7 +1382,7 @@
   // ── GUITAR (leaning against back wall, between window and Monet) ─────────────
   function drawGuitar() {
     const hov = hoveredZone && hoveredZone.id === 'guitar';
-    const gx = 521, gy = 118;
+    const gx = 510, gy = 118;
 
     // Smaller — guitar is against back wall (smaller scale)
     const sc = 0.55; // back-wall scale
