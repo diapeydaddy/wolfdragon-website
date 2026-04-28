@@ -627,7 +627,7 @@
 
     // ── CLICK ZONES (logical coords, scale handled on click) ───
     const ZONES = [
-      { id:'phone',   x:593, y:270, w:78,  h:90,  label:'Phone (6 New Voicemails)',  cursor:'pointer' },
+      { id:'phone',   x:605, y:285, w:72,  h:64,  label:'Phone (6 New Voicemails)',  cursor:'pointer' },
       { id:'laundry', x:20,  y:390, w:190, h:120, label:'Laundry Pile',              cursor:'pointer' },
       { id:'pizza',   x:215, y:400, w:100, h:80,  label:'Pizza Boxes',               cursor:'pointer' },
       { id:'hat',     x:740, y:310, w:110, h:180, label:'Magic Hat & Wand',           cursor:'pointer' },
@@ -1246,160 +1246,102 @@
     }
 
     function drawPhone() {
-      // Old-school desk/digital phone on right side of table
-      // Table top is at ty=348; phone base sits on it
-      const tx = 310, ty = 348;
-      const px = tx + 286,  // left edge of phone body
-            py = ty - 62,   // top of phone body (62px tall body)
-            pw = 72,
-            ph = 62;
+      // Answering machine on right side of desk table
+      // Table top at tx=310, ty=348, tw=380 → right area of table x≈605-677
+      const px = 605, py = 285, pw = 72, ph = 64;
+      const ledOn = Math.floor(frame / 28) % 2 === 0;
 
-      const ledOn = Math.floor(frame / 30) % 2 === 0;
+      // ── Drop shadow ──
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      rrect(px + 3, py + ph - 2, pw, 7, 3);
+      ctx.fill();
 
-      // ── Phone body ──
-      const bodyGrad = ctx.createLinearGradient(px, py, px, py + ph);
-      bodyGrad.addColorStop(0, '#2a2830');
-      bodyGrad.addColorStop(1, '#1a1820');
-      rrect(px, py, pw, ph, 4);
+      // ── Phone body (chunky answering machine shape) ──
+      const bodyGrad = ctx.createLinearGradient(px, py, px + pw, py + ph);
+      bodyGrad.addColorStop(0, '#353240');
+      bodyGrad.addColorStop(0.5, '#28262f');
+      bodyGrad.addColorStop(1, '#1e1c24');
+      rrect(px, py, pw, ph, 5);
       ctx.fillStyle = bodyGrad; ctx.fill();
-      ctx.strokeStyle = '#3a3848'; ctx.lineWidth = 1; ctx.stroke();
-      // Body edge highlight
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(px + 4, py + 1); ctx.lineTo(px + pw - 4, py + 1); ctx.stroke();
+      ctx.strokeStyle = '#4a4660'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Top sheen
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      rrect(px + 2, py + 2, pw - 4, 10, 3);
+      ctx.fill();
 
-      // ── Handset cradle (top of phone body) ──
-      ctx.fillStyle = '#20202a';
-      ctx.fillRect(px + 6, py - 6, pw - 12, 12);
-      ctx.fillStyle = '#181820';
-      ctx.fillRect(px + 8, py - 5, pw - 16, 10);
-      // Handset itself — a gentle arc sitting in the cradle
-      ctx.strokeStyle = '#4a4858'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(px + 10, py - 2);
-      ctx.bezierCurveTo(px + 14, py - 18, px + pw - 14, py - 18, px + pw - 10, py - 2);
-      ctx.stroke();
-      ctx.strokeStyle = '#5a5870'; ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(px + 10, py - 2);
-      ctx.bezierCurveTo(px + 14, py - 18, px + pw - 14, py - 18, px + pw - 10, py - 2);
-      ctx.stroke();
-      // Ear/mouth caps on handset
-      ctx.fillStyle = '#383848';
-      ctx.beginPath(); ctx.ellipse(px + 10, py - 2, 7, 6, -0.2, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(px + pw - 10, py - 2, 7, 6, 0.2, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#484860';
-      ctx.beginPath(); ctx.ellipse(px + 10, py - 2, 5, 4, -0.2, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(px + pw - 10, py - 2, 5, 4, 0.2, 0, Math.PI*2); ctx.fill();
-
-      // ── LCD display (small, green-tint) ──
-      const lcdX = px + 8, lcdY = py + 6, lcdW = pw - 16, lcdH = 14;
-      ctx.fillStyle = '#1a2214'; ctx.fillRect(lcdX, lcdY, lcdW, lcdH);
-      ctx.fillStyle = '#0e1a0e'; ctx.fillRect(lcdX + 1, lcdY + 1, lcdW - 2, lcdH - 2);
-      // LCD text
-      ctx.fillStyle = ledOn ? '#44cc44' : '#336633';
-      ctx.font = '6px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(ledOn ? '▶ 6 MSGS' : '  6 MSGS', lcdX + lcdW/2, lcdY + 9);
+      // ── Amber LCD strip (narrow, top portion) ──
+      const lcdX = px + 7, lcdY = py + 7, lcdW = 40, lcdH = 13;
+      ctx.fillStyle = '#1a1a08';
+      rrect(lcdX, lcdY, lcdW, lcdH, 2);
+      ctx.fill();
+      ctx.fillStyle = '#0e0e04';
+      rrect(lcdX + 1, lcdY + 1, lcdW - 2, lcdH - 2, 1);
+      ctx.fill();
+      // LCD label & count in amber
+      ctx.fillStyle = ledOn ? '#ffaa22' : '#664400';
+      ctx.font = 'bold 7px monospace';
       ctx.textAlign = 'left';
+      ctx.fillText('MSG:', lcdX + 3, lcdY + 9);
+      ctx.fillStyle = ledOn ? '#ffcc44' : '#775500';
+      ctx.font = 'bold 8px monospace';
+      ctx.fillText('6', lcdX + 26, lcdY + 9);
 
-      // ── Blinking red voicemail LED ──
-      ctx.fillStyle = ledOn ? '#ff1a33' : '#3a0010';
-      ctx.beginPath(); ctx.arc(px + pw - 9, py + 9, 4, 0, Math.PI*2); ctx.fill();
+      // ── Blinking RED voicemail LED (right of LCD) ──
+      const ledX = px + pw - 13, ledY = py + 13;
+      ctx.fillStyle = ledOn ? '#ff1a2e' : '#2a0008';
+      ctx.beginPath(); ctx.arc(ledX, ledY, 5, 0, Math.PI*2); ctx.fill();
       if (ledOn) {
-        const glow = ctx.createRadialGradient(px+pw-9, py+9, 0, px+pw-9, py+9, 10);
-        glow.addColorStop(0, 'rgba(255,30,60,0.5)');
+        const glow = ctx.createRadialGradient(ledX, ledY, 0, ledX, ledY, 12);
+        glow.addColorStop(0, 'rgba(255,20,40,0.6)');
         glow.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = glow;
-        ctx.beginPath(); ctx.arc(px+pw-9, py+9, 10, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ledX, ledY, 12, 0, Math.PI*2); ctx.fill();
       }
+      // LED label
+      ctx.fillStyle = ledOn ? '#ff6680' : '#442233';
+      ctx.font = '5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('NEW', ledX, ledY + 8);
+      ctx.textAlign = 'left';
 
-      // ── Dialpad (3×4 grid) ──
+      // ── Dialpad (3×4 grid, lower-left portion) ──
       const dialKeys = ['1','2','3','4','5','6','7','8','9','*','0','#'];
-      const btnW = 14, btnH = 9, btnGapX = 4, btnGapY = 3;
-      const padLeft = px + 8, padTop = py + 25;
+      const btnW = 12, btnH = 8, btnGapX = 3, btnGapY = 2;
+      const padLeft = px + 5, padTop = py + 26;
       dialKeys.forEach((k, i) => {
         const col = i % 3, row = Math.floor(i / 3);
         const bx = padLeft + col * (btnW + btnGapX);
         const by = padTop  + row * (btnH + btnGapY);
-        // Button body
         const btnGrad = ctx.createLinearGradient(bx, by, bx, by + btnH);
-        btnGrad.addColorStop(0, '#3a3848');
-        btnGrad.addColorStop(1, '#28262e');
+        btnGrad.addColorStop(0, '#48445a');
+        btnGrad.addColorStop(1, '#302d3a');
         rrect(bx, by, btnW, btnH, 2);
         ctx.fillStyle = btnGrad; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.5; ctx.stroke();
-        // Button highlight
-        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 0.5; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
         ctx.fillRect(bx + 1, by + 1, btnW - 2, 2);
-        // Key label
-        ctx.fillStyle = '#aaa8c0';
-        ctx.font = k === '*' || k === '#' ? '7px monospace' : 'bold 7px monospace';
+        ctx.fillStyle = '#c8c4de';
+        ctx.font = 'bold 6px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(k, bx + btnW/2, by + btnH - 2);
+        ctx.fillText(k, bx + btnW / 2, by + btnH - 1);
         ctx.textAlign = 'left';
       });
 
-      // ── Speaker grille (top-right of body) ──
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      for (let i = 0; i < 4; i++) {
-        ctx.beginPath(); ctx.arc(px + pw - 18 + i * 0, py + 27 + i * 5, 1.5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(px + pw - 14 + i * 0, py + 27 + i * 5, 1.5, 0, Math.PI*2); ctx.fill();
+      // ── Speaker grille (right side, lower) ──
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 2; c++) {
+          ctx.beginPath();
+          ctx.arc(px + pw - 18 + c * 7, py + 30 + r * 8, 1.8, 0, Math.PI*2);
+          ctx.fill();
+        }
       }
 
       // ── Hover glow ──
       if (hoveredZone && hoveredZone.id === 'phone') {
-        ctx.strokeStyle = 'rgba(180,80,255,0.55)';
+        ctx.strokeStyle = 'rgba(180,80,255,0.65)';
         ctx.lineWidth = 2;
-        rrect(px - 3, py - 24, pw + 6, ph + 27, 5);
-        ctx.stroke();
-      }
-    }
-
-    function drawPhone(phoneGlow) {
-      const phx = 415, phy = 292, phw = 78, phh = 52;
-
-      // Phone body
-      rrect(phx, phy, phw, phh, 5);
-      const phoneGrad = ctx.createLinearGradient(phx, phy, phx, phy + phh);
-      phoneGrad.addColorStop(0, '#1a1a2a');
-      phoneGrad.addColorStop(1, '#0e0e1a');
-      ctx.fillStyle = phoneGrad; ctx.fill();
-      ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1; ctx.stroke();
-
-      // Screen
-      ctx.fillStyle = phoneGlow ? '#1a0828' : '#060610';
-      ctx.fillRect(phx + 8, phy + 8, phw - 16, phh - 16);
-
-      if (phoneGlow) {
-        ctx.fillStyle = '#aa44ff';
-        ctx.font = 'bold 8px Oswald';
-        ctx.textAlign = 'center';
-        ctx.fillText('6 NEW', phx + phw/2, phy + phh/2 + 2);
-        ctx.textAlign = 'left';
-      } else {
-        ctx.fillStyle = '#552266';
-        ctx.font = '7px Oswald';
-        ctx.textAlign = 'center';
-        ctx.fillText('6 NEW', phx + phw/2, phy + phh/2 + 2);
-        ctx.textAlign = 'left';
-      }
-
-      // Notification LED
-      const ledOn = phoneGlow || (Math.floor(frame / 28) % 2 === 0);
-      ctx.fillStyle = ledOn ? '#ff2244' : '#330011';
-      ctx.beginPath(); ctx.arc(phx + phw - 8, phy + 6, 4, 0, Math.PI*2); ctx.fill();
-      if (ledOn) {
-        const ledGlow = ctx.createRadialGradient(phx + phw - 8, phy + 6, 0, phx + phw - 8, phy + 6, 12);
-        ledGlow.addColorStop(0, 'rgba(255,50,80,0.35)');
-        ledGlow.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = ledGlow;
-        ctx.beginPath(); ctx.arc(phx + phw - 8, phy + 6, 12, 0, Math.PI*2); ctx.fill();
-      }
-
-      if (hoveredZone && hoveredZone.id === 'phone') {
-        ctx.strokeStyle = 'rgba(200,100,255,0.6)';
-        ctx.lineWidth = 2;
-        rrect(phx - 3, phy - 3, phw + 6, phh + 6, 7);
+        rrect(px - 3, py - 3, pw + 6, ph + 6, 7);
         ctx.stroke();
       }
     }
@@ -1590,11 +1532,10 @@
       if (lichState === 'teleport') return; // no bubble while teleporting
       const depthScale = 0.72 + (lichDepthY - 420) / (485 - 420) * 0.28;
       const DRAW_W = Math.floor(180 * depthScale);
-      const DRAW_H = Math.floor(Math.floor(90 * (SPR.sh / SPR.sw)) * depthScale);
+      const DRAW_H = Math.floor(Math.floor(180 * (SPR.sh / SPR.sw)) * depthScale);
       const bubX = lichX + DRAW_W / 2;
-      // Push bubble well above the sprite — head is roughly top 25% of image
-      const headTop = lichDepthY - DRAW_H + Math.floor(DRAW_H * 0.08);
-      const bubY = headTop - 20;
+      // Tail tip sits 12px above the very top of the sprite image
+      const bubY = lichDepthY - DRAW_H - 12;
       const text = SPEECHES[speechIdx];
       if (!text) return;
 
@@ -1622,7 +1563,7 @@
       const bh = lines.length * lineH + padY * 2;
       let bx = bubX - bw/2;
       bx = Math.max(8, Math.min(W - bw - 8, bx));
-      const by = bubY - bh - 18;
+      const by = Math.max(8, bubY - bh - 18);
 
       // Tail
       ctx.fillStyle = 'rgba(10,4,18,0.92)';
