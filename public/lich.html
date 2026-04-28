@@ -1410,7 +1410,7 @@
     function drawLich() {
       // Depth-based scale: 0.72 at back (lichDepthY=420), 1.0 at front (lichDepthY=485)
       const depthScale = 0.72 + (lichDepthY - 420) / (485 - 420) * 0.28;
-      const BASE_W = 90, BASE_H = Math.floor(90 * (SPR.sh / SPR.sw));
+      const BASE_W = 180, BASE_H = Math.floor(180 * (SPR.sh / SPR.sw));
       const DRAW_W = Math.floor(BASE_W * depthScale);
       const DRAW_H = Math.floor(BASE_H * depthScale);
       const DRAW_X = lichX;
@@ -1473,7 +1473,7 @@
     function drawSpeechBubble() {
       if (lichState === 'teleport') return; // no bubble while teleporting
       const depthScale = 0.72 + (lichDepthY - 420) / (485 - 420) * 0.28;
-      const DRAW_W = Math.floor(90 * depthScale);
+      const DRAW_W = Math.floor(180 * depthScale);
       const DRAW_H = Math.floor(Math.floor(90 * (SPR.sh / SPR.sw)) * depthScale);
       const bubX = lichX + DRAW_W / 2;
       const bubY = lichDepthY - DRAW_H - 8;
@@ -1531,16 +1531,17 @@
 
     // ── OBSTACLE HELPERS ─────────────────────────────────────────
     // Returns max allowed lichDepthY for a given lichX (to avoid furniture)
+    // Lich is now ~180px wide at full scale — right-edge checks use x+180
     function maxDepthForX(x) {
-      if (x > 310 && x < 700) return 432;  // table blocks close approach
-      if (x > 740 && x < 860) return 448;  // hat stand
-      if (x > 840)             return 452;  // TV
+      if (x > 210 && x < 540) return 432;  // table zone — keep behind it
+      if (x > 560 && x < 740) return 448;  // hat stand approach
+      if (x > 700)             return 452;  // TV area
       return 485;
     }
-    // Returns [minX, maxX] allowed for a given depth
+    // Returns [minX, maxX] for left-edge of sprite given current depth
     function xRangeForDepth(depthY) {
-      if (depthY < 440) return [140, 680]; // behind table — wider range but table ends at 690
-      return [60, 700];                    // closer — full floor minus hat/TV side
+      if (depthY < 440) return [60, 520];  // back: wide range, table doesn't block yet
+      return [40, 500];                    // close: tighter — sprite is 180px, avoid hat stand
     }
 
     // ── MAIN LOOP ────────────────────────────────────────────────
@@ -1561,9 +1562,9 @@
         // Phase 0 (frames 0-29): flash out at current position
         // Phase 1 (frames 30-59): flash in at new position
         if (lichStateT === 15) {
-          // Teleport! Jump to opposite side
-          lichX = lichDir === 1 ? 80 : 580;
-          lichDepthY = 420 + Math.random() * 55;
+          // Teleport! Jump to opposite side (safe zones away from furniture)
+          lichX = lichDir === 1 ? 50 : 450;
+          lichDepthY = 420 + Math.random() * 40;
           lichDir = -lichDir;
           lichTelePhase = 1;
         }
