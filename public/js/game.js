@@ -2798,6 +2798,17 @@
         msg = '★ BOSS DEFEATED ★'; msgT = 220;
         burst(W/2, H/2, '#ffcc00', 40, 10);
         gs.level++;
+        // Save boss key to localStorage for world exploration
+        (function(){
+          const bossType = bossTypeForWave();
+          const keyMap = { spider:'spiderKey', lich:'lichKey', apocalyptic:'apocKey' };
+          const keyName = keyMap[bossType];
+          if(keyName){
+            const saved = JSON.parse(localStorage.getItem('wolfdragon_keys')||'{}');
+            saved[keyName] = true;
+            localStorage.setItem('wolfdragon_keys', JSON.stringify(saved));
+          }
+        })();
         // Instant loot drops (collect while reward screen shows)
         drops.push({x: W/2 - 40, y: ROW_Y[0], row: 0, type:'bighealth', life:900});
         drops.push({x: W/2 + 20, y: ROW_Y[0], row: 0, type:'fullspell', life:900});

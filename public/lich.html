@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lich's Apartment — WOLFDRAGON</title>
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&family=Oswald:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:      #7722cc;
+      --purple-dark: #3a0066;
+      --purple-glow: #aa44ff;
+      --black:       #0a0a0a;
+      --black-soft:  #111111;
+      --white:       #f0f0f0;
+      --cream:       #e8e0cc;
+      --font-title:  'Metal Mania', cursive;
+      --font-body:   'Oswald', sans-serif;
+      --font-hand:   'Special Elite', cursive;
+    }
+
+    html, body {
+      background: #0a0a14;
+      color: var(--white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV BAR ── */
+    .room-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 52px;
+      background: #0a0a14;
+      border-bottom: 2px solid #2a0044;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-home {
+      color: var(--purple-glow);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      transition: opacity 0.15s;
+    }
+    .nav-home:hover { opacity: 1; }
+
+    .room-title {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      color: var(--purple-glow);
+      letter-spacing: 0.15em;
+      text-shadow: 0 0 12px var(--purple);
+    }
+
+    .key-display {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .key-badge {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      border: 1px solid #441166;
+      border-radius: 2px;
+      color: #664488;
+      text-transform: uppercase;
+    }
+
+    .key-badge.unlocked {
+      border-color: var(--purple-glow);
+      color: var(--purple-glow);
+      text-shadow: 0 0 8px var(--purple);
+    }
+
+    /* ── MAIN CANVAS AREA ── */
+    .room-main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      cursor: default;
+    }
+
+    #room-canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: auto;
+    }
+
+    .hint-bar {
+      width: 100%;
+      max-width: 1000px;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: #554466;
+      text-transform: uppercase;
+      background: #07070f;
+      border-top: 1px solid #1a0033;
+    }
+
+    /* ── CLICK HINT TOOLTIP ── */
+    #hover-hint {
+      position: absolute;
+      background: rgba(20,0,30,0.92);
+      border: 1px solid var(--purple);
+      color: var(--purple-glow);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      padding: 5px 12px;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ── MODAL BASE ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: #0e0a16;
+      border: 2px solid var(--purple);
+      box-shadow: 0 0 40px rgba(119,34,204,0.4);
+      max-width: 580px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 28px 28px 24px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: none;
+      border: 1px solid #441166;
+      color: var(--purple-glow);
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: var(--purple-dark); }
+
+    .modal-title {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      color: var(--purple-glow);
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 12px var(--purple);
+    }
+
+    /* ── VOICEMAIL MODAL ── */
+    .vm-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .vm-item {
+      background: #150a20;
+      border: 1px solid #2a1045;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .vm-item:hover { border-color: var(--purple); background: #1e1030; }
+    .vm-item.playing { border-color: var(--purple-glow); background: #1e0840; }
+
+    .vm-from {
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple-glow);
+      margin-bottom: 6px;
+    }
+
+    .vm-text {
+      font-family: var(--font-hand);
+      font-size: 0.92rem;
+      color: var(--cream);
+      line-height: 1.5;
+    }
+
+    .vm-duration {
+      font-size: 0.68rem;
+      color: #664488;
+      letter-spacing: 0.1em;
+      margin-top: 6px;
+    }
+
+    /* ── INSPECT MODAL ── */
+    .inspect-content {
+      font-family: var(--font-hand);
+      font-size: 1rem;
+      color: var(--cream);
+      line-height: 1.6;
+    }
+
+    .inspect-icon {
+      font-size: 3rem;
+      text-align: center;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    /* ── BULLETIN BOARD MODAL ── */
+    .board-items { display: flex; flex-direction: column; gap: 14px; }
+    .board-paper {
+      background: #f5f0e4;
+      color: #2a1a08;
+      padding: 14px 16px;
+      font-family: var(--font-hand);
+      font-size: 0.88rem;
+      line-height: 1.5;
+      position: relative;
+      border-left: 3px solid #cc2222;
+    }
+    .board-paper.nice { border-left-color: #2255aa; }
+    .board-paper .paper-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #aa3300;
+      margin-bottom: 6px;
+    }
+    .board-paper.nice .paper-title { color: #2244aa; }
+
+    /* ── CALENDAR MODAL ── */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-bottom: 16px;
+    }
+    .cal-day-header {
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: #664488;
+      text-align: center;
+      padding: 4px 0;
+      text-transform: uppercase;
+    }
+    .cal-day {
+      background: #150a20;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 6px 2px;
+      color: #998aaa;
+      position: relative;
+    }
+    .cal-day.crossed { color: #441144; }
+    .cal-day.crossed::after {
+      content: '✗';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #882222;
+      font-size: 1.1rem;
+    }
+    .cal-day.gig {
+      background: #1e0840;
+      color: var(--purple-glow);
+      border: 1px solid var(--purple);
+    }
+    .cal-note {
+      font-size: 0.72rem;
+      font-family: var(--font-hand);
+      color: var(--cream);
+      background: #0e0820;
+      padding: 8px 12px;
+      border-left: 2px solid var(--purple);
+      margin-top: 4px;
+    }
+
+    /* ── FOOTER ── */
+    .room-footer {
+      background: #07070f;
+      text-align: center;
+      padding: 20px;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      color: #332244;
+      border-top: 1px solid #1a0033;
+    }
+    .room-footer a {
+      color: var(--purple);
+      text-decoration: none;
+    }
+    .room-footer a:hover { color: var(--purple-glow); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a14; }
+    ::-webkit-scrollbar-thumb { background: var(--purple-dark); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+    @media (max-width: 600px) {
+      .room-nav { padding: 0 12px; }
+      .room-title { font-size: 0.9rem; }
+      .key-display { display: none; }
+      .modal-box { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── NAV ── -->
+  <nav class="room-nav">
+    <a class="nav-home" href="/">← Back to World</a>
+    <span class="room-title">Lich's Apartment</span>
+    <div class="key-display" id="key-display">
+      <span class="key-badge" id="lich-key-badge">Lich Key</span>
+    </div>
+  </nav>
+
+  <!-- ── CANVAS ── -->
+  <main class="room-main">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <canvas id="room-canvas" width="1000" height="560"></canvas>
+      <div id="hover-hint"></div>
+    </div>
+    <div class="hint-bar">Click items to interact &nbsp;·&nbsp; Mouse over to explore</div>
+  </main>
+
+  <!-- ── VOICEMAIL MODAL ── -->
+  <div class="modal-overlay" id="vm-modal">
+    <div class="modal-box">
+      <button class="modal-close" data-modal="vm-modal">✕</button>
+      <div class="modal-title">📱 Voicemails (6 New)</div>
+      <div class="vm-list">
+        <div class="vm-item" data-vm="0">
+          <div class="vm-from">📞 Mom — Today, 9:14 AM</div>
+          <div class="vm-text">"Sweetie, it's Mom! Just checking in. Did you eat today? I made soup — I can drive it over! You know it's no trouble. Call me back. Love you! Bye!"</div>
+          <div class="vm-duration">0:14</div>
+        </div>
+        <div class="vm-item" data-vm="1">
+          <div class="vm-from">📞 Mom — Today, 11:47 AM</div>
+          <div class="vm-text">"It's Mom again. I saw on the Facebook that you have another show this weekend? I told Mrs. Patterson and she got very excited. She said she might come! I told her to call you. Did she call you? ... Anyway. Call me."</div>
+          <div class="vm-duration">0:22</div>
+        </div>
+        <div class="vm-item" data-vm="2">
+          <div class="vm-from">📞 Mom — Today, 2:30 PM</div>
+          <div class="vm-text">"Honey, it's me. Your sister says you're not returning her calls either. We are NOT mad, we are just WORRIED. Is the apartment okay? Did you ever fix that leaky faucet? The mold, honey — do NOT ignore mold. CALL ME."</div>
+          <div class="vm-duration">0:19</div>
+        </div>
+        <div class="vm-item" data-vm="3">
+          <div class="vm-from">📞 Mom — Today, 5:58 PM</div>
+          <div class="vm-text">"...It's Mom. It's been three days since you've called back. I'm going to drive over. I made lasagna. Don't tell me not to come, I'm already in the car. I'll be there in forty minutes. I'm bringing the lasagna."</div>
+          <div class="vm-duration">0:17</div>
+        </div>
+        <div class="vm-item" data-vm="4">
+          <div class="vm-from">🌀 Apocalyptic — Yesterday, 11:22 PM</div>
+          <div class="vm-text">"...Yo. It's Apocalyptic. Look. I'm building something BIG right now. World domination situation, very serious, very real. I need a dark magic guy on the team. You have skills, man. Genuine skills. We'd split it... sixty-forty. Think about it. Call me. *long pause* ...miss hanging out, man."</div>
+          <div class="vm-duration">0:28</div>
+        </div>
+        <div class="vm-item" data-vm="5">
+          <div class="vm-from">📋 Continental Collections — 3 Days Ago</div>
+          <div class="vm-text">"This is a message for the individual known as 'The Lich.' This is Continental Collections regarding your outstanding balance of $847.50. Please call us at 1-800-555-0182 to arrange payment. This is an attempt to collect a debt. Have a nice day."</div>
+          <div class="vm-duration">0:11</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INSPECT MODAL ── -->
+  <div class="modal-overlay" id="inspect-modal">
+    <div class="modal-box">
+      <button class="modal-close" data-modal="inspect-modal">✕</button>
+      <span id="inspect-icon" class="inspect-icon"></span>
+      <div class="modal-title" id="inspect-title"></div>
+      <div class="inspect-content" id="inspect-body"></div>
+    </div>
+  </div>
+
+  <!-- ── BULLETIN BOARD MODAL ── -->
+  <div class="modal-overlay" id="board-modal">
+    <div class="modal-box">
+      <button class="modal-close" data-modal="board-modal">✕</button>
+      <div class="modal-title">📌 Bulletin Board</div>
+      <div class="board-items">
+        <div class="board-paper">
+          <div class="paper-title">The Bellagio — Las Vegas, NV · Rejection</div>
+          Thank you for your submission to The Bellagio Entertainment Program. While your application demonstrated clear passion, we are unable to accommodate your act at this time. We wish you the best in your future endeavors.
+          <br><br><em style="font-size:0.78rem;color:#883300">— handwritten in the margin: "Next year."</em>
+        </div>
+        <div class="board-paper">
+          <div class="paper-title">MGM Grand — Talent Relations · Rejection</div>
+          We receive thousands of applications annually and unfortunately cannot offer every performer a slot. Your materials have been reviewed and we will keep them on file for future consideration.
+          <br><br><em style="font-size:0.78rem;color:#883300">— handwritten: "They won't. But they should."</em>
+        </div>
+        <div class="board-paper nice">
+          <div class="paper-title" style="color:#2255aa">The Rusty Nail — Booking Confirmation ✓</div>
+          Hey! We'd love to have you back for the third Friday this month. The crowd really liked the disappearing act last time. Can you do 45 minutes? We can offer $80 + a bar tab.
+          <br><br><em style="font-size:0.78rem;color:#2244aa">— circled with a star. Multiple stars actually.</em>
+        </div>
+        <div class="board-paper nice">
+          <div class="paper-title" style="color:#2255aa">Postcard — Las Vegas Strip, Aerial View</div>
+          <em>On the back, in his own handwriting:</em>
+          <br><br>"One day. The lights, the stage, the real crowd. I'm not even close yet. That's fine. I just need more time and better material. And maybe a new hat."
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CALENDAR MODAL ── -->
+  <div class="modal-overlay" id="cal-modal">
+    <div class="modal-box">
+      <button class="modal-close" data-modal="cal-modal">✕</button>
+      <div class="modal-title">📅 April / May</div>
+
+      <div style="margin-bottom:10px;font-size:0.75rem;letter-spacing:0.12em;color:#664488;text-transform:uppercase">April</div>
+      <div class="cal-grid">
+        <div class="cal-day-header">Su</div><div class="cal-day-header">Mo</div><div class="cal-day-header">Tu</div>
+        <div class="cal-day-header">We</div><div class="cal-day-header">Th</div><div class="cal-day-header">Fr</div>
+        <div class="cal-day-header">Sa</div>
+        <!-- Week 1 -->
+        <div class="cal-day"></div><div class="cal-day"></div><div class="cal-day crossed">1</div>
+        <div class="cal-day crossed">2</div><div class="cal-day crossed">3</div><div class="cal-day crossed">4</div>
+        <div class="cal-day gig">5<br><span style="font-size:0.55rem">Rusty Nail</span></div>
+        <!-- Week 2 -->
+        <div class="cal-day crossed">6</div><div class="cal-day crossed">7</div><div class="cal-day crossed">8</div>
+        <div class="cal-day crossed">9</div><div class="cal-day crossed">10</div><div class="cal-day crossed">11</div>
+        <div class="cal-day crossed">12</div>
+        <!-- Week 3 -->
+        <div class="cal-day crossed">13</div><div class="cal-day crossed">14</div><div class="cal-day crossed">15</div>
+        <div class="cal-day crossed">16</div><div class="cal-day crossed">17</div><div class="cal-day crossed">18</div>
+        <div class="cal-day gig">19<br><span style="font-size:0.55rem">The Tap</span></div>
+        <!-- Week 4 -->
+        <div class="cal-day crossed">20</div><div class="cal-day crossed">21</div><div class="cal-day crossed">22</div>
+        <div class="cal-day crossed">23</div><div class="cal-day crossed">24</div><div class="cal-day crossed">25</div>
+        <div class="cal-day crossed">26</div>
+        <!-- Week 5 -->
+        <div class="cal-day">27</div><div class="cal-day">28</div><div class="cal-day">29</div>
+        <div class="cal-day">30</div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div>
+      </div>
+      <div class="cal-note">Apr 5 — Rusty Nail. 45 min set. NEW: Try the rope trick before card close. DO NOT forget where the second card goes (practice 50x before).</div>
+      <div class="cal-note" style="margin-top:8px">Apr 19 — The Tap Room. Ask Danny if they can fix the lights BEFORE I go on this time. Last month was a disaster.</div>
+
+      <div style="margin:16px 0 10px;font-size:0.75rem;letter-spacing:0.12em;color:#664488;text-transform:uppercase">Upcoming</div>
+      <div class="cal-note">May 3 — Rusty Nail (confirmed) ★</div>
+      <div class="cal-note" style="margin-top:8px">May ?? — Empire Room? (haven't heard back... following up this week)</div>
+    </div>
+  </div>
+
+  <footer class="room-footer">
+    <a href="/">← Return to World</a> &nbsp;·&nbsp; WOLFDRAGON &nbsp;·&nbsp;
+    <span style="color:#221133">All characters fictional</span>
+  </footer>
+
+  <script>
+  (function() {
+    const canvas = document.getElementById('room-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = 1000, H = 560;
+
+    // ── KEY SYSTEM ─────────────────────────────────────────────
+    const wdKeys = JSON.parse(localStorage.getItem('wolfdragon_keys') || '{}');
+    const hasLichKey = wdKeys.lichKey === true;
+    if (hasLichKey) {
+      document.getElementById('lich-key-badge').classList.add('unlocked');
+      document.getElementById('lich-key-badge').textContent = '🔑 Lich Key';
+    }
+
+    // ── LOAD LICH SPRITE ────────────────────────────────────────
+    const lichImg = new Image();
+    lichImg.src = '/images/boss-lich.png';
+    let spriteReady = false;
+    lichImg.onload = () => { spriteReady = true; };
+
+    // LICH_FRONT from game.js: sx=56, sy=71, sw=430, sh=493
+    const SPR = { sx: 56, sy: 71, sw: 430, sh: 493 };
+
+    // ── STATE ───────────────────────────────────────────────────
+    let frame = 0;
+    let lichX = 340;
+    let lichDir = 1;          // 1 = right, -1 = left
+    let lichState = 'walk';   // 'walk', 'idle', 'trick'
+    let lichStateT = 0;
+    let speechIdx = 0;
+    let speechTimer = 0;
+    const SPEECH_INTERVAL = 340;
+
+    let hoveredZone = null;
+    let mouseX = 0, mouseY = 0;
+
+    let rainDrops = [];
+    for (let i = 0; i < 60; i++) {
+      rainDrops.push({ x: Math.random() * 340, y: Math.random() * 230, spd: 2.5 + Math.random() * 1.5 });
+    }
+
+    // City lights (static but twinkle)
+    let cityLights = [];
+    for (let i = 0; i < 70; i++) {
+      cityLights.push({
+        x: 330 + Math.random() * 340,
+        y: 140 + Math.random() * 160,
+        w: 3 + Math.random() * 12,
+        h: 3 + Math.random() * 8,
+        col: ['#ff9922','#ffbb44','#aaddff','#ffeecc','#ff6644','#88aaff'][Math.floor(Math.random()*6)],
+        blink: Math.random() < 0.15,
+        blinkT: Math.floor(Math.random() * 120)
+      });
+    }
+
+    const SPEECHES = [
+      "If I can nail the Metamorphosis illusion, the Empire Room might actually call back...",
+      "Mom called four times today. I'll call her back after I practice this one more time.",
+      "I need to fix that faucet. It's been... three months. Maybe four.",
+      "Vegas. I know everyone says it. But I mean it differently.",
+      "Apocalyptic wants to partner on world domination again. He always does this when he's bored.",
+      "The Rusty Nail crowd was actually INTO it last Friday. Seven people. Five clapped.",
+      "*practices card vanish* ...okay. WHERE did it go.",
+      "If I'm gonna do 45 minutes I need to stop doing the same three tricks in different order.",
+    ];
+
+    // ── CLICK ZONES (logical coords, scale handled on click) ───
+    const ZONES = [
+      { id:'phone',   x:405, y:292, w:90,  h:70,  label:'Phone (6 New Voicemails)',  cursor:'pointer' },
+      { id:'laundry', x:20,  y:390, w:190, h:120, label:'Laundry Pile',              cursor:'pointer' },
+      { id:'pizza',   x:215, y:400, w:100, h:80,  label:'Pizza Boxes',               cursor:'pointer' },
+      { id:'hat',     x:740, y:310, w:110, h:180, label:'Magic Hat & Wand',           cursor:'pointer' },
+      { id:'board',   x:30,  y:120, w:230, h:200, label:'Bulletin Board',             cursor:'pointer' },
+      { id:'tv',      x:840, y:360, w:140, h:120, label:'TV',                         cursor:'pointer' },
+      { id:'calendar',x:750, y:110, w:190, h:200, label:'Calendar',                   cursor:'pointer' },
+      { id:'window',  x:330, y:100, w:340, h:240, label:'Window',                     cursor:'default'  },
+    ];
+
+    const INSPECT_DATA = {
+      laundry: {
+        icon: '🧺',
+        title: 'The Laundry Pile',
+        body: 'Three weeks old, minimum. Maybe four. There\'s definitely a shirt in there from the Rusty Nail gig that needs to go back on before next Friday.\n\nHe knows. He keeps walking past it with intention and then forgetting what he was going to do.'
+      },
+      pizza: {
+        icon: '🍕',
+        title: 'Two Empty Pizza Boxes',
+        body: '"Budget meal" is maybe too generous. They\'re from Friday and Sunday respectively.\n\nHe\'s been meaning to throw them out. The issue is that the recycling is all the way downstairs and sometimes the effort math just doesn\'t add up.'
+      },
+      hat: {
+        icon: '🎩',
+        title: 'Top Hat & Wand',
+        body: '"Got these off Craigslist. Previous owner was a guy named Gerald who was getting out of the magic game. He said the hat had sentimental value and then sold it to me for $22.\n\nI like to think it carries some residual magic. Probably not. But maybe."'
+      },
+      tv: {
+        icon: '📺',
+        title: 'Old CRT Television',
+        body: 'A 24-inch Sony Trinitron from 2003. He got it from his cousin\'s garage.\n\nCurrently playing a documentary about Las Vegas in the 1970s — the golden era of theatrical magic. He\'s seen it four times. He always tells himself he\'s just having it on in the background. He is not having it on in the background.'
+      },
+      window: {
+        icon: '🌧️',
+        title: 'The City at Night',
+        body: 'Rain again. The streetlights blur into long orange smears on the wet asphalt below.\n\nFrom up here the city looks like it has no idea who he is. Which is true. But he\'s working on it.'
+      }
+    };
+
+    // ── CANVAS SCALE ────────────────────────────────────────────
+    function canvasScale() {
+      const rect = canvas.getBoundingClientRect();
+      return { sx: rect.width / W, sy: rect.height / H, rect };
+    }
+
+    function toLogical(ex, ey) {
+      const { sx, sy, rect } = canvasScale();
+      return { lx: (ex - rect.left) / sx, ly: (ey - rect.top) / sy };
+    }
+
+    function zoneAt(lx, ly) {
+      return ZONES.find(z => lx >= z.x && lx <= z.x + z.w && ly >= z.y && ly <= z.y + z.h) || null;
+    }
+
+    // ── DRAWING HELPERS ─────────────────────────────────────────
+    function rrect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawBrickRow(startX, y, rowW, brickW, brickH, offset) {
+      const col1 = 'rgba(255,255,255,0.018)';
+      const col2 = 'rgba(0,0,0,0.09)';
+      ctx.fillStyle = col1;
+      for (let x = startX - offset; x < startX + rowW; x += brickW + 4) {
+        if (x + brickW > startX && x < startX + rowW) {
+          const bx = Math.max(x, startX);
+          const bw = Math.min(x + brickW, startX + rowW) - bx;
+          ctx.fillRect(bx, y, bw, brickH - 2);
+        }
+      }
+      ctx.fillStyle = col2;
+      ctx.fillRect(startX, y + brickH - 2, rowW, 2);
+    }
+
+    // ── MAIN DRAW ────────────────────────────────────────────────
+    function drawRoom() {
+      // ── CEILING ──
+      ctx.fillStyle = '#0a0a16';
+      ctx.fillRect(0, 0, W, 95);
+
+      // Ceiling molding
+      const cmGrad = ctx.createLinearGradient(0, 90, 0, 100);
+      cmGrad.addColorStop(0, '#1a1428');
+      cmGrad.addColorStop(1, '#120e1e');
+      ctx.fillStyle = cmGrad;
+      ctx.fillRect(0, 88, W, 12);
+
+      // ── BACK WALL ──
+      const wallGrad = ctx.createLinearGradient(0, 100, 0, 380);
+      wallGrad.addColorStop(0, '#11111e');
+      wallGrad.addColorStop(1, '#0d0d1a');
+      ctx.fillStyle = wallGrad;
+      ctx.fillRect(0, 100, W, 280);
+
+      // Brick texture (subtle)
+      for (let row = 0; row < 8; row++) {
+        drawBrickRow(0, 100 + row * 35, W, 80, 35, row % 2 === 0 ? 0 : 40);
+      }
+
+      // ── FLOOR ──
+      const floorGrad = ctx.createLinearGradient(0, 380, 0, H);
+      floorGrad.addColorStop(0, '#3a2410');
+      floorGrad.addColorStop(1, '#2c1c0c');
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, 380, W, H - 380);
+
+      // Floor planks
+      ctx.lineWidth = 1;
+      for (let y = 395; y < H; y += 22) {
+        ctx.strokeStyle = `rgba(0,0,0,${0.25 + Math.random() * 0.05})`;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      // Vertical plank breaks
+      [120, 245, 370, 495, 620, 745, 870].forEach(x => {
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, 380); ctx.lineTo(x, H); ctx.stroke();
+      });
+
+      // Baseboard
+      const bbGrad = ctx.createLinearGradient(0, 370, 0, 384);
+      bbGrad.addColorStop(0, '#1e1208');
+      bbGrad.addColorStop(1, '#2a1a0a');
+      ctx.fillStyle = bbGrad;
+      ctx.fillRect(0, 370, W, 14);
+      ctx.fillStyle = 'rgba(255,220,120,0.04)';
+      ctx.fillRect(0, 370, W, 3);
+
+      // ── AMBIENT LIGHT (warm cone from ceiling bulb) ──
+      const bulbX = 500, bulbY = 10;
+      const lightGrad = ctx.createRadialGradient(bulbX, bulbY, 0, bulbX, bulbY, 400);
+      lightGrad.addColorStop(0, 'rgba(255,220,120,0.08)');
+      lightGrad.addColorStop(0.4, 'rgba(255,180,60,0.03)');
+      lightGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = lightGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Purple ambient (Lich's presence)
+      const pGrad = ctx.createRadialGradient(lichX + 50, 380, 0, lichX + 50, 380, 200);
+      pGrad.addColorStop(0, 'rgba(100,30,180,0.06)');
+      pGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = pGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawCeilingLight() {
+      const x = 500, y = 0;
+      // Cord
+      ctx.strokeStyle = '#1a1428';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, 50);
+      ctx.stroke();
+      // Bulb socket
+      ctx.fillStyle = '#2a2238';
+      ctx.fillRect(x - 8, 48, 16, 10);
+      // Bulb shape
+      ctx.fillStyle = `rgba(255,240,180,${0.75 + Math.sin(frame * 0.04) * 0.06})`;
+      ctx.beginPath();
+      ctx.ellipse(x, 66, 11, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Glow
+      const gGrad = ctx.createRadialGradient(x, 66, 0, x, 66, 80);
+      gGrad.addColorStop(0, 'rgba(255,220,120,0.18)');
+      gGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gGrad;
+      ctx.beginPath(); ctx.ellipse(x, 66, 80, 80, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawWindow() {
+      const wx = 330, wy = 100, ww = 340, wh = 250;
+      const RAIN_AREA_X = wx + 12;
+
+      // Window frame outer
+      ctx.fillStyle = '#1e1608';
+      ctx.fillRect(wx, wy, ww, wh);
+
+      // Window glass (night sky)
+      const skyGrad = ctx.createLinearGradient(wx + 12, wy + 12, wx + 12, wy + wh - 12);
+      skyGrad.addColorStop(0, '#02020e');
+      skyGrad.addColorStop(1, '#050518');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
+
+      // City lights (buildings as dark rectangles with lit windows)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(wx + 12, wy + 12, ww - 24, wh - 24);
+      ctx.clip();
+
+      // Building silhouettes
+      const buildings = [
+        {x:wx+12, y:wy+wh-80, w:55, h:80},
+        {x:wx+75, y:wy+wh-130, w:45, h:130},
+        {x:wx+128, y:wy+wh-90, w:60, h:90},
+        {x:wx+196, y:wy+wh-160, w:55, h:160},
+        {x:wx+259, y:wy+wh-110, w:45, h:110},
+        {x:wx+312, y:wy+wh-75, w:56, h:75},
+      ];
+      buildings.forEach(b => {
+        ctx.fillStyle = '#060614';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+      });
+
+      // City window lights
+      cityLights.forEach(cl => {
+        let alpha = 1;
+        if (cl.blink) alpha = Math.sin(frame * 0.05 + cl.blinkT) > 0 ? 0.9 : 0.1;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = cl.col;
+        ctx.fillRect(cl.x, cl.y, cl.w, cl.h);
+        ctx.globalAlpha = 1;
+      });
+
+      // Distant glow on horizon
+      const hGrad = ctx.createLinearGradient(wx+12, wy+wh-90, wx+12, wy+wh-12);
+      hGrad.addColorStop(0, 'rgba(255,120,40,0.08)');
+      hGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = hGrad;
+      ctx.fillRect(wx+12, wy+12, ww-24, wh-24);
+
+      // Rain
+      ctx.strokeStyle = 'rgba(180,200,255,0.18)';
+      ctx.lineWidth = 1;
+      rainDrops.forEach(r => {
+        const rx = RAIN_AREA_X + r.x;
+        if (rx > wx + ww - 12) return;
+        ctx.beginPath();
+        ctx.moveTo(rx, wy + 12 + r.y);
+        ctx.lineTo(rx + 2, wy + 12 + r.y + 12);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+
+      // Window frame divider (cross)
+      ctx.fillStyle = '#1e1608';
+      ctx.fillRect(wx + 12, wy + wh/2 - 4, ww - 24, 8);
+      ctx.fillRect(wx + ww/2 - 4, wy + 12, 8, wh - 24);
+
+      // Window inner frame light gleam
+      ctx.strokeStyle = 'rgba(255,240,200,0.06)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wx + 13, wy + 13, ww - 26, wh - 26);
+
+      // Hover glow
+      if (hoveredZone && hoveredZone.id === 'window') {
+        ctx.strokeStyle = 'rgba(100,150,255,0.25)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(wx + 10, wy + 10, ww - 20, wh - 20);
+      }
+    }
+
+    function drawBulletinBoard() {
+      const bx = 30, by = 120, bw = 230, bh = 215;
+
+      // Frame
+      ctx.fillStyle = '#2a1a08';
+      ctx.fillRect(bx - 6, by - 6, bw + 12, bh + 12);
+      // Cork
+      const corkGrad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+      corkGrad.addColorStop(0, '#b8753a');
+      corkGrad.addColorStop(1, '#a06228');
+      ctx.fillStyle = corkGrad;
+      ctx.fillRect(bx, by, bw, bh);
+
+      // Cork texture (dots)
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      for (let i = 0; i < 60; i++) {
+        const tx = bx + (i * 47) % bw;
+        const ty = by + (i * 31) % bh;
+        ctx.beginPath(); ctx.arc(tx, ty, 2, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Papers pinned
+      // Rejection 1 (top-left, slightly tilted)
+      ctx.save(); ctx.translate(bx + 40, by + 40); ctx.rotate(-0.06);
+      ctx.fillStyle = '#f5f0e4'; ctx.fillRect(-50, -30, 100, 75);
+      ctx.fillStyle = '#aa3322'; ctx.font = 'bold 7px Oswald'; ctx.fillText('THE BELLAGIO', -44, -18);
+      ctx.fillStyle = '#333'; ctx.font = '6px Oswald';
+      ctx.fillText('Thank you for your', -44, -6);
+      ctx.fillText('submission. We are', -44, 4);
+      ctx.fillText('unable to...', -44, 14);
+      ctx.fillStyle = '#aa4422'; ctx.font = 'italic 6px serif'; ctx.fillText('"Next year."', -44, 35);
+      // Pin
+      ctx.fillStyle = '#cc2222'; ctx.beginPath(); ctx.arc(-50+51, -30, 5, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // Rejection 2 (center, slight tilt other way)
+      ctx.save(); ctx.translate(bx + 145, by + 55); ctx.rotate(0.04);
+      ctx.fillStyle = '#ede8d8'; ctx.fillRect(-45, -25, 90, 65);
+      ctx.fillStyle = '#442222'; ctx.font = 'bold 7px Oswald'; ctx.fillText('MGM GRAND', -40, -13);
+      ctx.fillStyle = '#444'; ctx.font = '6px Oswald';
+      ctx.fillText('We receive thousands', -40, -2);
+      ctx.fillText('of applications...', -40, 8);
+      ctx.fillStyle = '#aa4422'; ctx.font = 'italic 6px serif'; ctx.fillText('"They won\'t."', -40, 28);
+      ctx.fillStyle = '#dd2244'; ctx.beginPath(); ctx.arc(0, -25, 5, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // Booking confirmation (bright blue paper)
+      ctx.save(); ctx.translate(bx + 80, by + 155); ctx.rotate(-0.03);
+      ctx.fillStyle = '#e8f0ff'; ctx.fillRect(-60, -20, 120, 55);
+      ctx.fillStyle = '#2244aa'; ctx.font = 'bold 7px Oswald'; ctx.fillText('THE RUSTY NAIL ✓', -55, -8);
+      ctx.fillStyle = '#333'; ctx.font = '6px Oswald';
+      ctx.fillText('We\'d love to have', -55, 4);
+      ctx.fillText('you back! $80 + tab', -55, 14);
+      ctx.fillStyle = '#2244cc'; ctx.font = '8px serif'; ctx.fillText('★★★', -55, 27);
+      ctx.fillStyle = '#2255cc'; ctx.beginPath(); ctx.arc(0, -20, 5, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // Vegas postcard (small)
+      ctx.save(); ctx.translate(bx + 185, by + 165); ctx.rotate(0.07);
+      const pcGrad = ctx.createLinearGradient(-35, -25, 35, 25);
+      pcGrad.addColorStop(0, '#1a0a40');
+      pcGrad.addColorStop(1, '#3a1a00');
+      ctx.fillStyle = pcGrad; ctx.fillRect(-35, -25, 70, 50);
+      ctx.fillStyle = '#ffcc44'; ctx.font = 'bold 7px Oswald'; ctx.fillText('LAS VEGAS', -25, -10);
+      ctx.fillStyle = '#ff8822'; ctx.font = '5px Oswald'; ctx.fillText('One day.', -25, 2);
+      ctx.fillStyle = '#ffaa33'; ctx.beginPath(); ctx.arc(0, -25, 5, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // Hover glow
+      if (hoveredZone && hoveredZone.id === 'board') {
+        ctx.strokeStyle = 'rgba(200,150,80,0.4)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx - 6, by - 6, bw + 12, bh + 12);
+      }
+    }
+
+    function drawCalendar() {
+      const cx = 752, cy = 110, cw = 190, ch = 200;
+
+      // Frame
+      ctx.fillStyle = '#1a1228';
+      ctx.fillRect(cx - 4, cy - 4, cw + 8, ch + 8);
+      // Calendar background
+      ctx.fillStyle = '#f8f4ee';
+      ctx.fillRect(cx, cy, cw, ch);
+
+      // Header
+      ctx.fillStyle = '#220044';
+      ctx.fillRect(cx, cy, cw, 28);
+      ctx.fillStyle = '#cc88ff';
+      ctx.font = 'bold 11px Oswald';
+      ctx.textAlign = 'center';
+      ctx.fillText('APRIL / MAY', cx + cw/2, cy + 18);
+      ctx.textAlign = 'left';
+
+      // Days grid (simplified)
+      const days = ['S','M','T','W','T','F','S'];
+      ctx.fillStyle = '#440055';
+      ctx.font = '8px Oswald';
+      days.forEach((d, i) => {
+        ctx.fillText(d, cx + 10 + i * 25, cy + 44);
+      });
+
+      // Date numbers with Xs
+      const dates = [
+        {n:'1',x:true},{n:'2',x:true},{n:'3',x:true},{n:'4',x:true},{n:'5',g:true},
+        {n:'6',x:true},{n:'7',x:true},{n:'8',x:true},{n:'9',x:true},{n:'10',x:true},{n:'11',x:true},{n:'12',x:true},
+        {n:'13',x:true},{n:'14',x:true},{n:'15',x:true},{n:'16',x:true},{n:'17',x:true},{n:'18',x:true},{n:'19',g:true},
+        {n:'20',x:true},{n:'21',x:true},{n:'22',x:true},{n:'23',x:true},{n:'24',x:true},{n:'25',x:true},{n:'26',x:true},
+        {n:'27'},{n:'28'},{n:'29'},{n:'30'}
+      ];
+      dates.forEach((d, i) => {
+        const col = i % 7;
+        const row = Math.floor(i / 7);
+        const dx = cx + 8 + col * 25;
+        const dy = cy + 58 + row * 24;
+        if (d.g) {
+          ctx.fillStyle = '#cc88ff';
+          ctx.fillRect(dx - 2, dy - 10, 22, 16);
+          ctx.fillStyle = '#220044';
+        } else if (d.x) {
+          ctx.fillStyle = '#999';
+        } else {
+          ctx.fillStyle = '#333';
+        }
+        ctx.font = '9px Oswald';
+        ctx.fillText(d.n, dx, dy);
+        if (d.x) {
+          ctx.strokeStyle = 'rgba(180,40,40,0.5)';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(dx-1, dy-9); ctx.lineTo(dx+14, dy+3); ctx.stroke();
+        }
+      });
+
+      // Notes at bottom
+      ctx.fillStyle = '#330044';
+      ctx.font = '7px Special Elite, serif';
+      ctx.fillText('Apr 5 — Rusty Nail ★', cx + 6, cy + 168);
+      ctx.fillText('Apr 19 — The Tap Room', cx + 6, cy + 180);
+      ctx.fillText('May 3 — Rusty Nail (conf)', cx + 6, cy + 192);
+
+      // Hover glow
+      if (hoveredZone && hoveredZone.id === 'calendar') {
+        ctx.strokeStyle = 'rgba(150,80,220,0.5)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 4, cy - 4, cw + 8, ch + 8);
+      }
+    }
+
+    function drawLaundryPile() {
+      const lx = 20, ly = 390;
+      // Drop shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(lx + 90, ly + 110, 85, 20, 0, 0, Math.PI*2); ctx.fill();
+
+      // Various cloth pieces
+      const cloths = [
+        {col:'#1a3a6a', pts:[[0,80],[60,60],[130,70],[160,100],[140,130],[20,140]]},
+        {col:'#2a1a4a', pts:[[20,50],[90,40],[150,55],[170,90],[130,120],[10,110]]},
+        {col:'#4a2a1a', pts:[[30,30],[100,20],[160,40],[170,75],[90,80],[15,70]]},
+        {col:'#1a4a2a', pts:[[50,10],[120,5],[175,25],[180,60],[100,65],[40,50]]},
+        {col:'#4a3a1a', pts:[[60,0],[130,-5],[185,15],[190,40],[120,45],[55,30]]},
+      ];
+
+      cloths.forEach(c => {
+        ctx.fillStyle = c.col;
+        ctx.beginPath();
+        ctx.moveTo(lx + c.pts[0][0], ly + c.pts[0][1]);
+        c.pts.forEach(p => ctx.lineTo(lx + p[0], ly + p[1]));
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+      });
+
+      // Hover glow
+      if (hoveredZone && hoveredZone.id === 'laundry') {
+        ctx.strokeStyle = 'rgba(200,200,255,0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(lx + 95, ly + 70, 100, 80, -0.1, 0, Math.PI*2);
+        ctx.stroke();
+      }
+    }
+
+    function drawPizzaBoxes() {
+      const px = 215, py = 400;
+      // Bottom box (slightly wider)
+      ctx.fillStyle = '#b85a00';
+      ctx.fillRect(px, py + 40, 105, 30);
+      ctx.fillStyle = '#cc6600';
+      ctx.fillRect(px, py + 20, 105, 22);
+      // Grease stain on top box
+      ctx.fillStyle = '#c26000';
+      ctx.fillRect(px, py, 100, 22);
+      ctx.fillStyle = 'rgba(200,140,40,0.35)';
+      ctx.beginPath(); ctx.ellipse(px + 40, py + 10, 25, 8, -0.3, 0, Math.PI*2); ctx.fill();
+      // Box edges/shadow
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+      ctx.strokeRect(px, py, 100, 22);
+      ctx.strokeRect(px, py + 20, 105, 22);
+      ctx.strokeRect(px, py + 40, 105, 30);
+      // Logo text
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.font = 'bold 7px Oswald';
+      ctx.fillText('PIZZA', px + 32, py + 14);
+
+      if (hoveredZone && hoveredZone.id === 'pizza') {
+        ctx.strokeStyle = 'rgba(255,180,80,0.5)'; ctx.lineWidth = 2;
+        ctx.strokeRect(px - 2, py - 2, 110, 76);
+      }
+    }
+
+    function drawTable() {
+      const tx = 310, ty = 348, tw = 380, td = 38;
+
+      // Table top shadow on floor
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(tx + tw/2, ty + td + 80, tw/2 - 20, 20, 0, 0, Math.PI*2); ctx.fill();
+
+      // Table legs
+      const legGrad = ctx.createLinearGradient(tx, 0, tx + 10, 0);
+      legGrad.addColorStop(0, '#3a2412'); legGrad.addColorStop(1, '#4a3020');
+      ctx.fillStyle = legGrad;
+      ctx.fillRect(tx + 20, ty + td, 14, 100);
+      ctx.fillRect(tx + tw - 34, ty + td, 14, 100);
+      // Leg shadows
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(tx + 34, ty + td, 5, 100);
+      ctx.fillRect(tx + tw - 34, ty + td, 5, 100);
+
+      // Table surface
+      const tGrad = ctx.createLinearGradient(tx, ty, tx, ty + td);
+      tGrad.addColorStop(0, '#5a3820');
+      tGrad.addColorStop(1, '#4a2c16');
+      ctx.fillStyle = tGrad;
+      ctx.fillRect(tx, ty, tw, td);
+      // Table edge highlight
+      ctx.fillStyle = 'rgba(255,200,120,0.07)';
+      ctx.fillRect(tx, ty, tw, 3);
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+      ctx.strokeRect(tx, ty, tw, td);
+
+      // Items on table: playing card spread
+      for (let i = 0; i < 5; i++) {
+        ctx.save();
+        ctx.translate(tx + 55 + i * 18, ty + 8);
+        ctx.rotate(-0.3 + i * 0.12);
+        ctx.fillStyle = '#f5f0e8';
+        ctx.fillRect(-9, -14, 18, 24);
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 0.5; ctx.strokeRect(-9, -14, 18, 24);
+        ctx.fillStyle = i % 2 === 0 ? '#cc2222' : '#222222'; ctx.font = '7px serif'; ctx.fillText('A', -5, -3);
+        ctx.restore();
+      }
+
+      // Glass of water
+      ctx.fillStyle = 'rgba(180,220,255,0.15)';
+      ctx.fillRect(tx + 310, ty - 35, 22, 40);
+      ctx.fillStyle = 'rgba(180,220,255,0.25)';
+      ctx.fillRect(tx + 310, ty - 15, 22, 18);
+      ctx.strokeStyle = 'rgba(180,220,255,0.4)'; ctx.lineWidth = 1;
+      ctx.strokeRect(tx + 310, ty - 35, 22, 40);
+    }
+
+    function drawPhone(phoneGlow) {
+      const phx = 415, phy = 292, phw = 78, phh = 52;
+
+      // Phone body
+      rrect(phx, phy, phw, phh, 5);
+      const phoneGrad = ctx.createLinearGradient(phx, phy, phx, phy + phh);
+      phoneGrad.addColorStop(0, '#1a1a2a');
+      phoneGrad.addColorStop(1, '#0e0e1a');
+      ctx.fillStyle = phoneGrad; ctx.fill();
+      ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1; ctx.stroke();
+
+      // Screen
+      ctx.fillStyle = phoneGlow ? '#1a0828' : '#060610';
+      ctx.fillRect(phx + 8, phy + 8, phw - 16, phh - 16);
+
+      if (phoneGlow) {
+        ctx.fillStyle = '#aa44ff';
+        ctx.font = 'bold 8px Oswald';
+        ctx.textAlign = 'center';
+        ctx.fillText('6 NEW', phx + phw/2, phy + phh/2 + 2);
+        ctx.textAlign = 'left';
+      } else {
+        ctx.fillStyle = '#552266';
+        ctx.font = '7px Oswald';
+        ctx.textAlign = 'center';
+        ctx.fillText('6 NEW', phx + phw/2, phy + phh/2 + 2);
+        ctx.textAlign = 'left';
+      }
+
+      // Notification LED
+      const ledOn = phoneGlow || (Math.floor(frame / 28) % 2 === 0);
+      ctx.fillStyle = ledOn ? '#ff2244' : '#330011';
+      ctx.beginPath(); ctx.arc(phx + phw - 8, phy + 6, 4, 0, Math.PI*2); ctx.fill();
+      if (ledOn) {
+        const ledGlow = ctx.createRadialGradient(phx + phw - 8, phy + 6, 0, phx + phw - 8, phy + 6, 12);
+        ledGlow.addColorStop(0, 'rgba(255,50,80,0.35)');
+        ledGlow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = ledGlow;
+        ctx.beginPath(); ctx.arc(phx + phw - 8, phy + 6, 12, 0, Math.PI*2); ctx.fill();
+      }
+
+      if (hoveredZone && hoveredZone.id === 'phone') {
+        ctx.strokeStyle = 'rgba(200,100,255,0.6)';
+        ctx.lineWidth = 2;
+        rrect(phx - 3, phy - 3, phw + 6, phh + 6, 7);
+        ctx.stroke();
+      }
+    }
+
+    function drawHatStand() {
+      const hsx = 742, hsy = 300;
+
+      // Stand shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(hsx + 45, hsy + 200, 35, 10, 0, 0, Math.PI*2); ctx.fill();
+
+      // Pole
+      const poleGrad = ctx.createLinearGradient(hsx + 40, 0, hsx + 55, 0);
+      poleGrad.addColorStop(0, '#3a3040'); poleGrad.addColorStop(1, '#2a2030');
+      ctx.fillStyle = poleGrad;
+      ctx.fillRect(hsx + 40, hsy + 30, 15, 180);
+
+      // Base
+      ctx.fillStyle = '#2a2030';
+      ctx.fillRect(hsx + 10, hsy + 190, 75, 10);
+      ctx.fillRect(hsx + 20, hsy + 200, 55, 6);
+
+      // Cross bar
+      ctx.fillStyle = '#2a2030';
+      ctx.fillRect(hsx, hsy + 40, 95, 10);
+
+      // TOP HAT on the bar
+      ctx.save(); ctx.translate(hsx + 20, hsy + 15); ctx.rotate(-0.08);
+      // Hat brim
+      ctx.fillStyle = '#0a0810';
+      ctx.fillRect(-22, 18, 66, 8);
+      // Hat body
+      const hatGrad = ctx.createLinearGradient(-14, -30, 14, 20);
+      hatGrad.addColorStop(0, '#1a1520');
+      hatGrad.addColorStop(1, '#0e0c14');
+      ctx.fillStyle = hatGrad;
+      ctx.fillRect(-14, -30, 50, 50);
+      // Hat band
+      ctx.fillStyle = '#550088';
+      ctx.fillRect(-14, 4, 50, 6);
+      // Hat shine
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(-8, -28, 8, 40);
+      ctx.restore();
+
+      // WAND leaning against stand
+      ctx.save(); ctx.translate(hsx + 90, hsy + 35); ctx.rotate(0.18);
+      ctx.fillStyle = '#1a1214';
+      ctx.fillRect(-3, 0, 6, 160);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(-4, 0, 8, 18);
+      ctx.fillStyle = '#2a1a30';
+      ctx.fillRect(-4, 142, 8, 18);
+      ctx.restore();
+
+      if (hoveredZone && hoveredZone.id === 'hat') {
+        ctx.strokeStyle = 'rgba(180,100,255,0.5)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(hsx - 4, hsy - 4, 108, 210);
+      }
+    }
+
+    function drawTV() {
+      const tvx = 840, tvy = 355, tvw = 145, tvh = 115;
+
+      // TV shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(tvx + tvw/2 + 5, tvy + tvh + 12, 55, 12, 0, 0, Math.PI*2); ctx.fill();
+
+      // TV body (CRT — slightly curved/bulging)
+      rrect(tvx, tvy, tvw, tvh, 8);
+      const tvBodyGrad = ctx.createLinearGradient(tvx, tvy, tvx + tvw, tvy + tvh);
+      tvBodyGrad.addColorStop(0, '#2a2822'); tvBodyGrad.addColorStop(1, '#1a1816');
+      ctx.fillStyle = tvBodyGrad; ctx.fill();
+      ctx.strokeStyle = '#3a3832'; ctx.lineWidth = 1; ctx.stroke();
+
+      // Screen area
+      const scrX = tvx + 10, scrY = tvy + 10, scrW = tvw - 30, scrH = tvh - 30;
+      rrect(scrX, scrY, scrW, scrH, 4);
+      // TV showing documentary (warm tones)
+      const tvGrad = ctx.createLinearGradient(scrX, scrY, scrX + scrW, scrY + scrH);
+      const tvFlicker = 0.7 + Math.sin(frame * 0.15) * 0.06;
+      tvGrad.addColorStop(0, `rgba(${Math.floor(180*tvFlicker)},${Math.floor(100*tvFlicker)},${Math.floor(20*tvFlicker)},1)`);
+      tvGrad.addColorStop(1, `rgba(${Math.floor(80*tvFlicker)},${Math.floor(50*tvFlicker)},${Math.floor(10*tvFlicker)},1)`);
+      ctx.fillStyle = tvGrad; ctx.fill();
+
+      // Screen glare
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath();
+      ctx.moveTo(scrX + 4, scrY + 4);
+      ctx.lineTo(scrX + scrW * 0.5, scrY + 4);
+      ctx.lineTo(scrX + scrW * 0.3, scrY + scrH * 0.4);
+      ctx.lineTo(scrX + 4, scrY + scrH * 0.3);
+      ctx.closePath(); ctx.fill();
+
+      // TV text (documentary title)
+      ctx.fillStyle = 'rgba(255,220,150,0.5)';
+      ctx.font = '5px Oswald';
+      ctx.textAlign = 'center';
+      ctx.fillText('LAS VEGAS', scrX + scrW/2, scrY + scrH - 14);
+      ctx.fillText('1970–1985', scrX + scrW/2, scrY + scrH - 5);
+      ctx.textAlign = 'left';
+
+      // TV screen TV glow
+      const tvScreenGlow = ctx.createRadialGradient(tvx + tvw/2, tvy + tvh/2, 0, tvx + tvw/2, tvy + tvh/2, 80);
+      tvScreenGlow.addColorStop(0, 'rgba(255,120,40,0.06)');
+      tvScreenGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = tvScreenGlow;
+      ctx.beginPath(); ctx.ellipse(tvx + tvw/2, tvy + tvh/2, 80, 80, 0, 0, Math.PI*2); ctx.fill();
+
+      // Control knobs
+      ctx.fillStyle = '#3a3832';
+      ctx.beginPath(); ctx.arc(tvx + tvw - 12, tvy + 24, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tvx + tvw - 12, tvy + 40, 5, 0, Math.PI*2); ctx.fill();
+
+      if (hoveredZone && hoveredZone.id === 'tv') {
+        ctx.strokeStyle = 'rgba(255,160,60,0.4)';
+        ctx.lineWidth = 2;
+        rrect(tvx - 2, tvy - 2, tvw + 4, tvh + 4, 9);
+        ctx.stroke();
+      }
+    }
+
+    function drawLich() {
+      if (!spriteReady) {
+        // Fallback: draw a simple shape
+        ctx.fillStyle = '#7722cc';
+        ctx.fillRect(lichX, 360, 70, 110);
+        return;
+      }
+
+      const DRAW_W = 90, DRAW_H = Math.floor(90 * (SPR.sh / SPR.sw));
+      const DRAW_X = lichX;
+      const DRAW_Y = 470 - DRAW_H;
+
+      if (lichDir === -1) {
+        // Flip horizontally
+        ctx.save();
+        ctx.translate(DRAW_X + DRAW_W, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(lichImg, SPR.sx, SPR.sy, SPR.sw, SPR.sh, 0, DRAW_Y, DRAW_W, DRAW_H);
+        ctx.restore();
+      } else {
+        ctx.drawImage(lichImg, SPR.sx, SPR.sy, SPR.sw, SPR.sh, DRAW_X, DRAW_Y, DRAW_W, DRAW_H);
+      }
+
+      // Shadow under lich
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(DRAW_X + DRAW_W/2, 472, 30, 8, 0, 0, Math.PI*2); ctx.fill();
+
+      // Subtle purple aura (idle state)
+      if (lichState === 'idle' || lichState === 'trick') {
+        const aura = ctx.createRadialGradient(DRAW_X + DRAW_W/2, DRAW_Y + DRAW_H/2, 0, DRAW_X + DRAW_W/2, DRAW_Y + DRAW_H/2, 60);
+        const pulseAlpha = 0.04 + Math.sin(frame * 0.06) * 0.02;
+        aura.addColorStop(0, `rgba(150,50,255,${pulseAlpha})`);
+        aura.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = aura;
+        ctx.beginPath(); ctx.ellipse(DRAW_X + DRAW_W/2, DRAW_Y + DRAW_H/2, 60, 60, 0, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    function drawSpeechBubble() {
+      const DRAW_W = 90;
+      const bubX = lichX + DRAW_W/2;
+      const bubY = 355;
+      const text = SPEECHES[speechIdx];
+      if (!text) return;
+
+      const maxW = 220;
+      ctx.font = '11px Oswald';
+
+      // Word wrap
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      words.forEach(w => {
+        const test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW - 20) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+
+      const lineH = 16;
+      const padX = 12, padY = 9;
+      const bw = maxW;
+      const bh = lines.length * lineH + padY * 2;
+      let bx = bubX - bw/2;
+      bx = Math.max(8, Math.min(W - bw - 8, bx));
+      const by = bubY - bh - 18;
+
+      // Tail
+      ctx.fillStyle = 'rgba(10,4,18,0.92)';
+      ctx.beginPath();
+      ctx.moveTo(bubX - 8, by + bh);
+      ctx.lineTo(bubX, by + bh + 18);
+      ctx.lineTo(bubX + 8, by + bh);
+      ctx.fill();
+
+      // Bubble body
+      rrect(bx, by, bw, bh, 8);
+      ctx.fillStyle = 'rgba(10,4,18,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(120,50,200,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+      // Text
+      ctx.fillStyle = '#ddd0f0';
+      ctx.font = '11px Oswald';
+      ctx.textAlign = 'left';
+      lines.forEach((l, i) => {
+        ctx.fillText(l, bx + padX, by + padY + i * lineH + 11);
+      });
+    }
+
+    // ── MAIN LOOP ────────────────────────────────────────────────
+    function update() {
+      frame++;
+
+      // Rain animation
+      rainDrops.forEach(r => {
+        r.y += r.spd;
+        r.x += 0.6;
+        if (r.y > 230) { r.y = -Math.random() * 50; r.x = Math.random() * 320; }
+        if (r.x > 340) { r.x -= 340; }
+      });
+
+      // Lich movement
+      lichStateT++;
+
+      if (lichState === 'walk') {
+        lichX += lichDir * 0.7;
+        if (lichDir === 1 && lichX > 600) { lichDir = -1; }
+        if (lichDir === -1 && lichX < 200) { lichDir = 1; }
+        // Occasionally stop to do a "trick"
+        if (lichStateT > 280 && Math.random() < 0.004) {
+          lichState = 'trick';
+          lichStateT = 0;
+        }
+        // Occasionally idle
+        if (lichStateT > 350 && Math.random() < 0.003) {
+          lichState = 'idle';
+          lichStateT = 0;
+        }
+      } else if (lichState === 'idle') {
+        if (lichStateT > 180) { lichState = 'walk'; lichStateT = 0; }
+      } else if (lichState === 'trick') {
+        if (lichStateT > 240) { lichState = 'walk'; lichStateT = 0; }
+      }
+
+      // Speech bubble cycling
+      speechTimer++;
+      if (speechTimer > SPEECH_INTERVAL) {
+        speechTimer = 0;
+        speechIdx = (speechIdx + 1) % SPEECHES.length;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      drawRoom();
+      drawBulletinBoard();
+      drawCalendar();
+      drawWindow();
+      drawCeilingLight();
+      drawLaundryPile();
+      drawPizzaBoxes();
+      drawTable();
+      drawPhone(Math.floor(frame / 28) % 2 === 0);
+      drawHatStand();
+      drawTV();
+      drawLich();
+      drawSpeechBubble();
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // ── MOUSE EVENTS ─────────────────────────────────────────────
+    const hint = document.getElementById('hover-hint');
+    const wrapper = document.getElementById('canvas-wrapper');
+
+    canvas.addEventListener('mousemove', (e) => {
+      const { lx, ly } = toLogical(e.clientX, e.clientY);
+      const zone = zoneAt(lx, ly);
+      hoveredZone = zone;
+
+      if (zone && zone.cursor === 'pointer') {
+        canvas.style.cursor = 'pointer';
+        hint.style.display = 'block';
+        hint.textContent = zone.label;
+        const rect = wrapper.getBoundingClientRect();
+        hint.style.left = (e.clientX - rect.left + 12) + 'px';
+        hint.style.top  = (e.clientY - rect.top  - 32) + 'px';
+      } else {
+        canvas.style.cursor = 'default';
+        hint.style.display = 'none';
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      hoveredZone = null;
+      hint.style.display = 'none';
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const { lx, ly } = toLogical(e.clientX, e.clientY);
+      const zone = zoneAt(lx, ly);
+      if (!zone) return;
+
+      switch (zone.id) {
+        case 'phone':
+          openModal('vm-modal');
+          break;
+        case 'board':
+          openModal('board-modal');
+          break;
+        case 'calendar':
+          openModal('cal-modal');
+          break;
+        case 'laundry':
+        case 'pizza':
+        case 'hat':
+        case 'tv':
+        case 'window':
+          const d = INSPECT_DATA[zone.id];
+          if (d) {
+            document.getElementById('inspect-icon').textContent  = d.icon;
+            document.getElementById('inspect-title').textContent = d.title;
+            document.getElementById('inspect-body').textContent  = d.body;
+            openModal('inspect-modal');
+          }
+          break;
+      }
+    });
+
+    // ── MODAL LOGIC ──────────────────────────────────────────────
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    document.querySelectorAll('.modal-close').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-modal');
+        document.getElementById(id).classList.remove('open');
+      });
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+    });
+
+    // Keyboard: Escape closes modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+      }
+    });
+
+  })();
+  </script>
+</body>
+</html>

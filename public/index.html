@@ -141,11 +141,85 @@
     </div>
   </section>
 
+  <!-- ===== ENTER THE WORLD ===== -->
+  <section class="world-section" id="world-section">
+    <h2 class="section-title">ENTER THE WORLD</h2>
+    <p class="world-subtitle">Explore the lives of the characters — defeat bosses to unlock their secrets</p>
+    <div class="world-doors" id="world-doors">
+
+      <!-- Lich's Apartment -->
+      <a class="world-door" href="/lich.html" id="door-lich">
+        <div class="door-frame">
+          <div class="door-number">I</div>
+          <div class="door-inner">
+            <div class="door-sprite">
+              <img src="images/boss-lich.png" class="door-boss-img" id="lich-door-img" alt="Lich" />
+            </div>
+            <div class="door-nameplate">LICH</div>
+          </div>
+          <div class="door-label">The Apartment</div>
+        </div>
+        <div class="door-key-status" id="door-lich-key">
+          <span class="key-locked">🔒 Beat Lich to unlock secrets</span>
+        </div>
+      </a>
+
+      <!-- Apocalyptic's War Chamber — Coming Soon -->
+      <div class="world-door door-coming-soon" id="door-apoc">
+        <div class="door-frame door-locked">
+          <div class="door-number">II</div>
+          <div class="door-inner door-inner-dark">
+            <div class="door-sprite door-sprite-dark">?</div>
+            <div class="door-nameplate door-nameplate-dim">APOCALYPTIC</div>
+          </div>
+          <div class="door-label door-label-dim">The War Chamber</div>
+        </div>
+        <div class="door-key-status">
+          <span class="key-locked">🔒 Coming Soon</span>
+        </div>
+      </div>
+
+      <!-- Mystery Door -->
+      <div class="world-door door-coming-soon" id="door-mystery">
+        <div class="door-frame door-locked door-mystery-frame">
+          <div class="door-number door-number-mystery">?</div>
+          <div class="door-inner door-inner-dark">
+            <div class="door-sprite door-sprite-mystery">⬛</div>
+            <div class="door-nameplate door-nameplate-dim">???</div>
+          </div>
+          <div class="door-label door-label-dim">Requires All 3 Keys</div>
+        </div>
+        <div class="door-key-status" id="mystery-key-status">
+          <span class="key-locked" id="mystery-key-text">🔒 🗝️ 🗝️ 🗝️ — Collect All Boss Keys</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
   <!-- ===== FOOTER ===== -->
   <footer class="site-footer">
     <p>&copy; 2026 Wolfdragon. All rights reserved. &nbsp;·&nbsp; <a href="/admin.html" style="color:#550000;text-decoration:none;font-size:0.75em;">admin</a></p>
   </footer>
 
+  <script>
+  // ── World hub: key status display ──────────────────────────────
+  (function(){
+    const keys = JSON.parse(localStorage.getItem('wolfdragon_keys') || '{}');
+    if(keys.lichKey){
+      const el = document.getElementById('door-lich-key');
+      if(el) el.innerHTML = '<span class="key-unlocked">🔑 Lich Key — Unlocked</span>';
+    }
+    // Mystery door requires all 3
+    const allKeys = keys.spiderKey && keys.lichKey && keys.apocKey;
+    if(allKeys){
+      const t = document.getElementById('mystery-key-text');
+      if(t) t.innerHTML = '🔑 🔑 🔑 All Keys — Unlocked!';
+      const ms = document.getElementById('mystery-key-status');
+      if(ms) ms.querySelector('span').className = 'key-unlocked';
+    }
+  })();
+  </script>
   <script src="js/player.js"></script>
   <script src="js/game.js"></script>
   <script>

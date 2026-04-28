@@ -514,6 +514,198 @@ img[src$=".svg"] {
 }
 
 /* ============================================
+   ENTER THE WORLD HUB
+   ============================================ */
+.world-section {
+  background: var(--black);
+  padding: 60px 20px 70px;
+  border-top: 4px solid var(--red);
+}
+
+.world-subtitle {
+  text-align: center;
+  color: var(--grey);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: -28px;
+  margin-bottom: 48px;
+  opacity: 0.7;
+}
+
+.world-doors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Single door card ── */
+.world-door {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  width: 220px;
+  transition: transform 0.2s ease;
+}
+
+.world-door:hover:not(.door-coming-soon) {
+  transform: translateY(-6px);
+}
+
+.door-frame {
+  width: 100%;
+  background: #0e0e0e;
+  border: 2px solid var(--red-dark);
+  position: relative;
+  padding: 20px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 4px 4px 0 #1a0000;
+}
+
+.world-door:not(.door-coming-soon):hover .door-frame {
+  border-color: var(--red-bright);
+  box-shadow: 4px 4px 0 var(--red-dark), 0 0 30px rgba(200,0,0,0.15);
+}
+
+.door-number {
+  position: absolute;
+  top: -1px;
+  right: 10px;
+  font-family: var(--font-title);
+  font-size: 0.9rem;
+  color: var(--red-dark);
+  letter-spacing: 0.1em;
+}
+
+.door-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: #0a0a0a;
+  border: 1px solid #1a0000;
+  padding: 16px 12px;
+  min-height: 160px;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sprite container — clips the boss image to head/torso */
+.door-sprite {
+  width: 90px;
+  height: 100px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+}
+
+.door-boss-img {
+  /* boss-lich.png: LICH_FRONT at sx=56 sy=71 sw=430 sh=493 out of 1019×570 total */
+  /* We use object-fit + object-position to crop to the front-facing portion */
+  width: 210px;      /* scale natural width down — total img is 1019px, front face ~430px wide */
+  height: auto;
+  object-fit: none;
+  object-position: -12px -16px;  /* shift to show just the front sprite */
+  image-rendering: auto;
+  flex-shrink: 0;
+}
+
+.door-nameplate {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  color: var(--red);
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+.door-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--grey);
+  text-align: center;
+}
+
+/* Key status below door */
+.door-key-status {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.key-locked { color: #444; }
+.key-unlocked { color: #cc9900; }
+
+/* ── Locked / coming-soon variant ── */
+.door-coming-soon { cursor: default; opacity: 0.45; }
+
+.door-locked {
+  border-color: #1a1a1a;
+  box-shadow: none;
+}
+
+.door-inner-dark {
+  background: #060606;
+  border-color: #111;
+}
+
+.door-sprite-dark {
+  font-size: 2.5rem;
+  color: #1a1a1a;
+  width: 90px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.door-nameplate-dim {
+  color: #222;
+}
+
+.door-label-dim { color: #1c1c1c; }
+
+/* Mystery door */
+.door-mystery-frame {
+  border-color: #2a0044;
+  background: #07000e;
+}
+
+.door-number-mystery { color: #2a0044; }
+
+.door-sprite-mystery {
+  font-size: 2.8rem;
+  width: 90px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.3;
+}
+
+@media (max-width: 600px) {
+  .world-doors { gap: 20px; }
+  .world-door { width: 160px; }
+  .door-inner { min-height: 130px; }
+  .door-sprite { width: 70px; height: 80px; }
+  .door-boss-img { width: 160px; object-position: -8px -12px; }
+}
+
+/* ============================================
    FOOTER
    ============================================ */
 .site-footer {
