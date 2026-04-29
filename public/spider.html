@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spider's Place — WOLFDRAGON</title>
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&family=Oswald:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:       #1ab8cc;
+      --teal-dark:  #003a44;
+      --teal-glow:  #40d0e8;
+      --black:      #0a0a0a;
+      --black-soft: #080e10;
+      --white:      #f0f0f0;
+      --cream:      #e0e8ec;
+      --font-title: 'Metal Mania', cursive;
+      --font-body:  'Oswald', sans-serif;
+      --font-hand:  'Special Elite', cursive;
+    }
+
+    html, body {
+      background: var(--black-soft);
+      color: var(--white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV BAR ── */
+    .room-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 52px;
+      background: #060c0e;
+      border-bottom: 2px solid #003a44;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-home {
+      color: var(--teal-glow);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      transition: opacity 0.15s;
+    }
+    .nav-home:hover { opacity: 1; }
+
+    .room-title {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      color: var(--teal-glow);
+      letter-spacing: 0.15em;
+      text-shadow: 0 0 12px var(--teal);
+    }
+
+    .nav-spacer { width: 120px; }
+
+    /* ── MAIN CANVAS AREA ── */
+    .room-main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      cursor: default;
+    }
+
+    #room {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: auto;
+    }
+
+    .hint-bar {
+      width: 100%;
+      max-width: 1400px;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: #1a4a52;
+      text-transform: uppercase;
+      background: #05090a;
+      border-top: 1px solid #001a20;
+    }
+
+    /* ── HOVER TOOLTIP ── */
+    #hover-hint {
+      position: absolute;
+      background: rgba(0,20,28,0.92);
+      border: 1px solid var(--teal);
+      color: var(--teal-glow);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      padding: 5px 12px;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: #060e10;
+      border: 2px solid var(--teal);
+      box-shadow: 0 0 40px rgba(26,184,204,0.3);
+      max-width: 580px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 28px 28px 24px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: none;
+      border: 1px solid #114444;
+      color: var(--teal-glow);
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: var(--teal-dark); }
+
+    .modal-title {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      color: var(--teal-glow);
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 12px var(--teal);
+    }
+    .modal-title:empty { display: none; }
+
+    .inspect-content {
+      font-family: var(--font-hand);
+      font-size: 1rem;
+      color: var(--cream);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    /* ── FOOTER ── */
+    .room-footer {
+      background: #05090a;
+      text-align: center;
+      padding: 20px;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      color: #112228;
+      border-top: 1px solid #001a20;
+    }
+    .room-footer a {
+      color: var(--teal);
+      text-decoration: none;
+    }
+    .room-footer a:hover { color: var(--teal-glow); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #060c0e; }
+    ::-webkit-scrollbar-thumb { background: var(--teal-dark); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--teal); }
+
+    @media (max-width: 600px) {
+      .room-nav { padding: 0 12px; }
+      .room-title { font-size: 0.9rem; }
+      .modal-box { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── NAV ── -->
+  <nav class="room-nav">
+    <a class="nav-home" href="/">← Back to World</a>
+    <span class="room-title">Spider's Place</span>
+    <div class="nav-spacer"></div>
+  </nav>
+
+  <!-- ── CANVAS ── -->
+  <main class="room-main">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <canvas id="room" width="1000" height="560"></canvas>
+      <div id="hover-hint"></div>
+    </div>
+    <div class="hint-bar">Click items to interact &nbsp;·&nbsp; Mouse over to explore</div>
+  </main>
+
+  <!-- ── INSPECT MODAL ── -->
+  <div class="modal-overlay" id="inspect-modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <button class="modal-close" id="inspect-close" aria-label="Close">×</button>
+      <div class="modal-title" id="inspect-title"></div>
+      <div class="inspect-content" id="inspect-content"></div>
+    </div>
+  </div>
+
+  <footer class="room-footer">
+    <a href="/">← Return to World</a> &nbsp;·&nbsp; WOLFDRAGON &nbsp;·&nbsp;
+    <span style="color:#081418">All characters fictional</span>
+  </footer>
+
+<script>
+  const canvas = document.getElementById('room');
+  const ctx    = canvas.getContext('2d');
+  const W = 1000, H = 560;
+  let frame = 0;
+
+  // ── MODAL ────────────────────────────────────────────────────────────────────
+  const modal    = document.getElementById('inspect-modal');
+  const iTitle   = document.getElementById('inspect-title');
+  const iContent = document.getElementById('inspect-content');
+  const iClose   = document.getElementById('inspect-close');
+
+  function openModal(title, body) {
+    iTitle.textContent   = title || '';
+    iContent.textContent = body  || '';
+    modal.classList.add('open');
+  }
+  function closeModal() { modal.classList.remove('open'); }
+  iClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ── PLACEHOLDER ROOM ─────────────────────────────────────────────────────────
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Background
+    ctx.fillStyle = '#080e10';
+    ctx.fillRect(0, 0, W, H);
+
+    // Coming soon text
+    ctx.fillStyle = 'rgba(26,184,204,0.18)';
+    ctx.font = 'bold 18px "Oswald", Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('SPIDER\'S PLACE — COMING SOON', W / 2, H / 2);
+    ctx.textAlign = 'left';
+
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+</script>
+</body>
+</html>

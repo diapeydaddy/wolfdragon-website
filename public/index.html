@@ -276,46 +276,77 @@
         <div class="door-key-line">⚔️ Enter</div>
       </a>
 
-      <!-- Door III: Mystery -->
-      <div class="door-card door-locked-card" id="door-mystery">
+      <!-- Door III: Spider's Room -->
+      <a class="door-card" href="/spider.html" id="door-spider">
         <div class="door-svg-wrap">
           <svg viewBox="0 0 160 248" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <radialGradient id="mGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%"   stop-color="rgba(180,120,255,0.35)"/>
-                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+              <linearGradient id="sWood" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#141c24"/>
+                <stop offset="60%"  stop-color="#0c1418"/>
+                <stop offset="100%" stop-color="#080e10"/>
+              </linearGradient>
+              <linearGradient id="sStone" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#181e22"/>
+                <stop offset="100%" stop-color="#0c1014"/>
+              </linearGradient>
+              <radialGradient id="sKnob" cx="40%" cy="35%" r="60%">
+                <stop offset="0%"   stop-color="#c0d0d8"/>
+                <stop offset="100%" stop-color="#4a6068"/>
               </radialGradient>
             </defs>
-            <!-- Stone frame — very dark -->
-            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248 Z" fill="#080608"/>
-            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248" fill="none" stroke="rgba(120,60,200,0.12)" stroke-width="2"/>
-            <!-- Door slab — black -->
-            <path d="M14,248 L14,94 A66,66,0,0,1,146,94 L146,248 Z" fill="#060406"/>
-            <!-- Fanlight -->
-            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="rgba(40,0,60,0.8)"/>
-            <line x1="80" y1="94" x2="80" y2="32" stroke="#0a060e" stroke-width="2.5"/>
-            <line x1="80" y1="94" x2="24" y2="78" stroke="#0a060e" stroke-width="1.8"/>
-            <line x1="80" y1="94" x2="136" y2="78" stroke="#0a060e" stroke-width="1.8"/>
-            <!-- Subtle glow behind keyhole -->
-            <ellipse cx="80" cy="180" rx="28" ry="32" fill="url(#mGlow)"/>
-            <!-- Keyhole -->
-            <circle cx="80" cy="168" r="9" fill="#0a060e"/>
-            <circle cx="80" cy="168" r="8" fill="rgba(180,100,255,0.2)"/>
-            <path d="M74,176 L74,192 L86,192 L86,176 A6,8,0,0,1,74,176 Z" fill="#0a060e"/>
-            <path d="M75,177 L75,191 L85,191 L85,177 A5,7,0,0,1,75,177 Z" fill="rgba(160,80,255,0.18)"/>
-            <!-- Chains -->
-            <path d="M14,160 Q80,155 146,160" fill="none" stroke="rgba(80,60,40,0.4)" stroke-width="4" stroke-linecap="round"/>
-            <path d="M14,166 Q80,161 146,166" fill="none" stroke="rgba(50,40,30,0.35)" stroke-width="2.5" stroke-linecap="round"/>
-            <!-- Question mark panels -->
-            <rect x="20" y="104" width="120" height="55" rx="3" fill="rgba(0,0,0,0.4)"/>
-            <rect x="20" y="167" width="120" height="73" rx="3" fill="rgba(0,0,0,0.4)"/>
-            <!-- ? -->
-            <text x="80" y="18" text-anchor="middle" font-family="serif" font-size="14" fill="rgba(120,60,200,0.3)" letter-spacing="2">?</text>
+            <!-- Stone arch frame -->
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248 Z" fill="url(#sStone)"/>
+            <path d="M2,248 L2,90 A78,78,0,0,1,158,90 L158,248" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="3"/>
+            <!-- Stone mortar lines -->
+            <rect x="2"  y="140" width="156" height="2" fill="rgba(0,0,0,0.25)"/>
+            <rect x="2"  y="188" width="156" height="2" fill="rgba(0,0,0,0.25)"/>
+            <rect x="2"  y="220" width="80"  height="2" fill="rgba(0,0,0,0.25)"/>
+            <rect x="82" y="164" width="78"  height="2" fill="rgba(0,0,0,0.25)"/>
+            <!-- Door slab -->
+            <path d="M14,248 L14,94 A66,66,0,0,1,146,94 L146,248 Z" fill="url(#sWood)"/>
+            <!-- Wood grain -->
+            <line x1="14" y1="126" x2="146" y2="126" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+            <line x1="14" y1="148" x2="146" y2="148" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>
+            <line x1="14" y1="170" x2="146" y2="170" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>
+            <line x1="14" y1="192" x2="146" y2="192" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>
+            <line x1="14" y1="220" x2="146" y2="220" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+            <!-- Fanlight — deep teal -->
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="rgba(10,60,80,0.65)"/>
+            <path d="M18,94 A62,62,0,0,1,142,94 Z" fill="none" stroke="rgba(60,180,200,0.35)" stroke-width="1.5"/>
+            <!-- Web radial spokes from center (80,94) -->
+            <line x1="80" y1="94" x2="80"  y2="32" stroke="rgba(140,200,220,0.45)" stroke-width="1.2"/>
+            <line x1="80" y1="94" x2="53"  y2="37" stroke="rgba(140,200,220,0.35)" stroke-width="0.9"/>
+            <line x1="80" y1="94" x2="107" y2="37" stroke="rgba(140,200,220,0.35)" stroke-width="0.9"/>
+            <line x1="80" y1="94" x2="30"  y2="58" stroke="rgba(140,200,220,0.30)" stroke-width="0.8"/>
+            <line x1="80" y1="94" x2="130" y2="58" stroke="rgba(140,200,220,0.30)" stroke-width="0.8"/>
+            <line x1="80" y1="94" x2="18"  y2="94" stroke="rgba(140,200,220,0.25)" stroke-width="0.8"/>
+            <line x1="80" y1="94" x2="142" y2="94" stroke="rgba(140,200,220,0.25)" stroke-width="0.8"/>
+            <!-- Web concentric arcs -->
+            <path d="M62,94 A18,18,0,0,1,98,94"  fill="none" stroke="rgba(100,180,200,0.35)" stroke-width="0.9"/>
+            <path d="M45,94 A35,35,0,0,1,115,94" fill="none" stroke="rgba(100,180,200,0.30)" stroke-width="0.8"/>
+            <path d="M28,94 A52,52,0,0,1,132,94" fill="none" stroke="rgba(100,180,200,0.25)" stroke-width="0.7"/>
+            <!-- Fanlight inner glow -->
+            <path d="M22,94 A58,58,0,0,1,138,94 Z" fill="rgba(20,120,160,0.08)"/>
+            <!-- Top panel (recessed) -->
+            <rect x="20" y="104" width="120" height="55" rx="3" fill="rgba(0,0,0,0.22)"/>
+            <rect x="21" y="105" width="118" height="53" rx="3" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <rect x="21" y="105" width="118" height="2" rx="1" fill="rgba(255,255,255,0.04)"/>
+            <!-- Bottom panel (recessed) -->
+            <rect x="20" y="167" width="120" height="73" rx="3" fill="rgba(0,0,0,0.22)"/>
+            <rect x="21" y="168" width="118" height="71" rx="3" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <rect x="21" y="168" width="118" height="2" rx="1" fill="rgba(255,255,255,0.04)"/>
+            <!-- Door knob (silver) -->
+            <circle cx="120" cy="206" r="8" fill="#0c1418"/>
+            <circle cx="120" cy="206" r="7" fill="url(#sKnob)"/>
+            <circle cx="117" cy="203" r="2.5" fill="rgba(255,255,255,0.4)"/>
+            <!-- Roman numeral -->
+            <text x="80" y="18" text-anchor="middle" font-family="serif" font-size="13" fill="rgba(80,180,200,0.55)" letter-spacing="3">III</text>
           </svg>
         </div>
-        <div class="door-name" style="color:#1a1020">??? Unknown</div>
-        <div class="door-key-line" id="mystery-key-status">🗝️🗝️🗝️ Requires All 3 Boss Keys</div>
-      </div>
+        <div class="door-name">Spider's Place</div>
+        <div class="door-key-line">🕸️ Enter</div>
+      </a>
 
     </div>
   </section>
@@ -328,12 +359,7 @@
   <script>
   // ── World hub: key status display ──────────────────────────────
   (function(){
-    const keys = JSON.parse(localStorage.getItem('wolfdragon_keys') || '{}');
-    const allKeys = keys.spiderKey && keys.lichKey && keys.apocKey;
-    if(allKeys){
-      const el = document.getElementById('mystery-key-status');
-      if(el){ el.textContent = '🔑🔑🔑 All Keys — Enter'; el.classList.add('unlocked'); }
-    }
+    // key system placeholder — expand when rooms have unlockables
   })();
   </script>
   <script src="js/player.js"></script>
