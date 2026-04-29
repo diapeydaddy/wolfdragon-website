@@ -169,7 +169,7 @@
     "I scheduled a team building exercise. No one came because it conflicted with the siege I also scheduled. That's on me.",
     "A Brute submitted a performance improvement plan for ME. I don't know where he got the template. I'm impressed and also going to deal with that.",
     "Minion retention is a real issue. You have to invest in your people. Even if your people are semi-sentient creatures of the void.",
-    "I read every single TPS report. All forty-eight. Every week. I am the only person alive who reads the TPS reports. Documented fact.",
+    "I read every single TPS report. All forty-eight thousand. Every week. I am the only person alive who reads the TPS reports. Documented fact.",
     // Lich
     "The Lich has real talent. Real, genuine magical ability. He just doesn't take it seriously. It's frustrating to watch.",
     "He turned down the sixty-forty split again. He wants to do card tricks in a two-thousand seat theater. I respect the vision. Not the priority.",
@@ -250,12 +250,12 @@
 
   // ── ZONES ────────────────────────────────────────────────────────────────────
   const ZONES = [
-    // Back wall
+    // Specific foreground items first — they win over broad background zones
+    { id:'whiteboard',  x:330, y:162, w:152, h:228, label:'Whiteboard',          cursor:'pointer' },
     { id:'poster',      x:758, y:108, w:128, h:172, label:'Motivational Poster', cursor:'pointer' },
-    { id:'window',      x:166, y:95,  w:320, h:290, label:'City View',           cursor:'pointer' },
     { id:'guitar',      x:488, y:206, w:54,  h:228, label:'Guitar',              cursor:'pointer' },
     { id:'monet',       x:554, y:104, w:146, h:132, label:'Monet Painting',      cursor:'pointer' },
-    // Shelf 1 books (bx=0, shelf y=186, books start x=4)
+    // Shelf books & doll
     { id:'book-aw',     x:3,   y:184, w:17,  h:48,  label:'The Art of War',           cursor:'pointer' },
     { id:'book-gg',     x:20,  y:184, w:18,  h:48,  label:'Good to Great',            cursor:'pointer' },
     { id:'book-pr',     x:38,  y:184, w:16,  h:48,  label:'Principles',               cursor:'pointer' },
@@ -263,17 +263,17 @@
     { id:'book-tf',     x:69,  y:184, w:18,  h:48,  label:'Thinking Fast & Slow',     cursor:'pointer' },
     { id:'book-ah',     x:87,  y:184, w:15,  h:48,  label:'Atomic Habits',            cursor:'pointer' },
     { id:'book-48',     x:102, y:184, w:16,  h:48,  label:'48 Laws of Power',         cursor:'pointer' },
-    // Shelf 2 books (shelf y=242, books start x=4)
     { id:'book-ow',     x:3,   y:240, w:18,  h:48,  label:'On War',                   cursor:'pointer' },
     { id:'book-tp',     x:21,  y:240, w:16,  h:48,  label:'The Prince',               cursor:'pointer' },
     { id:'book-med',    x:37,  y:240, w:15,  h:48,  label:'Meditations',              cursor:'pointer' },
     { id:'book-gal',    x:52,  y:240, w:18,  h:48,  label:'The New Industrial State', cursor:'pointer' },
     { id:'pindoll',     x:86,  y:237, w:36,  h:45,  label:'Pin Doll',                 cursor:'pointer' },
-    // Floor / desk items
-    { id:'whiteboard',  x:330, y:162, w:152, h:228, label:'Whiteboard',          cursor:'pointer' },
+    // Desk items
     { id:'tps-reports', x:606, y:352, w:106, h:42,  label:'TPS Reports',         cursor:'pointer' },
     { id:'computer',    x:708, y:267, w:168, h:96,  label:'Computer',            cursor:'pointer' },
     { id:'fax',         x:922, y:250, w:78,  h:138, label:'Fax Machine',         cursor:'pointer' },
+    // Large background zones last — only hit when nothing more specific is under the cursor
+    { id:'window',      x:166, y:95,  w:320, h:290, label:'City View',           cursor:'pointer' },
   ];
 
   let hoveredZone = null;
@@ -378,10 +378,9 @@
     <div style="font-family:'Oswald',Arial,sans-serif;font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.5);letter-spacing:0.2em;margin-bottom:4px;">IS</div>
     <div style="font-family:'Oswald',Arial,sans-serif;font-size:2.4rem;font-weight:600;color:#c8a840;letter-spacing:0.06em;line-height:1;margin-bottom:24px;text-shadow:0 0 40px rgba(200,168,64,0.5);">EVERYTHING</div>
     <div style="width:40px;height:1px;background:rgba(200,168,64,0.4);margin:0 auto 18px;"></div>
-    <div style="font-size:0.72rem;color:rgba(255,255,255,0.32);letter-spacing:0.1em;line-height:1.7;">YOUR MIND DETERMINES<br>EVERYTHING ELSE.</div>
   </div>
   <div style="font-size:0.78rem;color:#7a7060;font-style:italic;padding:0 8px;">
-    A gift from the team. Signed on the back by all forty-eight minions. Even Brute #4, whose signature is just a fist impression in the cardboard.
+    A gift from the team. Signed on the back by all forty-eight thousand minions. Even Brute #4, whose signature is just a fist impression in the cardboard.
   </div>
 </div>`
     },
@@ -391,7 +390,7 @@
     'book-pr': { icon:'📗', title:'Principles — Ray Dalio', html:`<div style="white-space:normal"><div style="background:#081808;border-left:4px solid #2a5e2a;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Pain + Reflection = Progress."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">That equation is circled three times, underlined twice, starred, and then copied onto a separate sticky note that is now on the whiteboard.<br><br>She sent this book to the Lich. He texted back: "is this a self-help book." She did not respond for three days.</div></div>` },
     'book-zo': { icon:'📙', title:'Zero to One — Peter Thiel', html:`<div style="white-space:normal"><div style="background:#181008;border-left:4px solid #5a3a00;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"The most contrarian thing of all is not to oppose the crowd but to think for yourself."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Page 64 is dog-eared. Margin note: "yes — but step two is still domination." A smaller note below that: "be honest about step two."<br><br>She agrees with about 70% of this book and has detailed notes disputing the rest.</div></div>` },
     'book-tf': { icon:'📓', title:'Thinking, Fast and Slow — Kahneman', html:`<div style="white-space:normal"><div style="background:#100818;border-left:4px solid #3a1a5e;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Nothing in life is as important as you think it is while you are thinking about it."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">That sentence has a single, careful question mark written next to it. Then: "Disagree. World domination IS this important. (re-read ch. 4.)"<br><br>She bought this to understand how the Brutes make decisions. She now understands why they submitted rocks as status reports. She is not comforted.</div></div>` },
-    'book-ah': { icon:'📒', title:'Atomic Habits — James Clear', html:`<div style="white-space:normal"><div style="background:#080808;border-left:4px solid #444;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"You do not rise to the level of your goals. You fall to the level of your systems."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Heavily underlined. "SYSTEMS." is written in the margin with an arrow pointing to a separate note that says "the TPS system is exactly this."<br><br>She gave copies to all 48 minions. Brute #4 used his as a doorstop. Brute #4 has been assigned portal maintenance.</div></div>` },
+    'book-ah': { icon:'📒', title:'Atomic Habits — James Clear', html:`<div style="white-space:normal"><div style="background:#080808;border-left:4px solid #444;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"You do not rise to the level of your goals. You fall to the level of your systems."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Heavily underlined. "SYSTEMS." is written in the margin with an arrow pointing to a separate note that says "the TPS system is exactly this."<br><br>She gave copies to all 48,000 minions. Brute #4 used his as a doorstop. Brute #4 has been assigned portal maintenance.</div></div>` },
     'book-48': { icon:'📔', title:'The 48 Laws of Power — Robert Greene', html:`<div style="white-space:normal"><div style="background:#180808;border-left:4px solid #4a2a00;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"Law 1: Never Outshine the Master."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Written in the margin next to Law 1: "I AM the master. Irrelevant. Moving on."<br><br>All 48 laws have annotations. Law 15 (Crush Your Enemy Totally) has two sticky notes and a diagram. Law 46 (Never Appear Too Perfect) is crossed out with "No." She has thought about it, and no.</div></div>` },
     'book-ow': { icon:'📕', title:'On War — Clausewitz', html:`<div style="white-space:normal"><div style="background:#180a02;border-left:4px solid #4a1a00;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"War is the continuation of politics by other means."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">That sentence is highlighted, then rewritten in red pen in the margin: <em>"World domination is the continuation of brand strategy by other means."</em><br><br>She has thought about this a lot. She stands by the rewrite.</div></div>` },
     'book-tp': { icon:'📘', title:'The Prince — Machiavelli', html:`<div style="white-space:normal"><div style="background:#020810;border-left:4px solid #002a4a;padding:12px 16px;border-radius:3px;margin-bottom:12px;font-style:italic;color:#e8d0c0;font-size:0.9rem;line-height:1.7">"It is better to be feared than loved, if you cannot be both."</div><div style="font-size:0.82rem;color:#a09080;line-height:1.7">Underlined. Then below it, in her handwriting: "Working on the 'both' option. Team morale survey TBD."<br><br>The survey has not been conducted. She drafted it twice. Both drafts are in the recycling bin under the desk. She may draft a third.</div></div>` },
@@ -414,7 +413,7 @@
   </div>
   <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:0.78rem;">
     <tr style="background:#f0ece0;"><td style="padding:3px 8px;font-weight:600;width:38%;">Test Environment:</td><td style="padding:3px 8px;">Eastern Provinces, Sectors 4–7</td></tr>
-    <tr><td style="padding:3px 8px;font-weight:600;">Personnel Required:</td><td style="padding:3px 8px;">12 Brutes (field); 1 Dark Enchanter (<span style="color:#cc2222;">VACANT</span>)</td></tr>
+    <tr><td style="padding:3px 8px;font-weight:600;">Personnel Required:</td><td style="padding:3px 8px;">12,000 Brutes (field); 1 Dark Enchanter (<span style="color:#cc2222;">VACANT</span>)</td></tr>
     <tr style="background:#f0ece0;"><td style="padding:3px 8px;font-weight:600;">Submitted by:</td><td style="padding:3px 8px;">Brute #11 (acting liaison)</td></tr>
     <tr><td style="padding:3px 8px;font-weight:600;">Equipment:</td><td style="padding:3px 8px;">Siege apparatus, portal array, crosscut saw (<span style="color:#cc2222;">MISSING</span>)</td></tr>
   </table>
@@ -434,8 +433,8 @@
   <div style="margin-bottom:4px;">Metropolitan Centers.....<span style="color:#cc8800;">PHASE 3 — PENDING</span></div>
   <div style="margin-bottom:4px;">Global Domination........<span style="color:#555;">PHASE 4 — NOT STARTED</span></div>
   <div style="margin-bottom:12px;margin-top:8px;"><span style="color:#cc2222;">PERSONNEL</span> ══════════════════════════</div>
-  <div style="margin-bottom:4px;">Active Minions...........<span style="color:#00cc44;">48</span></div>
-  <div style="margin-bottom:4px;">Brutes (field)...........<span style="color:#00cc44;">12</span></div>
+  <div style="margin-bottom:4px;">Active Minions...........<span style="color:#00cc44;">48,000</span></div>
+  <div style="margin-bottom:4px;">Brutes (field)...........<span style="color:#00cc44;">12,000</span></div>
   <div style="margin-bottom:4px;">Dark Enchanter...........<span style="color:#cc2222;">VACANT [3 months]</span></div>
   <div style="margin-bottom:4px;">Fear Index...............<span style="color:#00cc44;">▲ 18% QoQ</span></div>
   <div style="margin-bottom:12px;margin-top:8px;"><span style="color:#cc2222;">ALERTS</span> ═══════════════════════════════</div>
@@ -995,11 +994,6 @@
     ctx.lineWidth = 0.8;
     ctx.beginPath(); ctx.moveTo(px + 16, py + 114); ctx.lineTo(px + pw - 16, py + 114); ctx.stroke();
 
-    // Subtext
-    ctx.font = '5.5px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.fillText('YOUR MIND DETERMINES', px + pw / 2, py + 128);
-    ctx.fillText('EVERYTHING ELSE.', px + pw / 2, py + 139);
-
     // Credit
     ctx.font = 'italic 6px Arial';
     ctx.fillStyle = 'rgba(200,168,64,0.38)';
@@ -1223,7 +1217,7 @@
     // Screen content
     ctx.fillStyle = 'rgba(0,180,60,0.8)';
     ctx.font = '5.5px monospace';
-    ['CONQUEST_STATUS...OK', 'FEAR_INDEX.......▲18%', 'PHASE_3......PENDING', 'ENCHANTER..VACANT 94d', '> _'].forEach((line, i) => {
+    ['CONQUEST_STATUS...OK', 'FEAR_INDEX.......▲18%', 'MINIONS.......48,000', 'ENCHANTER..VACANT 94d', '> _'].forEach((line, i) => {
       ctx.fillText(line, 720, 288 + i * 12);
     });
     // Power light
