@@ -204,11 +204,11 @@
     "Rest is recovery. I sleep exactly six hours twelve minutes. Optimized.",
     "Failure is data. I don't have failures. I have very instructive data points.",
     // Wolfdragon
-    "Wolfdragon is a lot. She really is. But she shows up. In a world of people who don't show up, I notice that.",
-    "I'll give Wolfdragon this: her energy is genuine. Unregulated and occasionally alarming, but genuine.",
+    "Wolfdragon is a lot. He really is. But he shows up. In a world of people who don't show up, I notice that.",
+    "I'll give Wolfdragon this: his energy is genuine. Unregulated and occasionally alarming, but genuine.",
     "Wolfdragon sent me a motivational video this morning. Forty-seven seconds. I watched all forty-seven seconds. I felt something.",
-    "She challenges my assumption that enthusiasm has limits.",
-    "She asked if she could join the leadership team. I said we'd revisit it. I've been revisiting it in my head ever since.",
+    "He challenges my assumption that enthusiasm has limits.",
+    "He asked if he could join the leadership team. I said we'd revisit it. I've been revisiting it in my head ever since.",
     // Bahamas / deferred life
     "I booked a trip to the Bahamas sixteen months ago. The reservation is still active. I choose to see that as optimism.",
     "I'll take a real vacation after Phase Three. Phase Two ended eight months ago. I have not started Phase Three. Administratively.",
@@ -636,7 +636,7 @@
     const SKY = {
       night: ['#05080e', '#080d1a', '#0c1828'],
       dawn:  ['#0e0618', '#200e24', '#341828'],
-      day:   ['#245a8c', '#306898', '#3e78aa'],
+      day:   ['#3a9ad8', '#5ab0e8', '#7cc8f8'],  // clear sunny blue sky
       dusk:  ['#160408', '#280808', '#3c1010'],
     };
     const sc = SKY[phase];
@@ -659,7 +659,7 @@
     const horizColors = {
       night: 'rgba(80,120,200,0.12)',
       dawn:  'rgba(255,100,40,0.30)',
-      day:   'rgba(180,210,255,0.18)',
+      day:   'rgba(255,240,180,0.22)',  // warm haze near buildings
       dusk:  'rgba(255,70,15,0.36)',
     };
     const horizGlow = ctx.createRadialGradient(wx + ww * 0.5, wy + wh * 0.82, 0, wx + ww * 0.5, wy + wh * 0.82, 200);

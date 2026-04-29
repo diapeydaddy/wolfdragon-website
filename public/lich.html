@@ -1148,7 +1148,7 @@
       const SKY = {
         night: ['#02020e', '#030312', '#050518'],
         dawn:  ['#100818', '#1e1028', '#2c1e38'],
-        day:   ['#3a5068', '#4a6078', '#5a7088'],  // overcast rainy-day gray-blue
+        day:   ['#7a96b0', '#9ab0c8', '#b8cede'],  // bright overcast — rainy but clearly daytime
         dusk:  ['#180608', '#280c08', '#381010'],
       };
       const sc = SKY[phase];
@@ -1220,13 +1220,13 @@
         [[wx + 50, wy + 30, 80, 28], [wx + 170, wy + 22, 100, 32], [wx + 290, wy + 35, 70, 22]].forEach(([cx2, cy2, cw2, ch2]) => {
           ctx.beginPath(); ctx.ellipse(cx2, cy2, cw2, ch2, 0, 0, Math.PI * 2); ctx.fill();
         });
-        // Overcast diffuse light
-        ctx.fillStyle = 'rgba(140,170,220,0.14)';
+        // Overcast diffuse fill — brightens everything
+        ctx.fillStyle = 'rgba(200,220,240,0.22)';
         ctx.fillRect(wx + 12, wy + 12, ww - 24, wh - 24);
       }
 
-      // Building silhouettes — visible as dark shapes against lighter sky in day
-      const bldCol = phase === 'day' ? '#1a2a40' : '#060614';
+      // Building silhouettes — dark against bright sky in day
+      const bldCol = phase === 'day' ? '#1e2a38' : '#060614';
       const buildings = [
         {x:wx+12, y:wy+wh-80,  w:55, h:80 },
         {x:wx+75, y:wy+wh-130, w:45, h:130},
