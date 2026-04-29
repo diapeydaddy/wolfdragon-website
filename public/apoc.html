@@ -1,117 +1,243 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Apocalyptic's War Room — Wolfdragon World</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Oswald:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apocalyptic's War Room — WOLFDRAGON</title>
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&family=Oswald:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #0e0e14; color: #e8e0d0; font-family: 'Segoe UI', Arial, sans-serif; overflow-x: hidden; }
 
-    /* ── NAV ── */
-    #top-nav {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 20px; background: #0a0a10;
-      border-bottom: 1px solid rgba(180,20,20,0.25);
+    :root {
+      --red:       #cc2222;
+      --red-dark:  #3a0000;
+      --red-glow:  #e03030;
+      --black:     #0a0a0a;
+      --black-soft:#0e0e14;
+      --white:     #f0f0f0;
+      --cream:     #e8e0cc;
+      --font-title:'Metal Mania', cursive;
+      --font-body: 'Oswald', sans-serif;
+      --font-hand: 'Special Elite', cursive;
     }
-    #top-nav a.home-link {
-      color: #c8a840; text-decoration: none; font-size: 0.85rem;
-      letter-spacing: 0.06em; opacity: 0.8; transition: opacity 0.15s;
-    }
-    #top-nav a.home-link:hover { opacity: 1; }
-    #top-nav .room-title {
-      font-size: 0.9rem; font-weight: 600; letter-spacing: 0.12em;
-      color: #cc2222; text-transform: uppercase;
-    }
-    #top-nav .spacer { width: 120px; }
 
-    /* ── CANVAS WRAPPER ── */
-    #canvas-wrap {
-      width: 100%; max-width: 1400px; margin: 18px auto 0;
-      padding: 0 16px;
+    html, body {
+      background: var(--black-soft);
+      color: var(--white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    #room {
-      display: block; width: 100%; height: auto;
-      border: 1px solid rgba(180,20,20,0.2);
-      border-radius: 4px;
-      box-shadow: 0 0 60px rgba(140,0,0,0.18), 0 4px 24px rgba(0,0,0,0.7);
+
+    /* ── NAV BAR ── */
+    .room-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 52px;
+      background: #0a0a10;
+      border-bottom: 2px solid #3a0000;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-home {
+      color: var(--red-glow);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      transition: opacity 0.15s;
+    }
+    .nav-home:hover { opacity: 1; }
+
+    .room-title {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      color: var(--red-glow);
+      letter-spacing: 0.15em;
+      text-shadow: 0 0 12px var(--red);
+    }
+
+    .nav-spacer { width: 120px; }
+
+    /* ── MAIN CANVAS AREA ── */
+    .room-main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
       cursor: default;
     }
 
-    /* ── MODAL ── */
-    #inspect-modal {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.78); z-index: 100;
-      align-items: center; justify-content: center;
-    }
-    #inspect-modal.open { display: flex; }
-    #inspect-inner {
-      background: #16161e; border: 1px solid rgba(180,20,20,0.35);
-      border-radius: 6px; width: min(580px, 92vw);
-      max-height: 85vh; display: flex; flex-direction: column;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.85);
-      overflow: hidden;
-    }
-    #inspect-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 18px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
-      flex-shrink: 0;
-    }
-    #inspect-icon { font-size: 1.5rem; }
-    #inspect-title { font-size: 1rem; font-weight: 600; color: #e8e0d0; flex: 1; }
-    #inspect-title:empty { display: none; }
-    #inspect-close {
-      background: none; border: none; color: #888; font-size: 1.4rem;
-      cursor: pointer; line-height: 1; padding: 2px 4px;
-      transition: color 0.15s;
-    }
-    #inspect-close:hover { color: #e8e0d0; }
-    #inspect-body {
-      padding: 18px; overflow-y: auto; flex: 1;
-    }
-    .inspect-content {
-      font-size: 0.92rem; line-height: 1.65; color: #c8c0b0;
-      white-space: pre-wrap;
-    }
-    .modal-hint {
-      font-size: 0.75rem; color: #666; text-align: center;
-      padding: 10px 0 4px; border-top: 1px solid rgba(255,255,255,0.05);
-      flex-shrink: 0;
+    #room {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: auto;
     }
 
-    /* Scrollbar */
-    #inspect-body::-webkit-scrollbar { width: 6px; }
-    #inspect-body::-webkit-scrollbar-track { background: #12121a; }
-    #inspect-body::-webkit-scrollbar-thumb { background: #3a2020; border-radius: 3px; }
+    .hint-bar {
+      width: 100%;
+      max-width: 1400px;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: #553333;
+      text-transform: uppercase;
+      background: #07070f;
+      border-top: 1px solid #1a0000;
+    }
+
+    /* ── HOVER TOOLTIP ── */
+    #hover-hint {
+      position: absolute;
+      background: rgba(30,0,0,0.92);
+      border: 1px solid var(--red);
+      color: var(--red-glow);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      padding: 5px 12px;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: #100a0a;
+      border: 2px solid var(--red);
+      box-shadow: 0 0 40px rgba(180,20,20,0.4);
+      max-width: 580px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 28px 28px 24px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: none;
+      border: 1px solid #441111;
+      color: var(--red-glow);
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: var(--red-dark); }
+
+    .modal-title {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      color: var(--red-glow);
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 12px var(--red);
+    }
+    .modal-title:empty { display: none; }
+
+    .inspect-content {
+      font-family: var(--font-hand);
+      font-size: 1rem;
+      color: var(--cream);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    /* ── FOOTER ── */
+    .room-footer {
+      background: #07070f;
+      text-align: center;
+      padding: 20px;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      color: #332222;
+      border-top: 1px solid #1a0000;
+    }
+    .room-footer a {
+      color: var(--red);
+      text-decoration: none;
+    }
+    .room-footer a:hover { color: var(--red-glow); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a14; }
+    ::-webkit-scrollbar-thumb { background: var(--red-dark); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+    @media (max-width: 600px) {
+      .room-nav { padding: 0 12px; }
+      .room-title { font-size: 0.9rem; }
+      .modal-box { padding: 20px 16px; }
+    }
   </style>
 </head>
 <body>
 
-<nav id="top-nav">
-  <a class="home-link" href="/">← Wolfdragon World</a>
-  <div class="room-title">Apocalyptic's War Room</div>
-  <div class="spacer"></div>
-</nav>
+  <!-- ── NAV ── -->
+  <nav class="room-nav">
+    <a class="nav-home" href="/">← Back to World</a>
+    <span class="room-title">Apocalyptic's War Room</span>
+    <div class="nav-spacer"></div>
+  </nav>
 
-<div id="canvas-wrap">
-  <canvas id="room" width="1000" height="560"></canvas>
-</div>
-
-<div id="inspect-modal" role="dialog" aria-modal="true">
-  <div id="inspect-inner">
-    <div id="inspect-header">
-      <span id="inspect-icon"></span>
-      <span id="inspect-title"></span>
-      <button id="inspect-close" aria-label="Close">×</button>
+  <!-- ── CANVAS ── -->
+  <main class="room-main">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <canvas id="room" width="1000" height="560"></canvas>
+      <div id="hover-hint"></div>
     </div>
-    <div id="inspect-body">
+    <div class="hint-bar">Click items to interact &nbsp;·&nbsp; Mouse over to explore</div>
+  </main>
+
+  <!-- ── INSPECT MODAL ── -->
+  <div class="modal-overlay" id="inspect-modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <button class="modal-close" id="inspect-close" aria-label="Close">×</button>
+      <div class="modal-title" id="inspect-title"></div>
       <div class="inspect-content" id="inspect-content"></div>
     </div>
   </div>
-</div>
+
+  <footer class="room-footer">
+    <a href="/">← Return to World</a> &nbsp;·&nbsp; WOLFDRAGON &nbsp;·&nbsp;
+    <span style="color:#221111">All characters fictional</span>
+  </footer>
 
 <script>
   // ── CANVAS SETUP ────────────────────────────────────────────────────────────
@@ -294,11 +420,10 @@
   }
 
   // ── INSPECT MODAL ────────────────────────────────────────────────────────────
-  const modal   = document.getElementById('inspect-modal');
-  const iIcon   = document.getElementById('inspect-icon');
-  const iTitle  = document.getElementById('inspect-title');
-  const iContent= document.getElementById('inspect-content');
-  const iClose  = document.getElementById('inspect-close');
+  const modal    = document.getElementById('inspect-modal');
+  const iTitle   = document.getElementById('inspect-title');
+  const iContent = document.getElementById('inspect-content');
+  const iClose   = document.getElementById('inspect-close');
 
   const INSPECT_DATA = {
     whiteboard: {
@@ -490,14 +615,11 @@
   function openModal(id) {
     const d = INSPECT_DATA[id];
     if (!d) return;
+    iTitle.textContent = d.title || '';
     if (d.html) {
-      iIcon.textContent  = d.icon || '';
-      iTitle.textContent = d.title || '';
       iContent.innerHTML = d.html;
       iContent.style.whiteSpace = 'normal';
     } else {
-      iIcon.textContent  = d.icon || '';
-      iTitle.textContent = d.title || '';
       iContent.textContent = d.body || '';
       iContent.style.whiteSpace = 'pre-wrap';
     }
