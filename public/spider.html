@@ -248,6 +248,82 @@
   let frame = 0;
   let mx = -1, my = -1;
 
+  // ── SPRITE ───────────────────────────────────────────────────────────────
+  const spiderImg = new Image();
+  spiderImg.src   = '/images/boss-spider.png';
+  let spriteReady = false;
+  spiderImg.onload = () => { spriteReady = true; };
+
+  // boss-spider.png is 1024×670: left half = front/idle, right half = side/walk
+  const FRONT = { sx: 0,   sy: 0, sw: 512, sh: 670 };
+  const SIDE  = { sx: 512, sy: 0, sw: 512, sh: 670 };
+  const BASE_W = 195;
+
+  // ── CHARACTER STATE ───────────────────────────────────────────────────────
+  let spiderX     = 500;
+  let spiderY     = 445;   // fixed feet Y
+  let spiderDir   = -1;    // 1=right, -1=left
+  let spiderState = 'walk';
+  let spiderStateT = 0;
+  const WALK_MIN   = 245;
+  const WALK_MAX   = 790;
+  const WALK_SPEED = 1.2;
+  const IDLE_PAUSE = 160;
+
+  function getDepthScale(y) {
+    const frac = Math.max(0, Math.min(1, (y - 270) / (460 - 270)));
+    return 0.62 + 0.38 * frac;
+  }
+
+  // ── SPEECHES ─────────────────────────────────────────────────────────────
+  const SPEECH_INTERVAL = 510; // ~8.5 s at 60 fps
+  let speechTimer   = 0;
+  let speechDeck    = [];
+  let speechDeckPos = 0;
+  let speechIdx     = 0;
+
+  const SPEECHES = [
+    // Surveillance / the work
+    "Fourteen nodes active. Three anomalies in queue. I already know which one's the problem.",
+    "The city has about six hundred cameras I can reach from here. I'm watching forty of them right now.",
+    "Target three went dark two hours ago. They think that helps them. It doesn't.",
+    "Someone tried to access the east grid at 2 AM. Three proxies. I found them in eight minutes.",
+    "Signal discipline. Most people don't have it. That's fine. I do.",
+    "The best surveillance isn't the kind they know about. It's the kind they forgot was there.",
+    "Three proxies, two dead drops, a frequency swap per message. Standard protocol.",
+    "The network is clean. The network is always clean. I made it clean and I keep it clean.",
+    "I patched a zero-day this morning before anyone else saw it. Today is going well.",
+    "Sector seven had movement at 0340. I logged it. I always log it.",
+    "You don't need to watch everything. You need to watch the right things. That's the whole job.",
+    "Most people in this line of work talk too much about what they know. I don't have that problem.",
+    // About Wolfdragon
+    "He reads every report I send. All of them. The footnotes too. That's rare.",
+    "He gave me a budget and a problem and stayed out of the way. That's all I've ever asked for.",
+    "I've worked for three organizations. This is the only one that doesn't make me explain what I do.",
+    // About the others
+    "I've met the Lich once. He asked what I was doing. I said 'looking.' He nodded. I think we understood each other.",
+    "Apocalyptic's intel reports are very thorough. She and I agree on most things about information architecture.",
+    // Personal
+    "Four cans tonight. Which is — fine. This is a controlled number of cans.",
+    "Sleep is a liability I'm working on managing.",
+    "Charlotte had a new growth point last Tuesday. I documented it.",
+    "There's a version of this job where I leave the apartment more. I think about it sometimes.",
+    "The bag's been packed for six months. I check it every two weeks. Everything checks out every time.",
+    "I know seventeen exit routes from this building. I know three from this room specifically.",
+    "Quiet doesn't bother me. Quiet is what the work sounds like when it's going well.",
+  ];
+
+  function shuffleDeck() {
+    const arr = SPEECHES.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  speechDeck = shuffleDeck();
+  speechIdx  = speechDeck[0];
+
   // ── MODAL ────────────────────────────────────────────────────────────────
   const modal    = document.getElementById('inspect-modal');
   const iTitle   = document.getElementById('inspect-title');
@@ -943,6 +1019,144 @@ and she can see all of it.`,
     ctx.restore();
   }
 
+  // ── SPIDER CHARACTER ──────────────────────────────────────────────────────
+  function drawSpider() {
+    const ds   = getDepthScale(spiderY);
+    const SPR  = spiderState === 'walk' ? SIDE : FRONT;
+    const baseH = Math.floor(BASE_W * SPR.sh / SPR.sw);
+    const dw   = Math.floor(BASE_W * ds);
+    const dh   = Math.floor(baseH  * ds);
+    const dx   = Math.floor(spiderX - dw / 2);
+    const dy   = Math.floor(spiderY - dh);
+
+    // Ground shadow
+    ctx.fillStyle = `rgba(0,0,0,${0.22 * ds})`;
+    ctx.beginPath();
+    ctx.ellipse(spiderX, spiderY + 3, 28 * ds, 7 * ds, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Teal aura pulse when idle
+    if (spiderState === 'idle') {
+      const pa = 0.055 + Math.sin(frame * 0.05) * 0.030;
+      const aura = ctx.createRadialGradient(spiderX, dy + dh / 2, 0, spiderX, dy + dh / 2, 62 * ds);
+      aura.addColorStop(0, `rgba(26,184,204,${pa})`);
+      aura.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.ellipse(spiderX, dy + dh / 2, 62 * ds, 62 * ds, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (!spriteReady) {
+      ctx.fillStyle = '#1ab8cc';
+      ctx.fillRect(dx, dy, dw, dh);
+      return;
+    }
+
+    // SIDE sprite faces left by default — flip when walking right
+    if (spiderDir === 1 && spiderState === 'walk') {
+      ctx.save();
+      ctx.translate(dx + dw, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(spiderImg, SPR.sx, SPR.sy, SPR.sw, SPR.sh, 0, dy, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(spiderImg, SPR.sx, SPR.sy, SPR.sw, SPR.sh, dx, dy, dw, dh);
+    }
+  }
+
+  // ── SPEECH BUBBLE ─────────────────────────────────────────────────────────
+  function drawSpeechBubble() {
+    const ds    = getDepthScale(spiderY);
+    const SPR   = spiderState === 'walk' ? SIDE : FRONT;
+    const baseH = Math.floor(BASE_W * SPR.sh / SPR.sw);
+    const dh    = Math.floor(baseH * ds);
+    const bubX  = spiderX;
+    const bubY  = spiderY - dh - 12;
+    const text  = SPEECHES[speechIdx];
+    if (!text) return;
+
+    const font  = '15px "Segoe UI", Arial, sans-serif';
+    ctx.font = font;
+    const maxW = 300, lineH = 21, padX = 15, padY = 11;
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW - padX * 2) {
+        if (cur) lines.push(cur);
+        cur = w;
+      } else { cur = test; }
+    });
+    if (cur) lines.push(cur);
+
+    const bw = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2);
+    const bh = lines.length * lineH + padY * 2;
+    const bx = Math.max(8, Math.min(W - bw - 8, bubX - bw / 2));
+    const by = Math.max(8, bubY - bh - 10);
+
+    // Bubble fill + border
+    ctx.fillStyle = 'rgba(4,14,18,0.94)';
+    rrect(bx, by, bw, bh, 8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(26,184,204,0.65)';
+    ctx.lineWidth = 1.5;
+    rrect(bx, by, bw, bh, 8);
+    ctx.stroke();
+
+    // Tail
+    const tailX = Math.max(bx + 14, Math.min(bx + bw - 14, bubX));
+    ctx.fillStyle = 'rgba(4,14,18,0.94)';
+    ctx.beginPath();
+    ctx.moveTo(tailX - 6, by + bh);
+    ctx.lineTo(tailX + 6, by + bh);
+    ctx.lineTo(bubX,       by + bh + 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(26,184,204,0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(tailX - 6, by + bh); ctx.lineTo(bubX, by + bh + 10);
+    ctx.moveTo(tailX + 6, by + bh); ctx.lineTo(bubX, by + bh + 10);
+    ctx.stroke();
+
+    // Text
+    ctx.font = font;
+    ctx.fillStyle = '#ddeef2';
+    ctx.textAlign = 'left';
+    lines.forEach((l, i) => ctx.fillText(l, bx + padX, by + padY + i * lineH + 13));
+  }
+
+  // ── UPDATE ────────────────────────────────────────────────────────────────
+  function update() {
+    if (spiderState === 'walk') {
+      spiderX += spiderDir * WALK_SPEED;
+      if (spiderX >= WALK_MAX || spiderX <= WALK_MIN) {
+        spiderX      = Math.max(WALK_MIN, Math.min(WALK_MAX, spiderX));
+        spiderState  = 'idle';
+        spiderStateT = 0;
+      }
+    } else {
+      spiderStateT++;
+      if (spiderStateT >= IDLE_PAUSE) {
+        spiderDir   = spiderX <= WALK_MIN + 10 ? 1 : -1;
+        spiderState = 'walk';
+      }
+    }
+
+    speechTimer++;
+    if (speechTimer >= SPEECH_INTERVAL) {
+      speechTimer = 0;
+      speechDeckPos++;
+      if (speechDeckPos >= speechDeck.length) {
+        speechDeck    = shuffleDeck();
+        speechDeckPos = 0;
+      }
+      speechIdx = speechDeck[speechDeckPos];
+    }
+  }
+
   // ── MAIN LOOP ─────────────────────────────────────────────────────────────
   function draw() {
     ctx.clearRect(0, 0, W, H);
@@ -956,13 +1170,21 @@ and she can see all of it.`,
     drawSpiderPlant();
     drawTacticalGear();
 
+    // Character on top of scene
+    drawSpider();
+    drawSpeechBubble();
+
     const hz = zoneAt(mx, my);
     if (hz) drawHoverHighlight(hz);
-
-    frame++;
-    requestAnimationFrame(draw);
   }
-  draw();
+
+  function loop() {
+    update();
+    draw();
+    frame++;
+    requestAnimationFrame(loop);
+  }
+  loop();
 
   // ── MOUSE EVENTS ──────────────────────────────────────────────────────────
   const hint = document.getElementById('hover-hint');
