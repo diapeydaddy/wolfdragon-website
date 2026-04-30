@@ -4562,6 +4562,7 @@
   const DEMON_DEFAULTS = {
     demonHp:          2800,  // total boss HP
     phase2Pct:        50,    // % HP at which phase 2 begins
+    tentacleHp:       500,   // HP per tentacle (25 base dmg × 20 hits)
     bodyExposeDur:    300,   // frames tentacle body stays exposed (5s @ 60fps)
     // Smash attack
     smashWarnT:       60,    // warning frames before tentacle lands
@@ -4632,7 +4633,7 @@
     phase: 1,
     introT: 0,
     hitDealt: false,
-    tentacles: [{alive:true}, {alive:true}],
+    tentacles: [{alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}, {alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}],
     bodyExposed: false,
     bodyExposeT: 0,
     risen: false,
@@ -4686,7 +4687,7 @@
       hp: DEMON.maxHp, y: DMN_INTRO_Y, targetY: DMN_REST_Y,
       alive: true, revealed: false, flashT: 0, phase: 1,
       introT: 0, hitDealt: false,
-      tentacles: [{alive:true}, {alive:true}],
+      tentacles: [{alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}, {alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}],
       bodyExposed: false, bodyExposeT: 0, risen: false,
     });
     demonHazards = []; demonSeqIdx = 0; demonCycleN = 0;
@@ -4773,6 +4774,14 @@
         ctx.shadowColor = '#ff6600';
         ctx.shadowBlur = 6 + pulse * 10;
         ctx.strokeRect(tx + 1, ty + 1, tw - 2, th - 2);
+        // HP bar below the zone
+        const hpFrac = t.hp / t.maxHp;
+        const barY = ty + th + 3;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(tx, barY, tw, 5);
+        ctx.fillStyle = hpFrac > 0.5 ? '#ff6600' : (hpFrac > 0.25 ? '#ffaa00' : '#ff2200');
+        ctx.fillRect(tx, barY, Math.ceil(tw * hpFrac), 5);
       }
       ctx.restore();
     });
@@ -5038,7 +5047,7 @@
       DEMON.bodyExposeT = Math.max(0, DEMON.bodyExposeT - 1);
       if(DEMON.bodyExposeT <= 0){
         DEMON.bodyExposed = false;
-        DEMON.tentacles.forEach(t => { t.alive = true; });
+        DEMON.tentacles.forEach(t => { t.alive = true; t.hp = DCFG.tentacleHp; t.maxHp = DCFG.tentacleHp; });
         msg = '— TENTACLES RESPAWN —'; msgT = 80;
       }
     }
@@ -5047,7 +5056,7 @@
     if(PL.atkTimer > 0 && !DEMON.hitDealt){
       let hitSomething = false;
 
-      // (A) Try to hit a tentacle spot — player must be in x/y range of spot
+      // (A) Try to hit a tentacle spot — proximity only, facing direction irrelevant
       if(!hitSomething){
         for(let i = 0; i < 2; i++){
           const t = DEMON.tentacles[i];
@@ -5055,18 +5064,25 @@
           const tx = DMN_DX + TSPOT[i].relX;
           const ty = DEMON.y + TSPOT[i].relY;
           const tw = TSPOT[i].w, th = TSPOT[i].h;
-          const atkTip = PL.x + PL.w + Math.min(PL.atkRange, 100);
-          const inX = PL.facing === 1 && PL.x < tx + tw && atkTip > tx;
+          // Melee range: player hitbox overlaps or is close to tentacle zone
+          const atkReach = Math.min(PL.atkRange, 100);
+          const plLeft  = PL.x - atkReach;
+          const plRight = PL.x + PL.w + atkReach;
+          const inX = plRight > tx && plLeft < tx + tw;
           const inY = ROW_Y[PL.row] < ty + th + 50 && ROW_Y[PL.row] + WD_H > ty - 50;
           if(inX && inY){
-            t.alive = false;
-            burst(tx + tw/2, ty + th/2, '#ff8800', 16, 7);
-            SFX.enemyHit(); demonShakeT = 5;
-            if(DEMON.tentacles.every(tt => !tt.alive)){
-              DEMON.bodyExposed = true;
-              DEMON.bodyExposeT = DCFG.bodyExposeDur;
-              msg = '— BODY EXPOSED! —'; msgT = 110;
-              burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+            t.hp = Math.max(0, t.hp - PL.weapon.dmg);
+            burst(tx + tw/2, ty + th/2, '#ff8800', 8, 4);
+            SFX.enemyHit(); demonShakeT = 3;
+            if(t.hp <= 0){
+              t.alive = false;
+              burst(tx + tw/2, ty + th/2, '#ff4400', 18, 7);
+              if(DEMON.tentacles.every(tt => !tt.alive)){
+                DEMON.bodyExposed = true;
+                DEMON.bodyExposeT = DCFG.bodyExposeDur;
+                msg = '— BODY EXPOSED! —'; msgT = 110;
+                burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+              }
             }
             hitSomething = true; break;
           }
@@ -5114,13 +5130,17 @@
         const ty = DEMON.y + TSPOT[i].relY;
         const {w:tw, h:th} = TSPOT[i];
         if(p.x + 20 > tx && p.x < tx + tw && p.y + 20 > ty && p.y < ty + th){
-          t.alive = false;
-          if(DEMON.tentacles.every(tt => !tt.alive)){
-            DEMON.bodyExposed = true; DEMON.bodyExposeT = DCFG.bodyExposeDur;
-            msg = '— BODY EXPOSED! —'; msgT = 110;
-            burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+          t.hp = Math.max(0, t.hp - p.dmg);
+          burst(p.x, p.y, '#ff8800', 8, 4); SFX.enemyHit();
+          if(t.hp <= 0){
+            t.alive = false;
+            burst(tx+tw/2, ty+th/2, '#ff4400', 18, 7);
+            if(DEMON.tentacles.every(tt => !tt.alive)){
+              DEMON.bodyExposed = true; DEMON.bodyExposeT = DCFG.bodyExposeDur;
+              msg = '— BODY EXPOSED! —'; msgT = 110;
+              burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+            }
           }
-          burst(p.x, p.y, '#ff8800', 12, 6); SFX.enemyHit();
           return false;
         }
       }
