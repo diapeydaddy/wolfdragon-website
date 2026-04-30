@@ -77,6 +77,16 @@ async function initDB() {
       if (!e.message.includes('already exists')) console.log('audio_file_id column:', e.message);
     }
 
+    // Subscribers table for key persistence
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id         SERIAL PRIMARY KEY,
+        email      VARCHAR(255) NOT NULL UNIQUE,
+        keys       JSONB        NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP    DEFAULT NOW()
+      );
+    `);
+
     console.log('✅ Database initialized');
   } catch (err) {
     console.error('DB init error:', err.message);
@@ -310,6 +320,46 @@ app.post('/api/scores', async (req, res) => {
       [player_name || 'Anonymous', score, level_reached]
     );
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Subscribe: create/update subscriber, grant subscribeKey ───────────────────
+app.post('/api/subscribe', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Invalid email' });
+
+  const normalised = email.trim().toLowerCase();
+  try {
+    // Upsert — existing subscribers keep their keys, new ones get subscribeKey
+    const result = await pool.query(
+      `INSERT INTO subscribers (email, keys)
+       VALUES ($1, '{"subscribeKey":true}'::jsonb)
+       ON CONFLICT (email) DO UPDATE
+         SET keys = subscribers.keys || '{"subscribeKey":true}'::jsonb
+       RETURNING keys`,
+      [normalised]
+    );
+    res.json({ ok: true, keys: result.rows[0].keys });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Auth by email: return stored keys so player can restore progress ──────────
+app.post('/api/auth/email', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Invalid email' });
+
+  const normalised = email.trim().toLowerCase();
+  try {
+    const result = await pool.query(
+      'SELECT keys FROM subscribers WHERE email = $1',
+      [normalised]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, keys: result.rows[0].keys });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

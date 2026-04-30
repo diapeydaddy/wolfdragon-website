@@ -113,6 +113,16 @@
 
   const W = 800, H = 480;
   canvas.width = W; canvas.height = H;
+
+  // ── Key utility ──────────────────────────────────────────────────────────────
+  // Returns total number of keys collected across all sources (boss keys, subscribe key, etc.)
+  // Used as a placeholder for future perk system — key-gated abilities will read from here.
+  function getKeyCount() {
+    const k = JSON.parse(localStorage.getItem('wolfdragon_keys') || '{}');
+    return Object.values(k).filter(Boolean).length;
+  }
+  // Expose globally so demon.html and other pages can call it too
+  window.WD_getKeyCount = getKeyCount;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
@@ -2801,7 +2811,7 @@
         // Save boss key to localStorage for world exploration
         (function(){
           const bossType = bossTypeForWave();
-          const keyMap = { spider:'spiderKey', lich:'lichKey', apocalyptic:'apocKey' };
+          const keyMap = { spider:'spiderKey', lich:'lichKey', apocalyptic:'apocKey', demon:'demonKey' };
           const keyName = keyMap[bossType];
           if(keyName){
             const saved = JSON.parse(localStorage.getItem('wolfdragon_keys')||'{}');

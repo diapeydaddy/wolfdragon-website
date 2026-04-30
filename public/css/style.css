@@ -603,6 +603,147 @@ img[src$=".svg"] {
   opacity: 0.38;
 }
 
+/* ── Key-gated door (requires key to enter) ── */
+.door-key-locked {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.door-key-locked .door-svg-wrap svg {
+  filter: drop-shadow(3px 6px 14px rgba(0,0,0,0.7)) grayscale(0.45) brightness(0.7);
+}
+
+/* ── Key counter ── */
+.key-counter {
+  text-align: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: #2e2e2e;
+  text-transform: uppercase;
+  margin: -36px auto 44px;
+  opacity: 0.9;
+}
+.key-counter .kc-val {
+  color: #906010;
+  font-size: 0.78rem;
+}
+
+/* ============================================
+   SUBSCRIBE SECTION
+   ============================================ */
+.subscribe-section {
+  background: #06040a;
+  border-top: 2px solid #120820;
+  padding: 64px 20px 72px;
+  text-align: center;
+}
+
+.subscribe-headline {
+  font-family: var(--font-title);
+  font-size: 1.55rem;
+  color: #aa44ff;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 22px rgba(110,30,200,0.55);
+  margin-bottom: 16px;
+}
+
+.subscribe-sub {
+  font-size: 0.75rem;
+  letter-spacing: 0.13em;
+  color: #4a3860;
+  line-height: 1.8;
+  max-width: 500px;
+  margin: 0 auto 38px;
+  text-transform: uppercase;
+}
+
+.subscribe-form,
+.login-form {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.subscribe-input,
+.login-input {
+  flex: 1 1 240px;
+  padding: 12px 16px;
+  background: #0d0818;
+  border: 1px solid #2a1044;
+  border-radius: 4px;
+  color: #d0c0e0;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.subscribe-input:focus,
+.login-input:focus {
+  border-color: #6622aa;
+}
+.subscribe-input::placeholder,
+.login-input::placeholder {
+  color: #3a2855;
+}
+
+.subscribe-btn,
+.login-btn {
+  padding: 12px 22px;
+  background: #44009a;
+  border: 1px solid #6622cc;
+  border-radius: 4px;
+  color: #c8a0f0;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.subscribe-btn:hover,
+.login-btn:hover {
+  background: #5511bb;
+  border-color: #8844ee;
+}
+.subscribe-btn:disabled,
+.login-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sub-msg,
+.login-msg {
+  margin-top: 14px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: #5a4070;
+  min-height: 1.2em;
+  text-transform: uppercase;
+}
+.sub-msg.ok,
+.login-msg.ok  { color: #aa66ff; }
+.sub-msg.err,
+.login-msg.err { color: #cc4444; }
+
+.login-sep {
+  margin: 40px auto;
+  max-width: 360px;
+  border: none;
+  border-top: 1px solid #180a2a;
+}
+
+.login-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: #281840;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
 @media (max-width: 600px) {
   .world-doors { gap: 24px; }
   .door-card { width: 130px; }
