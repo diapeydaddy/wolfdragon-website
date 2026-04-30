@@ -1222,6 +1222,7 @@
 
   function hurtPlayer(dmg, isBoss, shieldCost, bypassShield) {
     if(godMode) return; // invincible
+    if(window.WD_DEMON_MODE && window._DEMON && !window._DEMON.revealed) return; // invulnerable during boss intro
     if(!bypassShield && (PL.sh || PL.iframes > 0 && PL.shBroken)) {
       // Shield is active OR shield just broke this volley (iframes grace period).
       // Either way: fully absorb — no HP damage.
@@ -3009,47 +3010,54 @@
     }
     ctx.globalAlpha = 1;
 
-    // ── Ocean at ground level ─────────────────────────────────────────────
-    // Deep water base
-    const wg = ctx.createLinearGradient(0, GROUND_Y, 0, H);
-    wg.addColorStop(0, '#001828');
+    // ── Ocean: drawn from PLAT_Y down so it shows through platform transparency ──
+    const oceanTop = PLAT_Y + 30; // start just below platform header
+    const wg = ctx.createLinearGradient(0, oceanTop, 0, H);
+    wg.addColorStop(0, '#001520');
+    wg.addColorStop(0.4, '#000d1a');
     wg.addColorStop(1, '#000810');
-    ctx.fillStyle = wg; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    ctx.fillStyle = wg; ctx.fillRect(0, oceanTop, W, H - oceanTop);
 
-    // Animated wave layers
-    for(let layer=0; layer<3; layer++){
-      const spd = 0.5 + layer*0.35;
-      const amp = 5 - layer*1.2;
-      const yBase = GROUND_Y - 1 + layer*3;
+    // Animated wave layers — multiple rows visible at GROUND_Y and lower
+    for(let layer=0; layer<4; layer++){
+      const spd = 0.45 + layer*0.3;
+      const amp = 6 - layer*1.1;
+      const yBase = GROUND_Y - 4 + layer*4;
       ctx.beginPath();
       for(let x=0; x<=W; x+=3){
-        const wy = yBase + Math.sin(x*0.018 + t*spd + layer*1.4)*amp;
+        const wy = yBase + Math.sin(x*0.016 + t*spd + layer*1.2)*amp;
         x===0 ? ctx.moveTo(x,wy) : ctx.lineTo(x,wy);
       }
       ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
-      ctx.fillStyle=`rgba(0,${20+layer*8},${45+layer*12},${0.75-layer*0.15})`; ctx.fill();
-
-      // Foam highlights on crest
-      for(let x=0; x<=W; x+=3){
-        const wy = yBase + Math.sin(x*0.018 + t*spd + layer*1.4)*amp;
-        ctx.beginPath(); ctx.moveTo(x,wy); ctx.lineTo(x+2,wy); ctx.stroke();
-      }
+      ctx.fillStyle=`rgba(0,${22+layer*9},${50+layer*14},${0.78-layer*0.14})`; ctx.fill();
     }
 
-    // Glimmering reflections
-    for(let i=0; i<10; i++){
-      const rx = ((i*109+t*55)%(W+30))-15;
-      const ry = GROUND_Y + 2 + Math.sin(rx*0.018+t*0.7)*4;
-      ctx.globalAlpha = 0.18+Math.sin(t*1.8+i)*0.12;
-      ctx.strokeStyle = 'rgba(120,170,240,0.55)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+18+i%4*4,ry+1); ctx.stroke();
+    // Foam / shimmer lines near ground
+    ctx.save();
+    for(let i=0; i<12; i++){
+      const rx = ((i*97+t*50)%(W+30))-15;
+      const ry = GROUND_Y + 1 + Math.sin(rx*0.016+t*0.75+i)*4;
+      ctx.globalAlpha = 0.22+Math.sin(t*1.9+i*0.7)*0.14;
+      ctx.strokeStyle = 'rgba(130,180,245,0.65)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+22+i%5*3,ry+1); ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Deep-water ripple reflections mid-screen (visible through platform transparency)
+    ctx.save();
+    for(let i=0; i<8; i++){
+      const rx = ((i*137+t*18)%(W+40))-20;
+      const ry = PLAT_Y + 80 + (i % 4) * 55 + Math.sin(t*0.6+i)*8;
+      ctx.globalAlpha = 0.06 + Math.sin(t*0.8+i)*0.04;
+      ctx.strokeStyle = 'rgba(80,160,220,0.5)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+40+i*5,ry); ctx.stroke();
+    }
+    ctx.restore();
 
     // Purple glow at ocean/arena boundary
-    const hg = ctx.createLinearGradient(0, GROUND_Y-28, 0, GROUND_Y+8);
-    hg.addColorStop(0,'rgba(140,0,200,0)'); hg.addColorStop(1,'rgba(70,0,150,0.38)');
-    ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-28,W,36);
+    const hg = ctx.createLinearGradient(0, GROUND_Y-30, 0, GROUND_Y+10);
+    hg.addColorStop(0,'rgba(140,0,200,0)'); hg.addColorStop(1,'rgba(70,0,150,0.4)');
+    ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-30,W,40);
 
     // Top vignette
     const tg = ctx.createLinearGradient(0,0,0,48);
@@ -4551,15 +4559,15 @@
 
   // Layout constants
   const DMN_DX   = -10,  DMN_DW = 820;
-  const DMN_REST_Y  = 60;    // upper body + tentacles visible above platform
+  const DMN_REST_Y  = 80;    // tentacle hit zones just touch platform edge
   const DMN_RISEN_Y = -40;   // fully visible for phase-2 attacks
   const DMN_INTRO_Y = 700;   // starts below canvas for rise cutscene
   const PLAT_X = 0, PLAT_Y = 212, PLAT_DW = 800, PLAT_DH = 339;
 
   // Tentacle hit spots (relative to DMN_DX, DEMON.y) — near-platform upper tentacles
   const TSPOT = [
-    { relX: 130, relY: 130, w: 100, h: 85 },  // left tentacle
-    { relX: 560, relY: 115, w: 100, h: 85 },  // right tentacle
+    { relX: 145, relY: 47, w: 110, h: 80 },  // left tentacle (bottom touches PLAT_Y at y=80)
+    { relX: 545, relY: 47, w: 110, h: 80 },  // right tentacle (bottom touches PLAT_Y at y=80)
   ];
 
   // 4 wide smash zones — two always active, leaving just one escape corridor
@@ -4769,13 +4777,6 @@
               ctx.restore();
             }
             // Brief orange impact flash at landing
-            if(h.t >= 19 && h.t <= 24){
-              ctx.save();
-              ctx.globalAlpha = (24 - h.t) / 5 * 0.5;
-              ctx.fillStyle = '#ff8800';
-              ctx.fillRect(z.x + z.w*0.1, ROW_Y[0] - 6, z.w * 0.8, WD_H + 12);
-              ctx.restore();
-            }
           });
         }
       } else if(h.type === 'rock') {
@@ -4796,36 +4797,77 @@
           ctx.fillText('⚠', h.x, rr-8);
           ctx.restore();
         } else {
-          // Falling rock
+          // Falling rock — growing shadow + dark 6-point organic shape
+          const fallProgress = Math.max(0, Math.min(1, (h.ry - (-20)) / (ROW_Y[h.row] + WD_H * 0.5 - (-20))));
+          // Shadow on landing spot
           ctx.save();
-          ctx.fillStyle = '#886644';
+          ctx.globalAlpha = 0.15 + fallProgress * 0.25;
+          ctx.fillStyle = '#000000';
           ctx.beginPath();
-          ctx.ellipse(h.x, h.ry, 20, 16, 0.3, 0, Math.PI*2);
+          ctx.ellipse(h.x, ROW_Y[h.row] + WD_H * 0.6, 8 + fallProgress * 14, 4 + fallProgress * 5, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.strokeStyle = '#553322';
-          ctx.lineWidth = 2;
-          ctx.stroke();
+          ctx.restore();
+          // Rock body
+          ctx.save();
+          ctx.fillStyle = '#3a3028';
+          ctx.beginPath();
+          const pts = 6;
+          for(let pi=0; pi<pts; pi++){
+            const a = (pi / pts) * Math.PI * 2;
+            const rad = 9 + Math.sin(a * 3 + h.x) * 4;
+            const px = h.x + Math.cos(a) * rad;
+            const py = h.ry + Math.sin(a) * rad * 0.85;
+            pi === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
           ctx.restore();
         }
       } else if(h.type === 'laser') {
         const beamY = ROW_Y[h.row] + (WD_H / 2);
         if(!h.active){
-          // Eye glow charge-up + faint dashed row preview
-          const eyePulse = (Math.sin(now/60)*0.5+0.5);
+          // Phase 1 (first 42 frames): eye/mouth glow + faint dashed row hint
+          // Phase 2 (frames 42-60): row flashes bright twice before firing
+          const tWarn = h.t || 0;
+          const eyePulse = (Math.sin(now/55)*0.5+0.5);
           const eyeX = 400, eyeY = DEMON.y + 142;
           ctx.save();
-          const g = ctx.createRadialGradient(eyeX,eyeY,2, eyeX,eyeY,50);
-          g.addColorStop(0,'rgba(220,0,255,'+eyePulse+')');
+          // Eye glow (always)
+          const g = ctx.createRadialGradient(eyeX,eyeY,2, eyeX,eyeY,60);
+          g.addColorStop(0,'rgba(255,0,255,'+(0.5+eyePulse*0.5)+')');
           g.addColorStop(1,'rgba(100,0,200,0)');
           ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(eyeX, eyeY, 50, 0, Math.PI*2); ctx.fill();
-          // Faint preview beam on the target row
-          ctx.globalAlpha = 0.15 + Math.sin(now/80)*0.1;
-          ctx.strokeStyle = 'rgba(200,0,255,0.7)';
-          ctx.lineWidth = 4;
-          ctx.setLineDash([10,8]);
-          ctx.beginPath(); ctx.moveTo(0, beamY); ctx.lineTo(W, beamY); ctx.stroke();
-          ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(eyeX, eyeY, 60, 0, Math.PI*2); ctx.fill();
+          if(tWarn < 42){
+            // Faint dashed row hint
+            ctx.globalAlpha = 0.12 + Math.sin(now/90)*0.08;
+            ctx.strokeStyle = 'rgba(200,0,255,0.6)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10,8]);
+            ctx.beginPath(); ctx.moveTo(0, beamY); ctx.lineTo(W, beamY); ctx.stroke();
+            ctx.setLineDash([]);
+          } else {
+            // Pre-fire flash: bright on frames 42-48 and 52-58
+            const flashPhase = (tWarn - 42) % 18; // 0-17 repeated
+            const flashOn = flashPhase < 8;
+            if(flashOn){
+              ctx.globalAlpha = 0.55 + eyePulse * 0.3;
+              ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 20;
+              ctx.strokeStyle = 'rgba(255,80,255,0.85)';
+              ctx.lineWidth = 7;
+              ctx.beginPath(); ctx.moveTo(0, beamY); ctx.lineTo(W, beamY); ctx.stroke();
+              ctx.strokeStyle = 'rgba(255,200,255,0.45)';
+              ctx.lineWidth = 14;
+              ctx.beginPath(); ctx.moveTo(0, beamY); ctx.lineTo(W, beamY); ctx.stroke();
+            } else {
+              ctx.globalAlpha = 0.15;
+              ctx.strokeStyle = 'rgba(200,0,255,0.4)';
+              ctx.lineWidth = 3;
+              ctx.setLineDash([6,6]);
+              ctx.beginPath(); ctx.moveTo(0, beamY); ctx.lineTo(W, beamY); ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
           ctx.restore();
         } else {
           // Full laser beam
@@ -5283,7 +5325,7 @@
 
   // Load sprite sheets first, then kick off the game loop
   loadSprites(function() {
-    if(window.WD_DEMON_MODE) reset(); // start demon fight immediately
+    // demon mode: show title first — player presses W to start fight
     frame();
   });
 
