@@ -4774,14 +4774,14 @@
         ctx.shadowColor = '#ff6600';
         ctx.shadowBlur = 6 + pulse * 10;
         ctx.strokeRect(tx + 1, ty + 1, tw - 2, th - 2);
-        // HP bar below the zone
+        // HP bar above the zone
         const hpFrac = t.hp / t.maxHp;
-        const barY = ty + th + 3;
+        const barY = ty - 8;
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.fillRect(tx, barY, tw, 5);
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(tx, barY, tw, 6);
         ctx.fillStyle = hpFrac > 0.5 ? '#ff6600' : (hpFrac > 0.25 ? '#ffaa00' : '#ff2200');
-        ctx.fillRect(tx, barY, Math.ceil(tw * hpFrac), 5);
+        ctx.fillRect(tx, barY, Math.ceil(tw * hpFrac), 6);
       }
       ctx.restore();
     });
@@ -5089,10 +5089,11 @@
         }
       }
 
-      // (B) Hit exposed body (anywhere facing right while bodyExposed)
+      // (B) Hit exposed body — any direction, just needs to be in melee range
       if(!hitSomething && DEMON.bodyExposed){
-        const atkTip = PL.x + PL.w + Math.min(PL.atkRange, 110);
-        if(PL.facing === 1 && atkTip > DMN_DX + 180){
+        const reach = Math.min(PL.atkRange, 110);
+        const plLeft = PL.x - reach, plRight = PL.x + PL.w + reach;
+        if(plRight > DMN_DX + 180 && plLeft < DMN_DX + DMN_DW - 180){
           DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg);
           DEMON.flashT = 5; demonShakeT = 3;
           burst(400, DEMON.y + 160, '#aa44ff', 10, 5);
@@ -5100,11 +5101,11 @@
         }
       }
 
-      // (C) Hit belly when fully risen (2× damage)
+      // (C) Hit belly when fully risen (2× damage) — any direction
       if(!hitSomething && DEMON.risen){
         const bellyY = DEMON.y + 240;
-        const atkTip = PL.x + PL.w + Math.min(PL.atkRange, 110);
-        const inX = PL.facing === 1 && atkTip > DMN_DX + 260;
+        const reach = Math.min(PL.atkRange, 110);
+        const inX = (PL.x + PL.w + reach) > DMN_DX + 260 && (PL.x - reach) < DMN_DX + DMN_DW - 260;
         const inY = ROW_Y[PL.row] < bellyY + 110 + 50 && ROW_Y[PL.row] + WD_H > bellyY - 50;
         if(inX && inY){
           DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg * 2);
