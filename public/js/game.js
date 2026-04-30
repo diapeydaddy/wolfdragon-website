@@ -108,6 +108,8 @@
       apocAttack(){ osc(38,'sawtooth',0.85,1.0,18); osc(75,'square',0.65,0.7,28); noise(0.55,0.65,280,80,0.3); },
       apocQuake(){ osc(45,'sawtooth',0.55,0.9,20); noise(0.45,0.7,180,60,0.3); at(200,()=>{ osc(35,'sawtooth',0.35,0.8,15); noise(0.3,0.6,150,50,0.3); }); },
       apocLunge(){ noise(0.12,0.5,2200,400,0.4); at(100,()=>{ osc(55,'sawtooth',0.3,0.9,18); noise(0.25,0.7,350,100,0.7); }); },
+      // Demon boss
+      rockImpact(){ noise(0.2,0.6,450,120,1.2); osc(80,'sawtooth',0.15,0.5,30); },
     };
   })();
 
@@ -488,7 +490,8 @@
   }
 
   // ── Sheet canvases (populated by loadSprites) ─────────────────────────────
-  const SHEETS = { WD: null, SM: null, GR: null, BR: null, SP: null, LI: null, AP: null };
+  const SHEETS = { WD: null, SM: null, GR: null, BR: null, SP: null, LI: null, AP: null,
+                   DMN: null, PLAT: null, TEN1: null, TEN2: null, TEN3: null };
   let spritesReady = false;
 
   // Crop a source image to a canvas containing only the specified rectangle.
@@ -506,7 +509,7 @@
 
   function loadSprites(cb) {
     let n = 0;
-    const total = 23;
+    const total = 28;
     function done() { if (++n === total) { spritesReady = true; if (cb) cb(); } }
 
     // Sheet WD — WolfDragon side profile, already RGBA-transparent
@@ -587,6 +590,42 @@
     imgCR.onload = () => { SHEETS.CR = cropToCanvas(imgCR, 0, 0, imgCR.naturalWidth, imgCR.naturalHeight); done(); };
     imgCR.onerror = done;
     imgCR.src = '/images/driving-off.png';
+
+    // Demon boss (already RGBA transparent)
+    const imgDMN = new Image();
+    imgDMN.onload = () => {
+      const oc = document.createElement('canvas');
+      oc.width = imgDMN.naturalWidth; oc.height = imgDMN.naturalHeight;
+      oc.getContext('2d').drawImage(imgDMN, 0, 0);
+      SHEETS.DMN = oc; done();
+    };
+    imgDMN.onerror = done;
+    imgDMN.src = '/images/boss-demon-new.png';
+
+    // Platform (already RGBA transparent)
+    const imgPLAT = new Image();
+    imgPLAT.onload = () => {
+      const oc = document.createElement('canvas');
+      oc.width = imgPLAT.naturalWidth; oc.height = imgPLAT.naturalHeight;
+      oc.getContext('2d').drawImage(imgPLAT, 0, 0);
+      SHEETS.PLAT = oc; done();
+    };
+    imgPLAT.onerror = done;
+    imgPLAT.src = '/images/platform-demon-new.png';
+
+    // Tentacle sprites (already transparent)
+    ['TEN1','TEN2','TEN3'].forEach((key, i) => {
+      const src = ['/images/tentacle-h-left.png','/images/tentacle-v-up.png','/images/tentacle-h-right.png'][i];
+      const img = new Image();
+      img.onload = () => {
+        const oc = document.createElement('canvas');
+        oc.width = img.naturalWidth; oc.height = img.naturalHeight;
+        oc.getContext('2d').drawImage(img, 0, 0);
+        SHEETS[key] = oc; done();
+      };
+      img.onerror = done;
+      img.src = src;
+    });
   }
 
   // ── Core draw helper ──────────────────────────────────────────────────────
@@ -1690,7 +1729,19 @@
     if(PL.itemCd    > 0) PL.itemCd--;
     if(PL.bloodlustT> 0) PL.bloodlustT--;
     if(PL.windwallT > 0) PL.windwallT--;
-    if(!K['KeyC']){ PL.shBroken=false; PL.shHp=PL.shMaxHp; }
+    if(!K['KeyC']){
+      // In demon mode: broken shield uses a recharge cooldown — can't instantly refresh
+      if(window.WD_DEMON_MODE && PL.shHp < PL.shMaxHp){
+        PL.shBroken = true;
+        PL.shRechargeT = (PL.shRechargeT||0) > 0 ? PL.shRechargeT - 1 : 0;
+        if((PL.shRechargeT||0) <= 0){ PL.shBroken=false; PL.shHp=PL.shMaxHp; PL.shRechargeT=0; }
+      } else if(!window.WD_DEMON_MODE) {
+        PL.shBroken=false; PL.shHp=PL.shMaxHp;
+      }
+    } else {
+      // C is held — reset the recharge if shield is full (just held for blocking)
+      if(window.WD_DEMON_MODE && PL.shHp === PL.shMaxHp){ PL.shRechargeT = 90; }
+    }
     } else { Object.keys(J).forEach(k=>{ J[k]=false; }); } // drain queued keys during cutscene
 
     // spawn
@@ -3177,6 +3228,26 @@
     // Active item ability — drawn near player in drawPlayer(), nothing here
 
     // Boss health bar — shown below HUD when a boss is on screen
+    // Demon boss bar (overrides regular boss bar in demon mode)
+    if(window.WD_DEMON_MODE && window._DEMON && window._DEMON.alive){
+      const DEMON = window._DEMON;
+      const bw = W - 40, bx2 = 20, by2 = 46;
+      const bfrac = Math.max(0, DEMON.hp / DEMON.maxHp);
+      ctx.fillStyle='rgba(0,0,0,0.85)'; ctx.fillRect(0,44,W,20);
+      ctx.fillStyle='#1a0030'; ctx.fillRect(bx2,by2,bw,10);
+      const barCol = bfrac > 0.5 ? '#6600cc' : bfrac > 0.25 ? '#aa22ff' : '#ff44ff';
+      ctx.fillStyle = barCol;
+      ctx.fillRect(bx2, by2, Math.floor(bw*bfrac), 10);
+      if(bfrac <= 0.5){
+        ctx.fillStyle=`rgba(180,0,255,${0.15+Math.sin(Date.now()/60)*0.12})`;
+        ctx.fillRect(bx2, by2, Math.floor(bw*bfrac), 10);
+      }
+      ctx.strokeStyle='#330055'; ctx.lineWidth=1; ctx.strokeRect(bx2,by2,bw,10);
+      ctx.fillStyle='#cc66ff'; ctx.font='bold 8px monospace'; ctx.textAlign='center';
+      const dname = DEMON.revealed ? 'GIANT TENTACLE DEMON' : '???';
+      ctx.fillText(`⚡ ${dname} — ${Math.ceil(DEMON.hp)}/${DEMON.maxHp} ⚡`, W/2, by2+8);
+      ctx.textAlign='left';
+    } else {
     const boss = enemies.find(e=>ENEMY_TYPES[e.type].isBoss);
     if(boss){
       const bdef = ENEMY_TYPES[boss.type];
@@ -3200,6 +3271,7 @@
       ctx.fillStyle='#ff4400'; ctx.font='bold 8px monospace'; ctx.textAlign='center';
       ctx.fillText(`⚡ ${bname} — ${Math.ceil(boss.hp)}/${boss.maxHp} ⚡`, W/2, by2+8);
       ctx.textAlign='left';
+    }
     }
   }
 
@@ -4339,8 +4411,488 @@
     friendAlly = null;
     victoryCarX = W + 20;  // just off right edge — appears within ~0.1s
     victoryCarDelay = 0;   // no delay
+    if(window.WD_DEMON_MODE){ gs.level=5; startDemonFight(); return; }
     startWave();
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  DEMON BOSS MODE  — active only when window.WD_DEMON_MODE is set
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Layout constants
+  const DMN_DX   = -10,  DMN_DW = 820;
+  const DMN_REST_Y  = 188;   // head/shoulders visible above platform top (~y=340)
+  const DMN_RISEN_Y = -20;   // fully visible above platform for phase-2 attacks
+  const DMN_INTRO_Y = 700;   // starts below canvas for rise cutscene
+  const PLAT_X = 0, PLAT_Y = 212, PLAT_DW = 800, PLAT_DH = 339;
+
+  // 4 wide smash zones — two always active, leaving just one escape corridor
+  const SMASH_ZONES = [
+    { x: 0,   w: 230 },  // A
+    { x: 190, w: 240 },  // B
+    { x: 370, w: 240 },  // C
+    { x: 540, w: 260 },  // D
+  ];
+
+  const DEMON = {
+    hp: 2800, maxHp: 2800,
+    y: DMN_INTRO_Y,
+    targetY: DMN_REST_Y,
+    alive: true,
+    revealed: false,
+    flashT: 0,
+    phase: 1,
+    introT: 0,
+    hitDealt: false,
+  };
+  window._DEMON = DEMON;
+
+  let demonHazards = [];
+  let demonSeqIdx  = 0;
+  let demonCycleN  = 0;
+  let demonP2Done  = 0;
+  let demonIdleT   = 0;
+  let demonShakeT  = 0;
+  let demonRocksSent = 0;
+
+  // Attack sequence — always cycles
+  const DEMON_SEQ = [
+    { type:'smash',  zones:[0,2] },             // A+C active
+    { type:'laser',  dir:1 },
+    { type:'rocks',  count:3 },
+    { type:'smash',  zones:[1,3] },             // B+D active
+    { type:'fireball', count:3 },
+    { type:'smash',  zones:[0,3] },             // A+D active (wide spread)
+    { type:'laser',  dir:-1 },
+    { type:'rocks',  count:4 },
+    { type:'smash',  zones:[1,2] },             // B+C (center squeeze)
+    { type:'fireball', count:4 },
+  ];
+  const DEMON_P2 = ['stomdemon','megasmash','duallaser'];
+
+  function startDemonFight() {
+    Object.assign(DEMON, {
+      hp: DEMON.maxHp, y: DMN_INTRO_Y, targetY: DMN_REST_Y,
+      alive: true, revealed: false, flashT: 0, phase: 1,
+      introT: 0, hitDealt: false,
+    });
+    demonHazards = []; demonSeqIdx = 0; demonCycleN = 0;
+    demonP2Done = 0; demonIdleT = 0; demonShakeT = 0; demonRocksSent = 0;
+    enemies = []; projs = []; parts = []; drops = [];
+    obstacles = []; effects = []; webZones = []; flameshields = [];
+    gs.wave = 1; gs.level = 5;
+    msg = ''; msgT = 0;
+  }
+
+  // ── Draw demon body (behind platform) ───────────────────────────────────────
+  window._drawDemonBoss = function() {
+    if(!SHEETS.DMN || !DEMON.alive) return;
+    // Shake offset
+    const sx = demonShakeT > 0 ? (Math.random()-0.5)*demonShakeT : 0;
+    const sy = demonShakeT > 0 ? (Math.random()-0.5)*demonShakeT*0.5 : 0;
+    if(demonShakeT > 0) demonShakeT--;
+    ctx.save();
+    if(DEMON.flashT > 0){ ctx.globalAlpha = 0.55; ctx.filter='brightness(3) saturate(0)'; DEMON.flashT--; }
+    ctx.drawImage(SHEETS.DMN, DMN_DX+sx, DEMON.y+sy, DMN_DW, DMN_DW*(SHEETS.DMN.height/SHEETS.DMN.width));
+    ctx.restore();
+  };
+
+  // ── Draw platform (on top of demon, hides lower body) ───────────────────────
+  window._drawDemonPlatform = function() {
+    if(!SHEETS.PLAT) return;
+    ctx.drawImage(SHEETS.PLAT, PLAT_X, PLAT_Y, PLAT_DW, PLAT_DH);
+  };
+
+  // ── Draw hazards (tentacles, rocks, laser on player rows) ───────────────────
+  window._drawDemonHazards = function() {
+    const now = Date.now();
+    demonHazards.forEach(h => {
+      if(h.done) return;
+      if(h.type === 'smash') {
+        // Draw warn zones with game.js-style spider-dive indicator
+        if(!h.active){
+          const pulse = Math.floor(now/80)%2===0;
+          h.zones.forEach(zi => {
+            const z = SMASH_ZONES[zi];
+            ctx.save();
+            ctx.globalAlpha = pulse ? 0.88 : 0.35;
+            ctx.strokeStyle = '#ff3300';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8,6]);
+            // Span all walkable rows
+            for(let r=0; r<ROWS; r++){
+              ctx.strokeRect(z.x, ROW_Y[r], z.w, WD_H+12);
+            }
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#ff3300';
+            ctx.font = 'bold 16px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠', z.x+z.w/2, ROW_Y[ROWS-1]-10);
+            ctx.restore();
+          });
+        } else {
+          // Active smash — tentacle sprites + red flash on zones
+          h.zones.forEach(zi => {
+            const z = SMASH_ZONES[zi];
+            // Red zone flash
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,50,0,0.28)';
+            for(let r=0; r<ROWS; r++) ctx.fillRect(z.x, ROW_Y[r], z.w, WD_H+12);
+            ctx.restore();
+            // Tentacle sprite: left zones → TEN3 (faces right), right zones → TEN1 (faces left)
+            const isRight = z.x > W/2;
+            const tenSheet = isRight ? SHEETS.TEN1 : SHEETS.TEN3;
+            if(tenSheet){
+              const tw = 180;
+              const th = tw * (tenSheet.height/tenSheet.width);
+              const tx = isRight ? z.x + z.w - tw : z.x;
+              ctx.drawImage(tenSheet, tx, ROW_Y[0], tw, th);
+            }
+          });
+        }
+      } else if(h.type === 'rock') {
+        if(!h.active){
+          // Shadow warning
+          const pulse = Math.floor(now/100)%2===0;
+          ctx.save();
+          ctx.globalAlpha = pulse ? 0.75 : 0.3;
+          const rr = ROW_Y[h.row];
+          ctx.strokeStyle = '#ff3300';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6,5]);
+          ctx.strokeRect(h.x-22, rr, 44, WD_H);
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#ff3300';
+          ctx.font = 'bold 14px monospace';
+          ctx.textAlign='center';
+          ctx.fillText('⚠', h.x, rr-8);
+          ctx.restore();
+        } else {
+          // Falling rock
+          ctx.save();
+          ctx.fillStyle = '#886644';
+          ctx.beginPath();
+          ctx.ellipse(h.x, h.ry, 20, 16, 0.3, 0, Math.PI*2);
+          ctx.fill();
+          ctx.strokeStyle = '#553322';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else if(h.type === 'laser') {
+        if(!h.active){
+          // Charge-up warning — eye glow
+          const pulse = (Math.sin(now/60)*0.5+0.5);
+          const eyeX = 400, eyeY = DEMON.y + 142;
+          ctx.save();
+          const g = ctx.createRadialGradient(eyeX,eyeY,2, eyeX,eyeY,50);
+          g.addColorStop(0,'rgba(220,0,255,'+pulse+')');
+          g.addColorStop(1,'rgba(100,0,200,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(eyeX, eyeY, 50, 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        } else {
+          // Laser beam sweeping across rows
+          const beamY = ROW_Y[h.row]+(WD_H/2);
+          ctx.save();
+          ctx.shadowColor='#cc00ff'; ctx.shadowBlur=18;
+          ctx.strokeStyle='rgba(200,0,255,0.9)';
+          ctx.lineWidth=8;
+          ctx.beginPath(); ctx.moveTo(0,beamY); ctx.lineTo(W,beamY); ctx.stroke();
+          ctx.strokeStyle='rgba(255,180,255,0.6)';
+          ctx.lineWidth=3;
+          ctx.beginPath(); ctx.moveTo(0,beamY); ctx.lineTo(W,beamY); ctx.stroke();
+          ctx.restore();
+        }
+      } else if(h.type === 'fireball') {
+        ctx.save();
+        const pulse = 0.7+Math.sin(now/80)*0.3;
+        ctx.shadowColor='#ff6600'; ctx.shadowBlur=12;
+        const fg = ctx.createRadialGradient(h.fx,h.fy,2,h.fx,h.fy,16);
+        fg.addColorStop(0,'rgba(255,200,50,'+pulse+')');
+        fg.addColorStop(0.5,'rgba(255,80,0,0.8)');
+        fg.addColorStop(1,'rgba(200,0,0,0)');
+        ctx.fillStyle=fg;
+        ctx.beginPath(); ctx.arc(h.fx,h.fy,16,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      } else if(h.type === 'stomdemon_fb') {
+        ctx.save();
+        ctx.shadowColor='#ff00ff'; ctx.shadowBlur=14;
+        const sg = ctx.createRadialGradient(h.fx,h.fy,2,h.fx,h.fy,14);
+        sg.addColorStop(0,'rgba(255,100,255,0.9)');
+        sg.addColorStop(1,'rgba(150,0,200,0)');
+        ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(h.fx,h.fy,14,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      } else if(h.type === 'duallaser') {
+        ctx.save();
+        ctx.shadowColor='#ff00ff'; ctx.shadowBlur=22;
+        ctx.strokeStyle='rgba(255,0,255,0.95)';
+        ctx.lineWidth=10;
+        // Left beam
+        ctx.beginPath(); ctx.moveTo(0,h.ly1); ctx.lineTo(W,h.ly2); ctx.stroke();
+        // Right beam
+        ctx.beginPath(); ctx.moveTo(0,h.ry1); ctx.lineTo(W,h.ry2); ctx.stroke();
+        ctx.strokeStyle='rgba(255,200,255,0.5)'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(0,h.ly1); ctx.lineTo(W,h.ly2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,h.ry1); ctx.lineTo(W,h.ry2); ctx.stroke();
+        ctx.restore();
+      }
+    });
+  };
+
+  // ── Main demon update (called each frame in demon mode) ────────────────────
+  window._updateDemon = function() {
+    if(!DEMON.alive) return;
+
+    // Intro: demon rises from below
+    if(!DEMON.revealed){
+      DEMON.introT++;
+      const speed = 3.5;
+      if(DEMON.y > DEMON.targetY){
+        DEMON.y = Math.max(DEMON.targetY, DEMON.y - speed);
+      } else {
+        DEMON.revealed = true;
+        // Update nav title
+        const rt = document.getElementById('room-title');
+        if(rt) rt.textContent = 'Giant Tentacle Demon';
+      }
+      return; // don't attack during intro
+    }
+
+    // Smooth move toward target Y
+    const targetY = DEMON.targetY;
+    if(Math.abs(DEMON.y - targetY) > 1){
+      DEMON.y += (targetY - DEMON.y) * 0.06;
+    }
+
+    // Phase tracking
+    DEMON.phase = DEMON.hp > DEMON.maxHp*0.5 ? 1 : 2;
+
+    // Player melee hit on demon
+    if(PL.atkTimer > 0 && !DEMON.hitDealt && PL.facing === 1){
+      DEMON.hitDealt = true;
+      DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg);
+      DEMON.flashT = 5;
+      burst(400, DEMON.y+140, '#aa44ff', 8, 4);
+      SFX.enemyHit();
+    }
+    if(PL.atkTimer === 0) DEMON.hitDealt = false;
+
+    // Spell projectiles hit demon
+    projs = projs.filter(p => {
+      if(!p.friendly) return true; // enemy projectiles pass through
+      if(p.x > W - 60) { // reached demon's X range (right side)
+        DEMON.hp = Math.max(0, DEMON.hp - p.dmg);
+        DEMON.flashT = 5;
+        burst(p.x, p.y, '#cc88ff', 10, 5);
+        SFX.enemyHit();
+        return false;
+      }
+      return true;
+    });
+
+    if(DEMON.hp <= 0){ demonVictory(); return; }
+
+    // Update all active hazards
+    demonHazards = demonHazards.filter(h => {
+      if(h.done) return false;
+      return _tickHazard(h);
+    });
+
+    // Idle timer — start next attack when no active hazards
+    const anyActive = demonHazards.some(h => !h.done);
+    if(!anyActive){
+      demonIdleT++;
+      if(demonIdleT >= 60){ // 1-second gap between attacks
+        demonIdleT = 0;
+        _launchNextAttack();
+      }
+    }
+  };
+
+  function _tickHazard(h) {
+    h.t = (h.t||0) + 1;
+    if(h.type === 'smash'){
+      if(!h.active && h.t >= h.warnT){ h.active=true; h.t=0; }
+      if(h.active && h.t >= h.activeT){ h.done=true; return false; }
+      if(h.active){
+        // Damage check each active frame
+        h.zones.forEach(zi => {
+          const z = SMASH_ZONES[zi];
+          for(let r=0; r<ROWS; r++){
+            if(PL.row===r && PL.x+WD_W*0.5 > z.x && PL.x+WD_W*0.5 < z.x+z.w){
+              hurtPlayer(20, true, 3, false);
+            }
+          }
+        });
+      }
+      return true;
+    } else if(h.type === 'rock'){
+      if(!h.active && h.t >= h.warnT){ h.active=true; h.ry = 0; }
+      if(h.active){
+        h.ry += h.speed;
+        const landY = ROW_Y[h.row];
+        if(h.ry >= landY){
+          h.ry = landY;
+          burst(h.x, landY, '#bb8844', 12, 5);
+          SFX.rockImpact();
+          // Damage in landing radius
+          if(PL.row===h.row && Math.abs(PL.cx-h.x) < 40){
+            hurtPlayer(18, true, 2, false);
+          }
+          h.done=true; return false;
+        }
+      }
+      return true;
+    } else if(h.type === 'laser'){
+      if(!h.active && h.t >= h.warnT){
+        h.active=true; h.t=0;
+        h.row = Math.floor(Math.random()*ROWS); // target random row
+      }
+      if(h.active){
+        if(h.t % 3 === 0){ // damage every 3 frames during beam
+          if(PL.row===h.row) hurtPlayer(8, true, 2, false);
+        }
+        if(h.t >= h.activeT){ h.done=true; return false; }
+      }
+      return true;
+    } else if(h.type === 'fireball'){
+      h.fx += h.vx; h.fy += h.vy;
+      h.vy += 0.12; // gravity
+      // Check hit
+      if(Math.abs(PL.x+WD_W/2-h.fx) < 28 && Math.abs(ROW_Y[PL.row]+WD_H/2-h.fy) < 28){
+        hurtPlayer(15, true, 2, false);
+        burst(h.fx,h.fy,'#ff6600',10,5);
+        h.done=true; return false;
+      }
+      if(h.fx < 0 || h.fx > W || h.fy > H+20){ h.done=true; return false; }
+      return true;
+    } else if(h.type === 'stomdemon_fb'){
+      h.fx += h.vx; h.fy += h.vy;
+      h.vy += 0.08;
+      if(Math.abs(PL.x+WD_W/2-h.fx) < 26 && Math.abs(ROW_Y[PL.row]+WD_H/2-h.fy) < 26){
+        hurtPlayer(22, true, 3, false);
+        burst(h.fx,h.fy,'#ff00ff',12,6);
+        h.done=true; return false;
+      }
+      if(h.fx < 0 || h.fx > W || h.fy > H+20){ h.done=true; return false; }
+      return true;
+    } else if(h.type === 'duallaser'){
+      h.t2 = (h.t2||0)+1;
+      // Beams converge from outside toward center
+      h.ly1 = ROW_Y[0] + h.sweep * h.t2;
+      h.ly2 = ROW_Y[ROWS-1] - h.sweep * h.t2;
+      h.ry1 = h.ly2; h.ry2 = h.ly1;
+      // Clamp
+      const mid = (ROW_Y[0]+ROW_Y[ROWS-1])/2;
+      h.ly1 = Math.min(h.ly1, mid); h.ly2 = Math.max(h.ly2, mid);
+      h.ry1 = h.ly2; h.ry2 = h.ly1;
+      // Damage on player row
+      const plCY = ROW_Y[PL.row]+WD_H/2;
+      const hitL = Math.abs(plCY - (h.ly1 + (PL.x/W)*(h.ly2-h.ly1))) < 16;
+      const hitR = Math.abs(plCY - (h.ry1 + (PL.x/W)*(h.ry2-h.ry1))) < 16;
+      if((hitL || hitR) && h.t2 % 4 === 0) hurtPlayer(12, true, 3, false);
+      if(h.t2 >= 90){ h.done=true; return false; }
+      return true;
+    }
+    return false;
+  }
+
+  function _launchNextAttack() {
+    // Phase 2: inject special attacks at cycle boundaries
+    if(DEMON.phase===2 && demonSeqIdx===0 && demonCycleN>0 && demonP2Done < DEMON_P2.length){
+      const p2type = DEMON_P2[demonP2Done++];
+      _startP2Attack(p2type);
+      return;
+    }
+
+    const atk = DEMON_SEQ[demonSeqIdx];
+    demonSeqIdx = (demonSeqIdx+1) % DEMON_SEQ.length;
+    if(demonSeqIdx === 0) demonCycleN++;
+
+    if(atk.type==='smash'){
+      demonHazards.push({ type:'smash', zones:atk.zones, warnT:60, activeT:22, t:0, active:false, done:false });
+    } else if(atk.type==='laser'){
+      demonHazards.push({ type:'laser', dir:atk.dir, warnT:55, activeT:90, t:0, active:false, done:false, row:0 });
+    } else if(atk.type==='rocks'){
+      // Spawn multiple rocks with staggered delays
+      for(let i=0; i<atk.count; i++){
+        const delay = i*30;
+        setTimeout(()=>{
+          if(!DEMON.alive) return;
+          demonHazards.push({
+            type:'rock', warnT:45, speed:6+Math.random()*3,
+            x: 80+Math.random()*640, row:Math.floor(Math.random()*ROWS),
+            t:0, active:false, done:false, ry:0,
+          });
+        }, delay*16);
+      }
+      // Placeholder hazard so we wait for rocks to finish
+      demonHazards.push({ type:'rock', warnT:45+atk.count*30, speed:999, x:999, row:0, t:0, active:false, done:false, ry:0 });
+    } else if(atk.type==='fireball'){
+      const cx = 400, cy = DEMON.y+200;
+      for(let i=0; i<atk.count; i++){
+        const spread = (i-(atk.count-1)/2)*35;
+        const tx = PL.x+PL.w/2 + spread;
+        const ty = ROW_Y[PL.row]+WD_H/2;
+        const dist = Math.sqrt((tx-cx)*(tx-cx)+(ty-cy)*(ty-cy));
+        const spd = 5;
+        demonHazards.push({ type:'fireball', fx:cx, fy:cy, vx:(tx-cx)/dist*spd, vy:(ty-cy)/dist*spd, done:false });
+      }
+    }
+  }
+
+  function _startP2Attack(type) {
+    // Rise demon to visible position
+    DEMON.targetY = DMN_RISEN_Y;
+    demonShakeT = 8;
+    if(type==='stomdemon'){
+      // Fires 5 large fireballs in spread, then settles
+      setTimeout(()=>{
+        if(!DEMON.alive) return;
+        const cx=400, cy=DEMON.y+100;
+        for(let i=0;i<5;i++){
+          const a = -Math.PI/2 + (i-2)*0.28;
+          demonHazards.push({ type:'stomdemon_fb', fx:cx, fy:cy, vx:Math.cos(a)*7, vy:Math.sin(a)*7, done:false });
+        }
+        burst(cx,cy,'#ff00ff',20,8);
+        setTimeout(()=>{ if(DEMON.alive) DEMON.targetY=DMN_REST_Y; }, 2000);
+      }, 1200);
+    } else if(type==='megasmash'){
+      // All 4 zones simultaneously
+      setTimeout(()=>{
+        if(!DEMON.alive) return;
+        demonHazards.push({ type:'smash', zones:[0,1,2,3], warnT:65, activeT:25, t:0, active:false, done:false });
+        setTimeout(()=>{ if(DEMON.alive) DEMON.targetY=DMN_REST_Y; }, 2500);
+      }, 1000);
+    } else if(type==='duallaser'){
+      setTimeout(()=>{
+        if(!DEMON.alive) return;
+        demonHazards.push({
+          type:'duallaser', t2:0, sweep:0.6,
+          ly1:ROW_Y[0], ly2:ROW_Y[0],
+          ry1:ROW_Y[ROWS-1], ry2:ROW_Y[ROWS-1],
+          done:false
+        });
+        setTimeout(()=>{ if(DEMON.alive) DEMON.targetY=DMN_REST_Y; }, 3000);
+      }, 1000);
+    }
+  }
+
+  function demonVictory() {
+    if(!DEMON.alive) return;
+    DEMON.alive = false;
+    const saved = JSON.parse(localStorage.getItem('wolfdragon_keys')||'{}');
+    saved.demonKey = true;
+    localStorage.setItem('wolfdragon_keys', JSON.stringify(saved));
+    burst(W/2,H/2,'#aa44ff',60,12);
+    gs.score += 5000;
+    msg = '★ THE VOID COLLAPSES ★'; msgT = 280;
+    setTimeout(()=>{ gs.screen='victory'; }, 4500);
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  END DEMON BOSS MODE
+  // ═══════════════════════════════════════════════════════════════════════════
 
   // ─── loop ─────────────────────────────────────────────────────────────────
   function frame(){
@@ -4365,6 +4917,15 @@
     } else if(gs.screen==='victory'){
       drawBG(); drawVictory();
       if(eat('KeyW')||eat('Space')) reset();
+    } else if(window.WD_DEMON_MODE){
+      update();
+      drawBG();
+      if(window._DEMON) window._drawDemonBoss();  // demon body behind platform
+      if(window._DEMON) window._drawDemonPlatform(); // platform on top of demon
+      drawDrops(); drawProjs();
+      if(window._DEMON) window._drawDemonHazards(); // tentacle/rock hazards on rows
+      drawFlameshields(); drawEffects(); drawPlayer(); drawParts(); drawWaveMsg(); drawHUD();
+      if(window._DEMON) window._updateDemon();
     } else {
       update();
       drawBG(); drawWebZones(); drawObstacles(); drawDrops(); drawTotems(); drawEnemies(); drawShockwaves(); drawProjs();
@@ -4378,6 +4939,7 @@
 
   // Load sprite sheets first, then kick off the game loop
   loadSprites(function() {
+    if(window.WD_DEMON_MODE) reset(); // start demon fight immediately
     frame();
   });
 
