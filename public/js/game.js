@@ -4606,11 +4606,12 @@
   const DMN_INTRO_Y = 700;   // starts below canvas for rise cutscene
   const PLAT_X = 0, PLAT_Y = 212, PLAT_DW = 800, PLAT_DH = 339;
 
-  // Tentacle hit spots — bottom edge = PLAT_Y (212) when DEMON.y = DMN_REST_Y (100)
-  // Formula: relY = PLAT_Y - DMN_REST_Y - h = 212 - 100 - 80 = 32
+  // Tentacle hit spots — bottom edge = ROW_Y[0] (player floor) when DEMON.y = DMN_REST_Y
+  // ROW_Y[0] = GROUND_Y - 88 = (H-22) - 88 = 370
+  // Formula: relY = ROW_Y[0] - DMN_REST_Y - h = 370 - 100 - 80 = 190
   const TSPOT = [
-    { relX: 145, relY: 32, w: 110, h: 80 },  // left tentacle
-    { relX: 545, relY: 32, w: 110, h: 80 },  // right tentacle
+    { relX: 145, relY: 190, w: 110, h: 80 },  // left tentacle
+    { relX: 545, relY: 190, w: 110, h: 80 },  // right tentacle
   ];
 
   // 4 wide smash zones — two always active, leaving just one escape corridor
@@ -5220,6 +5221,11 @@
         if(h.t >= h.activeT){ h.done=true; return false; }
       }
       return true;
+    } else if(h.type === 'fireball_wait'){
+      // Placeholder that keeps the idle timer blocked while fireball volley fires
+      h.t++;
+      if(h.t >= h.total){ h.done=true; return false; }
+      return true;
     } else if(h.type === 'fireball'){
       h.fx += h.vx; h.fy += h.vy;
       h.vy += 0.12; // gravity
@@ -5305,14 +5311,26 @@
       // Placeholder hazard so we wait for rocks to finish
       demonHazards.push({ type:'rock', warnT:DCFG.rockWarnT+atk.count*30, speed:999, x:999, row:0, t:0, active:false, done:false, ry:0 });
     } else if(atk.type==='fireball'){
-      const cx = 400, cy = DEMON.y+200;
+      // Staggered mouth-spray: fire one every ~14 frames with random spread
+      // Mouth is roughly centre-x, ~40% down the sprite
+      const mouthX = DMN_DX + DMN_DW * 0.5;  // ~400
+      const mouthY = () => DEMON.y + DMN_DW * (SHEETS.DMN ? SHEETS.DMN.height/SHEETS.DMN.width : 0.42) * 0.38;
+      const spd = DCFG.fireballSpeed;
+      // Placeholder so the idle timer waits for this attack to finish
+      demonHazards.push({ type:'fireball_wait', t:0, total: atk.count * 14 + 30, done:false });
       for(let i=0; i<atk.count; i++){
-        const spread = (i-(atk.count-1)/2)*35;
-        const tx = PL.x+PL.w/2 + spread;
-        const ty = ROW_Y[PL.row]+WD_H/2;
-        const dist = Math.sqrt((tx-cx)*(tx-cx)+(ty-cy)*(ty-cy));
-        const spd = DCFG.fireballSpeed;
-        demonHazards.push({ type:'fireball', fx:cx, fy:cy, vx:(tx-cx)/dist*spd, vy:(ty-cy)/dist*spd, done:false });
+        setTimeout(()=>{
+          if(!DEMON.alive) return;
+          const cx = mouthX, cy = mouthY();
+          // Alternate: aimed at player vs. random target across arena
+          const aimed = i % 2 === 0;
+          const tx = aimed ? PL.x+PL.w/2 + (Math.random()-0.5)*60
+                           : 60 + Math.random()*(W-120);
+          const ty = ROW_Y[PL.row] + WD_H/2 + (Math.random()-0.5)*40;
+          const dist = Math.hypot(tx-cx, ty-cy);
+          burst(cx, cy, '#ff4400', 6, 3);
+          demonHazards.push({ type:'fireball', fx:cx, fy:cy, vx:(tx-cx)/dist*spd, vy:(ty-cy)/dist*spd, done:false });
+        }, i * 220);
       }
     }
   }
