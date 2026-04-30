@@ -3010,54 +3010,96 @@
     }
     ctx.globalAlpha = 1;
 
-    // ── Ocean: drawn from PLAT_Y down so it shows through platform transparency ──
-    const oceanTop = PLAT_Y + 30; // start just below platform header
-    const wg = ctx.createLinearGradient(0, oceanTop, 0, H);
-    wg.addColorStop(0, '#001520');
-    wg.addColorStop(0.4, '#000d1a');
-    wg.addColorStop(1, '#000810');
-    ctx.fillStyle = wg; ctx.fillRect(0, oceanTop, W, H - oceanTop);
+    // ── Ocean: fills everything below the platform surface ───────────────────
+    // Base deep-water fill starting from PLAT_Y (shows through platform transparency)
+    const wg = ctx.createLinearGradient(0, PLAT_Y, 0, H);
+    wg.addColorStop(0,   '#001828');
+    wg.addColorStop(0.25,'#001220');
+    wg.addColorStop(0.6, '#000c18');
+    wg.addColorStop(1,   '#000810');
+    ctx.fillStyle = wg; ctx.fillRect(0, PLAT_Y, W, H - PLAT_Y);
 
-    // Animated wave layers — multiple rows visible at GROUND_Y and lower
-    for(let layer=0; layer<4; layer++){
-      const spd = 0.45 + layer*0.3;
-      const amp = 6 - layer*1.1;
-      const yBase = GROUND_Y - 4 + layer*4;
-      ctx.beginPath();
-      for(let x=0; x<=W; x+=3){
-        const wy = yBase + Math.sin(x*0.016 + t*spd + layer*1.2)*amp;
-        x===0 ? ctx.moveTo(x,wy) : ctx.lineTo(x,wy);
-      }
-      ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
-      ctx.fillStyle=`rgba(0,${22+layer*9},${50+layer*14},${0.78-layer*0.14})`; ctx.fill();
-    }
-
-    // Foam / shimmer lines near ground
+    // Sub-surface light streaks (bioluminescent depth shimmer)
     ctx.save();
-    for(let i=0; i<12; i++){
-      const rx = ((i*97+t*50)%(W+30))-15;
-      const ry = GROUND_Y + 1 + Math.sin(rx*0.016+t*0.75+i)*4;
-      ctx.globalAlpha = 0.22+Math.sin(t*1.9+i*0.7)*0.14;
-      ctx.strokeStyle = 'rgba(130,180,245,0.65)'; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+22+i%5*3,ry+1); ctx.stroke();
+    for(let i=0; i<18; i++){
+      const lx = ((i*113 + t*28*(i%2===0?1:-0.7)) % (W+60) + W + 60) % (W+60) - 30;
+      const ly = PLAT_Y + 60 + (i*47)%(H - PLAT_Y - 60);
+      const len = 28 + (i*19)%40;
+      ctx.globalAlpha = 0.05 + Math.sin(t*1.1+i*0.9)*0.035;
+      ctx.strokeStyle = i%3===0 ? 'rgba(60,180,200,0.7)' : 'rgba(40,100,180,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+len, ly+2); ctx.stroke();
     }
     ctx.restore();
 
-    // Deep-water ripple reflections mid-screen (visible through platform transparency)
+    // 6 animated wave layers at the water surface (around GROUND_Y)
+    const waveBase = [
+      { yOff:0,   freq:0.018, spd:0.55, amp:7,   r:0,  g:28, b:65,  a:0.82 },
+      { yOff:3,   freq:0.026, spd:0.38, amp:5.5, r:0,  g:22, b:55,  a:0.65 },
+      { yOff:6,   freq:0.012, spd:0.70, amp:4,   r:2,  g:35, b:75,  a:0.55 },
+      { yOff:8,   freq:0.034, spd:0.28, amp:3,   r:4,  g:42, b:85,  a:0.45 },
+      { yOff:11,  freq:0.022, spd:0.90, amp:2.2, r:6,  g:50, b:95,  a:0.38 },
+      { yOff:14,  freq:0.042, spd:0.18, amp:1.5, r:8,  g:55, b:100, a:0.28 },
+    ];
+    for(const wl of waveBase){
+      const yRef = GROUND_Y + wl.yOff;
+      ctx.beginPath();
+      for(let x=0; x<=W; x+=2){
+        const wy = yRef + Math.sin(x*wl.freq + t*wl.spd)*wl.amp
+                       + Math.sin(x*wl.freq*1.7 + t*wl.spd*0.6)*wl.amp*0.4;
+        x===0 ? ctx.moveTo(x,wy) : ctx.lineTo(x,wy);
+      }
+      ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+      ctx.fillStyle=`rgba(${wl.r},${wl.g},${wl.b},${wl.a})`; ctx.fill();
+    }
+
+    // Foam crests on the top 2 wave layers
     ctx.save();
-    for(let i=0; i<8; i++){
-      const rx = ((i*137+t*18)%(W+40))-20;
-      const ry = PLAT_Y + 80 + (i % 4) * 55 + Math.sin(t*0.6+i)*8;
-      ctx.globalAlpha = 0.06 + Math.sin(t*0.8+i)*0.04;
-      ctx.strokeStyle = 'rgba(80,160,220,0.5)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+40+i*5,ry); ctx.stroke();
+    for(let pass=0; pass<2; pass++){
+      const wl = waveBase[pass];
+      for(let x=0; x<W; x+=4){
+        const wy = GROUND_Y + wl.yOff
+          + Math.sin(x*wl.freq + t*wl.spd)*wl.amp
+          + Math.sin(x*wl.freq*1.7 + t*wl.spd*0.6)*wl.amp*0.4;
+        // only draw foam near crests
+        const crest = Math.sin(x*wl.freq + t*wl.spd);
+        if(crest > 0.65){
+          ctx.globalAlpha = (crest - 0.65)/0.35 * (0.28 - pass*0.1);
+          ctx.fillStyle = 'rgba(180,220,255,0.9)';
+          ctx.fillRect(x, wy-1, 3+pass*2, 1);
+        }
+      }
+    }
+    ctx.restore();
+
+    // Sparkle light reflections across the water surface
+    ctx.save();
+    for(let i=0; i<20; i++){
+      const rx = ((i*97 + t*60*(i%2===0?1.2:-0.8)) % (W+40) + W+40) % (W+40) - 20;
+      const ry = GROUND_Y + 2 + Math.sin(rx*0.016 + t*0.75 + i*0.4)*5;
+      ctx.globalAlpha = 0.18 + Math.sin(t*2.2+i*0.65)*0.12;
+      ctx.strokeStyle = 'rgba(160,210,255,0.75)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+14+i%6*2,ry); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Deep glow bands visible through platform (mid-screen, shifting slowly)
+    ctx.save();
+    for(let i=0; i<5; i++){
+      const gy = PLAT_Y + 55 + i*44 + Math.sin(t*0.4+i*1.3)*12;
+      ctx.globalAlpha = 0.07 + Math.sin(t*0.6+i)*0.04;
+      const gg = ctx.createLinearGradient(0,gy-6,0,gy+6);
+      gg.addColorStop(0,'rgba(0,80,160,0)');
+      gg.addColorStop(0.5,'rgba(0,100,180,0.8)');
+      gg.addColorStop(1,'rgba(0,80,160,0)');
+      ctx.fillStyle=gg; ctx.fillRect(0,gy-6,W,12);
     }
     ctx.restore();
 
     // Purple glow at ocean/arena boundary
-    const hg = ctx.createLinearGradient(0, GROUND_Y-30, 0, GROUND_Y+10);
-    hg.addColorStop(0,'rgba(140,0,200,0)'); hg.addColorStop(1,'rgba(70,0,150,0.4)');
-    ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-30,W,40);
+    const hg = ctx.createLinearGradient(0, GROUND_Y-30, 0, GROUND_Y+12);
+    hg.addColorStop(0,'rgba(140,0,200,0)'); hg.addColorStop(1,'rgba(80,0,160,0.45)');
+    ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-30,W,42);
 
     // Top vignette
     const tg = ctx.createLinearGradient(0,0,0,48);
@@ -4559,15 +4601,16 @@
 
   // Layout constants
   const DMN_DX   = -10,  DMN_DW = 820;
-  const DMN_REST_Y  = 80;    // tentacle hit zones just touch platform edge
+  const DMN_REST_Y  = 100;   // demon rests slightly lower so tentacles visually reach platform
   const DMN_RISEN_Y = -40;   // fully visible for phase-2 attacks
   const DMN_INTRO_Y = 700;   // starts below canvas for rise cutscene
   const PLAT_X = 0, PLAT_Y = 212, PLAT_DW = 800, PLAT_DH = 339;
 
-  // Tentacle hit spots (relative to DMN_DX, DEMON.y) — near-platform upper tentacles
+  // Tentacle hit spots — bottom edge = PLAT_Y (212) when DEMON.y = DMN_REST_Y (100)
+  // Formula: relY = PLAT_Y - DMN_REST_Y - h = 212 - 100 - 80 = 32
   const TSPOT = [
-    { relX: 145, relY: 47, w: 110, h: 80 },  // left tentacle (bottom touches PLAT_Y at y=80)
-    { relX: 545, relY: 47, w: 110, h: 80 },  // right tentacle (bottom touches PLAT_Y at y=80)
+    { relX: 145, relY: 32, w: 110, h: 80 },  // left tentacle
+    { relX: 545, relY: 32, w: 110, h: 80 },  // right tentacle
   ];
 
   // 4 wide smash zones — two always active, leaving just one escape corridor
