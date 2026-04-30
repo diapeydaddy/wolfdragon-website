@@ -13,7 +13,7 @@
     window.WD_DEMON_MODE = true;
   </script>
 </head>
-<body>
+<body style="background:#000;color:#e0e0f0;">
 
   <!-- Same structure as index.html game section, minus the other sections -->
   <header class="hero" style="padding:16px 20px 14px;min-height:0;">
@@ -28,8 +28,8 @@
     <div style="width:80px;"></div>
   </nav>
 
-  <section class="game-section" id="game-section" style="border-top:none;padding-top:0;">
-    <div class="game-controls-bar">
+  <section class="game-section" id="game-section" style="border-top:none;padding-top:0;background:#000;padding-bottom:0;">
+    <div class="game-controls-bar" style="background:#060008;border-color:#220044;color:#a070cc;">
       <span class="ctrl-key">← → ↑ ↓</span><span class="ctrl-label">Move</span>
       <span class="ctrl-sep">|</span>
       <span class="ctrl-key">Z</span><span class="ctrl-label">Attack</span>
@@ -41,7 +41,7 @@
       <span class="ctrl-key">W</span><span class="ctrl-label">Start</span>
     </div>
 
-    <div class="game-canvas-wrap">
+    <div class="game-canvas-wrap" style="max-width:min(100vw,calc(100vh * 5/3));width:100%;margin:0 auto;border-color:#220044;box-shadow:0 0 32px #220044;">
       <button id="fullscreen-btn" title="Fullscreen">⛶</button>
       <canvas id="game-canvas" width="800" height="480">
         Your browser does not support canvas.

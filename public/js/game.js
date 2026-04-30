@@ -1681,7 +1681,8 @@
 
     if(!gs.friendCutscene) {
     // movement
-    if(eat('ArrowUp')   && PL.row<ROWS-1) PL.row++;
+    const maxRow = window.WD_DEMON_MODE ? 1 : ROWS-1; // demon fight: bottom 2 rows only
+    if(eat('ArrowUp')   && PL.row<maxRow) PL.row++;
     if(eat('ArrowDown') && PL.row>0)      PL.row--;
     if(K['ArrowLeft'])  {
       PL.facing=-1;
@@ -2844,8 +2845,8 @@
     // effects update
     effects = effects.filter(e => e.life > 0); effects.forEach(e => e.life--);
 
-    // wave complete
-    if(!cleared&&spawnQueue.length===0&&enemies.length===0){
+    // wave complete (skip entirely in demon mode — demon fight manages its own flow)
+    if(!cleared&&spawnQueue.length===0&&enemies.length===0&&!window.WD_DEMON_MODE){
       cleared=true; msgT=0;
       // Guarantee 1–2 spell refill orbs
       const spellCount = 1 + Math.floor(Math.random()*2);
@@ -2966,6 +2967,94 @@
     const tg=ctx.createLinearGradient(0,0,0,50);
     tg.addColorStop(0,`rgba(${th.vignRgb},0.55)`); tg.addColorStop(1,`rgba(${th.vignRgb},0)`);
     ctx.fillStyle=tg; ctx.fillRect(0,0,W,50);
+  }
+
+  // ─── Demon-mode ocean background ─────────────────────────────────────────
+  let _demonBgOff = 0;
+  function drawDemonBG() {
+    _demonBgOff = (_demonBgOff + 0.25) % W;
+    const t = Date.now() / 1000;
+
+    // ── Dark void sky ────────────────────────────────────────────────────────
+    const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+    sky.addColorStop(0, '#020008');
+    sky.addColorStop(0.5, '#050012');
+    sky.addColorStop(1, '#090018');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+    // Stars
+    for(let i=0; i<45; i++){
+      const sx = (i * 131 + 47) % W;
+      const sy = (i * 89 + 18) % (PLAT_Y - 25);
+      const blink = Math.sin(t*(0.7+i*0.13)+i*2.3)*0.45+0.55;
+      ctx.globalAlpha = blink * 0.65;
+      ctx.fillStyle = i%5===0 ? '#cc66ff' : (i%9===0 ? '#ff99cc' : '#e0e0ff');
+      ctx.fillRect(sx, sy, i%13===0?2:1, i%13===0?2:1);
+    }
+    ctx.globalAlpha = 1;
+
+    // Row tints — subtle purple/void haze
+    ROW_Y.forEach((ry, i) => {
+      ctx.fillStyle = i%2===0 ? 'rgba(70,0,110,0.09)' : 'rgba(45,0,75,0.07)';
+      ctx.fillRect(0, ry, W, 70);
+    });
+
+    // Floating void particles
+    for(let i=0; i<14; i++){
+      const ex = ((i*71+t*22*(i%3===0?1:-0.6))%W+W)%W;
+      const ey = GROUND_Y-22-((t*(14+i%5)+i*39)%210);
+      if(ey<0||ey>GROUND_Y) continue;
+      ctx.globalAlpha = 0.18+(i%3)*0.1;
+      ctx.fillStyle = '#cc00ff'; ctx.fillRect(ex,ey,2,2);
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Ocean at ground level ─────────────────────────────────────────────
+    // Deep water base
+    const wg = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    wg.addColorStop(0, '#001828');
+    wg.addColorStop(1, '#000810');
+    ctx.fillStyle = wg; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+    // Animated wave layers
+    for(let layer=0; layer<3; layer++){
+      const spd = 0.5 + layer*0.35;
+      const amp = 5 - layer*1.2;
+      const yBase = GROUND_Y - 1 + layer*3;
+      ctx.beginPath();
+      for(let x=0; x<=W; x+=3){
+        const wy = yBase + Math.sin(x*0.018 + t*spd + layer*1.4)*amp;
+        x===0 ? ctx.moveTo(x,wy) : ctx.lineTo(x,wy);
+      }
+      ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+      ctx.fillStyle=`rgba(0,${20+layer*8},${45+layer*12},${0.75-layer*0.15})`; ctx.fill();
+
+      // Foam highlights on crest
+      for(let x=0; x<=W; x+=3){
+        const wy = yBase + Math.sin(x*0.018 + t*spd + layer*1.4)*amp;
+        ctx.beginPath(); ctx.moveTo(x,wy); ctx.lineTo(x+2,wy); ctx.stroke();
+      }
+    }
+
+    // Glimmering reflections
+    for(let i=0; i<10; i++){
+      const rx = ((i*109+t*55)%(W+30))-15;
+      const ry = GROUND_Y + 2 + Math.sin(rx*0.018+t*0.7)*4;
+      ctx.globalAlpha = 0.18+Math.sin(t*1.8+i)*0.12;
+      ctx.strokeStyle = 'rgba(120,170,240,0.55)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+18+i%4*4,ry+1); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Purple glow at ocean/arena boundary
+    const hg = ctx.createLinearGradient(0, GROUND_Y-28, 0, GROUND_Y+8);
+    hg.addColorStop(0,'rgba(140,0,200,0)'); hg.addColorStop(1,'rgba(70,0,150,0.38)');
+    ctx.fillStyle=hg; ctx.fillRect(0,GROUND_Y-28,W,36);
+
+    // Top vignette
+    const tg = ctx.createLinearGradient(0,0,0,48);
+    tg.addColorStop(0,'rgba(90,0,160,0.52)'); tg.addColorStop(1,'rgba(90,0,160,0)');
+    ctx.fillStyle=tg; ctx.fillRect(0,0,W,48);
   }
 
   // ─── obstacles ────────────────────────────────────────────────────────────
@@ -4411,7 +4500,7 @@
     friendAlly = null;
     victoryCarX = W + 20;  // just off right edge — appears within ~0.1s
     victoryCarDelay = 0;   // no delay
-    if(window.WD_DEMON_MODE){ gs.level=5; startDemonFight(); return; }
+    if(window.WD_DEMON_MODE){ gs.level=5; PL.row=0; startDemonFight(); return; }
     startWave();
   }
 
@@ -4419,12 +4508,59 @@
   //  DEMON BOSS MODE  — active only when window.WD_DEMON_MODE is set
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // ── Demon config (editable via admin panel) ────────────────────────────────
+  const DEMON_DEFAULTS = {
+    demonHp:          2800,  // total boss HP
+    phase2Pct:        50,    // % HP at which phase 2 begins
+    bodyExposeDur:    300,   // frames tentacle body stays exposed (5s @ 60fps)
+    // Smash attack
+    smashWarnT:       60,    // warning frames before tentacle lands
+    smashActiveT:     35,    // total active frames for smash animation
+    smashDmg:         20,    // damage on impact
+    smashShieldCost:  3,     // shield pips absorbed if blocking
+    // Laser attack
+    laserWarnT:       60,    // charge-up frames
+    laserActiveT:     90,    // beam duration frames
+    laserDmg:         8,     // damage per tick (every 3 frames)
+    laserShieldCost:  2,
+    // Rock attack
+    rockWarnT:        45,    // warning shadow frames
+    rockSpeedMin:     4,     // min fall speed
+    rockSpeedMax:     8,     // max fall speed
+    rockDmg:          18,    // landing damage
+    rockShieldCost:   2,
+    // Fireball attack
+    fireballDmg:      15,
+    fireballShieldCost: 2,
+    fireballSpeed:    5,
+    // P2 — Stomp demon fireballs
+    stompdemonDmg:    22,
+    stompdemonShieldCost: 3,
+    stompdemonSpeed:  7,
+    // P2 — Dual laser
+    duallasrDmg:      12,
+    duallasrShieldCost: 3,
+    // Idle gap between attacks (frames)
+    idleGap:          60,
+  };
+  const _dmnSaved = JSON.parse(localStorage.getItem('wolfdragon_demon_config') || '{}');
+  const DCFG = Object.assign({}, DEMON_DEFAULTS, _dmnSaved);
+  // Expose for admin panel read-back
+  window._DCFG = DCFG;
+  window._DEMON_DEFAULTS = DEMON_DEFAULTS;
+
   // Layout constants
   const DMN_DX   = -10,  DMN_DW = 820;
-  const DMN_REST_Y  = 188;   // head/shoulders visible above platform top (~y=340)
-  const DMN_RISEN_Y = -20;   // fully visible above platform for phase-2 attacks
+  const DMN_REST_Y  = 60;    // upper body + tentacles visible above platform
+  const DMN_RISEN_Y = -40;   // fully visible for phase-2 attacks
   const DMN_INTRO_Y = 700;   // starts below canvas for rise cutscene
   const PLAT_X = 0, PLAT_Y = 212, PLAT_DW = 800, PLAT_DH = 339;
+
+  // Tentacle hit spots (relative to DMN_DX, DEMON.y) — near-platform upper tentacles
+  const TSPOT = [
+    { relX: 130, relY: 130, w: 100, h: 85 },  // left tentacle
+    { relX: 560, relY: 115, w: 100, h: 85 },  // right tentacle
+  ];
 
   // 4 wide smash zones — two always active, leaving just one escape corridor
   const SMASH_ZONES = [
@@ -4435,7 +4571,7 @@
   ];
 
   const DEMON = {
-    hp: 2800, maxHp: 2800,
+    hp: DCFG.demonHp, maxHp: DCFG.demonHp,
     y: DMN_INTRO_Y,
     targetY: DMN_REST_Y,
     alive: true,
@@ -4444,6 +4580,10 @@
     phase: 1,
     introT: 0,
     hitDealt: false,
+    tentacles: [{alive:true}, {alive:true}],
+    bodyExposed: false,
+    bodyExposeT: 0,
+    risen: false,
   };
   window._DEMON = DEMON;
 
@@ -4475,26 +4615,106 @@
       hp: DEMON.maxHp, y: DMN_INTRO_Y, targetY: DMN_REST_Y,
       alive: true, revealed: false, flashT: 0, phase: 1,
       introT: 0, hitDealt: false,
+      tentacles: [{alive:true}, {alive:true}],
+      bodyExposed: false, bodyExposeT: 0, risen: false,
     });
     demonHazards = []; demonSeqIdx = 0; demonCycleN = 0;
     demonP2Done = 0; demonIdleT = 0; demonShakeT = 0; demonRocksSent = 0;
     enemies = []; projs = []; parts = []; drops = [];
     obstacles = []; effects = []; webZones = []; flameshields = [];
     gs.wave = 1; gs.level = 5;
-    msg = ''; msgT = 0;
+    cleared = true;  // prevent update()'s wave-clear block from firing in demon mode
+    msg = '★  SOMETHING STIRS BELOW  ★'; msgT = 140;
+    // Intro rocks — fall during the boss rise (before attacks begin)
+    const introDelays = [20, 40, 62, 80, 100, 118, 140, 160];
+    introDelays.forEach(d => {
+      setTimeout(() => {
+        if(!DEMON.alive || DEMON.revealed) return;
+        demonShakeT = 5;
+        for(let j=0; j<2; j++){
+          demonHazards.push({
+            type:'rock', warnT:20, speed:5+Math.random()*4,
+            x: 60 + Math.random()*680, row: Math.floor(Math.random()*2),
+            t:0, active:false, done:false, ry:0,
+          });
+        }
+      }, d * 16);
+    });
   }
 
   // ── Draw demon body (behind platform) ───────────────────────────────────────
   window._drawDemonBoss = function() {
     if(!SHEETS.DMN || !DEMON.alive) return;
+    const nowD = Date.now();
     // Shake offset
     const sx = demonShakeT > 0 ? (Math.random()-0.5)*demonShakeT : 0;
     const sy = demonShakeT > 0 ? (Math.random()-0.5)*demonShakeT*0.5 : 0;
     if(demonShakeT > 0) demonShakeT--;
+
     ctx.save();
+    // Body-exposed: flash purple tint
+    if(DEMON.bodyExposed && Math.floor(nowD/110)%2===0){
+      ctx.filter = 'brightness(1.6) hue-rotate(270deg) saturate(1.8)';
+    }
     if(DEMON.flashT > 0){ ctx.globalAlpha = 0.55; ctx.filter='brightness(3) saturate(0)'; DEMON.flashT--; }
     ctx.drawImage(SHEETS.DMN, DMN_DX+sx, DEMON.y+sy, DMN_DW, DMN_DW*(SHEETS.DMN.height/SHEETS.DMN.width));
     ctx.restore();
+
+    // ── Tentacle hit spot indicators ───────────────────────────────────────
+    DEMON.tentacles.forEach((t, i) => {
+      const tx = DMN_DX + TSPOT[i].relX + sx;
+      const ty = DEMON.y + TSPOT[i].relY + sy;
+      const tw = TSPOT[i].w, th = TSPOT[i].h;
+      ctx.save();
+      if(!t.alive){
+        // Grayed out — destroyed tentacle
+        ctx.fillStyle = 'rgba(40,40,40,0.5)';
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.strokeStyle = 'rgba(80,80,80,0.7)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tx, ty, tw, th);
+      } else {
+        // Pulsing orange glow = attackable
+        const pulse = Math.sin(nowD / 130) * 0.5 + 0.5;
+        ctx.globalAlpha = 0.28 + pulse * 0.25;
+        ctx.fillStyle = '#ff6600';
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = `rgba(255,120,0,${0.55 + pulse * 0.45})`;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#ff6600';
+        ctx.shadowBlur = 6 + pulse * 10;
+        ctx.strokeRect(tx + 1, ty + 1, tw - 2, th - 2);
+      }
+      ctx.restore();
+    });
+
+    // ── Body exposed hit zone overlay ─────────────────────────────────────
+    if(DEMON.bodyExposed){
+      const pulse = Math.sin(nowD / 90) * 0.5 + 0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.18 + pulse * 0.22;
+      ctx.fillStyle = '#cc44ff';
+      // mid-body band — roughly where you'd hit when bodyExposed
+      ctx.fillRect(DMN_DX + sx + 180, DEMON.y + sy + 90, 440, 150);
+      ctx.restore();
+    }
+
+    // ── Belly hit zone when risen ──────────────────────────────────────────
+    if(DEMON.risen){
+      const pulse = Math.sin(nowD / 80) * 0.4 + 0.6;
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.35;
+      ctx.fillStyle = '#ff0066';
+      ctx.fillRect(DMN_DX + sx + 260, DEMON.y + sy + 240, 280, 110);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = `rgba(255,0,100,${pulse * 0.7})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ff0066';
+      ctx.shadowBlur = 8;
+      ctx.strokeRect(DMN_DX + sx + 262, DEMON.y + sy + 242, 276, 106);
+      ctx.restore();
+    }
   };
 
   // ── Draw platform (on top of demon, hides lower body) ───────────────────────
@@ -4509,7 +4729,7 @@
     demonHazards.forEach(h => {
       if(h.done) return;
       if(h.type === 'smash') {
-        // Draw warn zones with game.js-style spider-dive indicator
+        // Warning phase — spider-dive-style dashed indicator
         if(!h.active){
           const pulse = Math.floor(now/80)%2===0;
           h.zones.forEach(zi => {
@@ -4519,7 +4739,6 @@
             ctx.strokeStyle = '#ff3300';
             ctx.lineWidth = 3;
             ctx.setLineDash([8,6]);
-            // Span all walkable rows
             for(let r=0; r<ROWS; r++){
               ctx.strokeRect(z.x, ROW_Y[r], z.w, WD_H+12);
             }
@@ -4531,22 +4750,31 @@
             ctx.restore();
           });
         } else {
-          // Active smash — tentacle sprites + red flash on zones
+          // Active: TEN2 (vertical) flipped downward falls from sky — no red bars
+          const tenSheet = SHEETS.TEN2;
           h.zones.forEach(zi => {
             const z = SMASH_ZONES[zi];
-            // Red zone flash
-            ctx.save();
-            ctx.fillStyle = 'rgba(255,50,0,0.28)';
-            for(let r=0; r<ROWS; r++) ctx.fillRect(z.x, ROW_Y[r], z.w, WD_H+12);
-            ctx.restore();
-            // Tentacle sprite: left zones → TEN3 (faces right), right zones → TEN1 (faces left)
-            const isRight = z.x > W/2;
-            const tenSheet = isRight ? SHEETS.TEN1 : SHEETS.TEN3;
+            const prog = Math.min(1, h.t / 20);
             if(tenSheet){
-              const tw = 180;
-              const th = tw * (tenSheet.height/tenSheet.width);
-              const tx = isRight ? z.x + z.w - tw : z.x;
-              ctx.drawImage(tenSheet, tx, ROW_Y[0], tw, th);
+              const tw = Math.min(z.w - 10, 130);
+              const th = tw * (tenSheet.height / tenSheet.width);
+              const cx2 = z.x + z.w / 2;
+              const endTenY = ROW_Y[0] + WD_H - th * 0.15;
+              const startTenY = -th - 10;
+              const tenY = startTenY + (endTenY - startTenY) * prog;
+              ctx.save();
+              ctx.translate(cx2, tenY + th / 2);
+              ctx.scale(1, -1); // flip so tentacle points downward
+              ctx.drawImage(tenSheet, -tw/2, -th/2, tw, th);
+              ctx.restore();
+            }
+            // Brief orange impact flash at landing
+            if(h.t >= 19 && h.t <= 24){
+              ctx.save();
+              ctx.globalAlpha = (24 - h.t) / 5 * 0.5;
+              ctx.fillStyle = '#ff8800';
+              ctx.fillRect(z.x + z.w*0.1, ROW_Y[0] - 6, z.w * 0.8, WD_H + 12);
+              ctx.restore();
             }
           });
         }
@@ -4580,20 +4808,27 @@
           ctx.restore();
         }
       } else if(h.type === 'laser') {
+        const beamY = ROW_Y[h.row] + (WD_H / 2);
         if(!h.active){
-          // Charge-up warning — eye glow
-          const pulse = (Math.sin(now/60)*0.5+0.5);
+          // Eye glow charge-up + faint dashed row preview
+          const eyePulse = (Math.sin(now/60)*0.5+0.5);
           const eyeX = 400, eyeY = DEMON.y + 142;
           ctx.save();
           const g = ctx.createRadialGradient(eyeX,eyeY,2, eyeX,eyeY,50);
-          g.addColorStop(0,'rgba(220,0,255,'+pulse+')');
+          g.addColorStop(0,'rgba(220,0,255,'+eyePulse+')');
           g.addColorStop(1,'rgba(100,0,200,0)');
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.arc(eyeX, eyeY, 50, 0, Math.PI*2); ctx.fill();
+          // Faint preview beam on the target row
+          ctx.globalAlpha = 0.15 + Math.sin(now/80)*0.1;
+          ctx.strokeStyle = 'rgba(200,0,255,0.7)';
+          ctx.lineWidth = 4;
+          ctx.setLineDash([10,8]);
+          ctx.beginPath(); ctx.moveTo(0, beamY); ctx.lineTo(W, beamY); ctx.stroke();
+          ctx.setLineDash([]);
           ctx.restore();
         } else {
-          // Laser beam sweeping across rows
-          const beamY = ROW_Y[h.row]+(WD_H/2);
+          // Full laser beam
           ctx.save();
           ctx.shadowColor='#cc00ff'; ctx.shadowBlur=18;
           ctx.strokeStyle='rgba(200,0,255,0.9)';
@@ -4644,19 +4879,24 @@
   window._updateDemon = function() {
     if(!DEMON.alive) return;
 
-    // Intro: demon rises from below
+    // Intro: demon rises from below with screen shake
     if(!DEMON.revealed){
       DEMON.introT++;
-      const speed = 3.5;
+      const speed = 3.0;
+      // Periodic shake during rise
+      if(DEMON.introT % 22 === 0) demonShakeT = 5;
       if(DEMON.y > DEMON.targetY){
         DEMON.y = Math.max(DEMON.targetY, DEMON.y - speed);
       } else {
         DEMON.revealed = true;
-        // Update nav title
+        demonShakeT = 12;
+        burst(W/2, PLAT_Y, '#440088', 30, 10);
         const rt = document.getElementById('room-title');
         if(rt) rt.textContent = 'Giant Tentacle Demon';
       }
-      return; // don't attack during intro
+      // Tick intro hazards (rocks fall during rise)
+      demonHazards = demonHazards.filter(h => { if(h.done) return false; return _tickHazard(h); });
+      return; // no attacks during intro
     }
 
     // Smooth move toward target Y
@@ -4666,27 +4906,116 @@
     }
 
     // Phase tracking
-    DEMON.phase = DEMON.hp > DEMON.maxHp*0.5 ? 1 : 2;
+    DEMON.phase = DEMON.hp > DEMON.maxHp*(DCFG.phase2Pct/100) ? 1 : 2;
 
-    // Player melee hit on demon
-    if(PL.atkTimer > 0 && !DEMON.hitDealt && PL.facing === 1){
-      DEMON.hitDealt = true;
-      DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg);
-      DEMON.flashT = 5;
-      burst(400, DEMON.y+140, '#aa44ff', 8, 4);
-      SFX.enemyHit();
+    // Risen state — true when fully up for P2 attacks
+    DEMON.risen = Math.abs(DEMON.targetY - DMN_RISEN_Y) < 5 && Math.abs(DEMON.y - DMN_RISEN_Y) < 35;
+
+    // Body-expose countdown → tentacle respawn after 5 s
+    if(DEMON.bodyExposed){
+      DEMON.bodyExposeT = Math.max(0, DEMON.bodyExposeT - 1);
+      if(DEMON.bodyExposeT <= 0){
+        DEMON.bodyExposed = false;
+        DEMON.tentacles.forEach(t => { t.alive = true; });
+        msg = '— TENTACLES RESPAWN —'; msgT = 80;
+      }
+    }
+
+    // ── Melee hit detection ───────────────────────────────────────────────
+    if(PL.atkTimer > 0 && !DEMON.hitDealt){
+      let hitSomething = false;
+
+      // (A) Try to hit a tentacle spot — player must be in x/y range of spot
+      if(!hitSomething){
+        for(let i = 0; i < 2; i++){
+          const t = DEMON.tentacles[i];
+          if(!t.alive) continue;
+          const tx = DMN_DX + TSPOT[i].relX;
+          const ty = DEMON.y + TSPOT[i].relY;
+          const tw = TSPOT[i].w, th = TSPOT[i].h;
+          const atkTip = PL.x + PL.w + Math.min(PL.atkRange, 100);
+          const inX = PL.facing === 1 && PL.x < tx + tw && atkTip > tx;
+          const inY = ROW_Y[PL.row] < ty + th + 50 && ROW_Y[PL.row] + WD_H > ty - 50;
+          if(inX && inY){
+            t.alive = false;
+            burst(tx + tw/2, ty + th/2, '#ff8800', 16, 7);
+            SFX.enemyHit(); demonShakeT = 5;
+            if(DEMON.tentacles.every(tt => !tt.alive)){
+              DEMON.bodyExposed = true;
+              DEMON.bodyExposeT = DCFG.bodyExposeDur;
+              msg = '— BODY EXPOSED! —'; msgT = 110;
+              burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+            }
+            hitSomething = true; break;
+          }
+        }
+      }
+
+      // (B) Hit exposed body (anywhere facing right while bodyExposed)
+      if(!hitSomething && DEMON.bodyExposed){
+        const atkTip = PL.x + PL.w + Math.min(PL.atkRange, 110);
+        if(PL.facing === 1 && atkTip > DMN_DX + 180){
+          DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg);
+          DEMON.flashT = 5; demonShakeT = 3;
+          burst(400, DEMON.y + 160, '#aa44ff', 10, 5);
+          SFX.enemyHit(); hitSomething = true;
+        }
+      }
+
+      // (C) Hit belly when fully risen (2× damage)
+      if(!hitSomething && DEMON.risen){
+        const bellyY = DEMON.y + 240;
+        const atkTip = PL.x + PL.w + Math.min(PL.atkRange, 110);
+        const inX = PL.facing === 1 && atkTip > DMN_DX + 260;
+        const inY = ROW_Y[PL.row] < bellyY + 110 + 50 && ROW_Y[PL.row] + WD_H > bellyY - 50;
+        if(inX && inY){
+          DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg * 2);
+          DEMON.flashT = 6; demonShakeT = 5;
+          burst(400, bellyY + 55, '#ff0066', 18, 8);
+          SFX.enemyHit(); hitSomething = true;
+        }
+      }
+
+      if(hitSomething) DEMON.hitDealt = true;
     }
     if(PL.atkTimer === 0) DEMON.hitDealt = false;
 
-    // Spell projectiles hit demon
+    // ── Spell projectiles hit demon ───────────────────────────────────────
     projs = projs.filter(p => {
       if(!p.friendly) return true; // enemy projectiles pass through
-      if(p.x > W - 60) { // reached demon's X range (right side)
+
+      // Try tentacle hit spots
+      for(let i = 0; i < 2; i++){
+        const t = DEMON.tentacles[i];
+        if(!t.alive) continue;
+        const tx = DMN_DX + TSPOT[i].relX;
+        const ty = DEMON.y + TSPOT[i].relY;
+        const {w:tw, h:th} = TSPOT[i];
+        if(p.x + 20 > tx && p.x < tx + tw && p.y + 20 > ty && p.y < ty + th){
+          t.alive = false;
+          if(DEMON.tentacles.every(tt => !tt.alive)){
+            DEMON.bodyExposed = true; DEMON.bodyExposeT = DCFG.bodyExposeDur;
+            msg = '— BODY EXPOSED! —'; msgT = 110;
+            burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+          }
+          burst(p.x, p.y, '#ff8800', 12, 6); SFX.enemyHit();
+          return false;
+        }
+      }
+      // Hit body when exposed
+      if(DEMON.bodyExposed && p.x > DMN_DX + 180){
         DEMON.hp = Math.max(0, DEMON.hp - p.dmg);
-        DEMON.flashT = 5;
-        burst(p.x, p.y, '#cc88ff', 10, 5);
-        SFX.enemyHit();
+        DEMON.flashT = 5; burst(p.x, p.y, '#cc88ff', 10, 5); SFX.enemyHit();
         return false;
+      }
+      // Hit belly when risen
+      if(DEMON.risen && p.x > DMN_DX + 260 && p.x < DMN_DX + 540){
+        const bellyY = DEMON.y + 240;
+        if(p.y > bellyY - 20 && p.y < bellyY + 130){
+          DEMON.hp = Math.max(0, DEMON.hp - p.dmg * 2);
+          DEMON.flashT = 6; burst(p.x, p.y, '#ff0066', 14, 7); SFX.enemyHit();
+          return false;
+        }
       }
       return true;
     });
@@ -4703,7 +5032,7 @@
     const anyActive = demonHazards.some(h => !h.done);
     if(!anyActive){
       demonIdleT++;
-      if(demonIdleT >= 60){ // 1-second gap between attacks
+      if(demonIdleT >= DCFG.idleGap){
         demonIdleT = 0;
         _launchNextAttack();
       }
@@ -4716,15 +5045,19 @@
       if(!h.active && h.t >= h.warnT){ h.active=true; h.t=0; }
       if(h.active && h.t >= h.activeT){ h.done=true; return false; }
       if(h.active){
-        // Damage check each active frame
-        h.zones.forEach(zi => {
-          const z = SMASH_ZONES[zi];
-          for(let r=0; r<ROWS; r++){
-            if(PL.row===r && PL.x+WD_W*0.5 > z.x && PL.x+WD_W*0.5 < z.x+z.w){
-              hurtPlayer(20, true, 3, false);
+        // Single-frame impact damage at frame 20 (when tentacle sprite lands)
+        if(h.t === 20){
+          h.zones.forEach(zi => {
+            const z = SMASH_ZONES[zi];
+            for(let r=0; r<ROWS; r++){
+              if(PL.row===r && PL.x+WD_W*0.5 > z.x && PL.x+WD_W*0.5 < z.x+z.w){
+                hurtPlayer(DCFG.smashDmg, true, DCFG.smashShieldCost, false);
+              }
             }
-          }
-        });
+            burst(z.x + z.w/2, ROW_Y[0] + WD_H/2, '#ff6600', 14, 6);
+            SFX.rockImpact();
+          });
+        }
       }
       return true;
     } else if(h.type === 'rock'){
@@ -4738,7 +5071,7 @@
           SFX.rockImpact();
           // Damage in landing radius
           if(PL.row===h.row && Math.abs(PL.cx-h.x) < 40){
-            hurtPlayer(18, true, 2, false);
+            hurtPlayer(DCFG.rockDmg, true, DCFG.rockShieldCost, false);
           }
           h.done=true; return false;
         }
@@ -4747,11 +5080,11 @@
     } else if(h.type === 'laser'){
       if(!h.active && h.t >= h.warnT){
         h.active=true; h.t=0;
-        h.row = Math.floor(Math.random()*ROWS); // target random row
+        // row is pre-assigned at launch time — no change here
       }
       if(h.active){
         if(h.t % 3 === 0){ // damage every 3 frames during beam
-          if(PL.row===h.row) hurtPlayer(8, true, 2, false);
+          if(PL.row===h.row) hurtPlayer(DCFG.laserDmg, true, DCFG.laserShieldCost, false);
         }
         if(h.t >= h.activeT){ h.done=true; return false; }
       }
@@ -4761,7 +5094,7 @@
       h.vy += 0.12; // gravity
       // Check hit
       if(Math.abs(PL.x+WD_W/2-h.fx) < 28 && Math.abs(ROW_Y[PL.row]+WD_H/2-h.fy) < 28){
-        hurtPlayer(15, true, 2, false);
+        hurtPlayer(DCFG.fireballDmg, true, DCFG.fireballShieldCost, false);
         burst(h.fx,h.fy,'#ff6600',10,5);
         h.done=true; return false;
       }
@@ -4771,7 +5104,7 @@
       h.fx += h.vx; h.fy += h.vy;
       h.vy += 0.08;
       if(Math.abs(PL.x+WD_W/2-h.fx) < 26 && Math.abs(ROW_Y[PL.row]+WD_H/2-h.fy) < 26){
-        hurtPlayer(22, true, 3, false);
+        hurtPlayer(DCFG.stompdemonDmg, true, DCFG.stompdemonShieldCost, false);
         burst(h.fx,h.fy,'#ff00ff',12,6);
         h.done=true; return false;
       }
@@ -4791,7 +5124,7 @@
       const plCY = ROW_Y[PL.row]+WD_H/2;
       const hitL = Math.abs(plCY - (h.ly1 + (PL.x/W)*(h.ly2-h.ly1))) < 16;
       const hitR = Math.abs(plCY - (h.ry1 + (PL.x/W)*(h.ry2-h.ry1))) < 16;
-      if((hitL || hitR) && h.t2 % 4 === 0) hurtPlayer(12, true, 3, false);
+      if((hitL || hitR) && h.t2 % 4 === 0) hurtPlayer(DCFG.duallasrDmg, true, DCFG.duallasrShieldCost, false);
       if(h.t2 >= 90){ h.done=true; return false; }
       return true;
     }
@@ -4811,9 +5144,20 @@
     if(demonSeqIdx === 0) demonCycleN++;
 
     if(atk.type==='smash'){
-      demonHazards.push({ type:'smash', zones:atk.zones, warnT:60, activeT:22, t:0, active:false, done:false });
+      demonHazards.push({ type:'smash', zones:atk.zones, warnT:DCFG.smashWarnT, activeT:DCFG.smashActiveT, t:0, active:false, done:false });
+      // Rocks also fall from sky during every smash
+      const rCount = 2 + Math.floor(Math.random()*2);
+      for(let i=0; i<rCount; i++){
+        setTimeout(()=>{
+          if(!DEMON.alive) return;
+          demonHazards.push({ type:'rock', warnT:30+Math.floor(Math.random()*20), speed:4+Math.random()*4,
+            x:60+Math.random()*680, row:Math.floor(Math.random()*2), t:0, active:false, done:false, ry:0 });
+        }, i * 300);
+      }
     } else if(atk.type==='laser'){
-      demonHazards.push({ type:'laser', dir:atk.dir, warnT:55, activeT:90, t:0, active:false, done:false, row:0 });
+      // Pre-assign row (rows 0–1 only — player is restricted to bottom 2 rows)
+      const laserRow = Math.floor(Math.random() * 2);
+      demonHazards.push({ type:'laser', dir:atk.dir, warnT:DCFG.laserWarnT, activeT:DCFG.laserActiveT, t:0, active:false, done:false, row:laserRow });
     } else if(atk.type==='rocks'){
       // Spawn multiple rocks with staggered delays
       for(let i=0; i<atk.count; i++){
@@ -4821,14 +5165,14 @@
         setTimeout(()=>{
           if(!DEMON.alive) return;
           demonHazards.push({
-            type:'rock', warnT:45, speed:6+Math.random()*3,
-            x: 80+Math.random()*640, row:Math.floor(Math.random()*ROWS),
+            type:'rock', warnT:DCFG.rockWarnT, speed:DCFG.rockSpeedMin+Math.random()*(DCFG.rockSpeedMax-DCFG.rockSpeedMin),
+            x: 80+Math.random()*640, row:Math.floor(Math.random()*2),
             t:0, active:false, done:false, ry:0,
           });
         }, delay*16);
       }
       // Placeholder hazard so we wait for rocks to finish
-      demonHazards.push({ type:'rock', warnT:45+atk.count*30, speed:999, x:999, row:0, t:0, active:false, done:false, ry:0 });
+      demonHazards.push({ type:'rock', warnT:DCFG.rockWarnT+atk.count*30, speed:999, x:999, row:0, t:0, active:false, done:false, ry:0 });
     } else if(atk.type==='fireball'){
       const cx = 400, cy = DEMON.y+200;
       for(let i=0; i<atk.count; i++){
@@ -4836,7 +5180,7 @@
         const tx = PL.x+PL.w/2 + spread;
         const ty = ROW_Y[PL.row]+WD_H/2;
         const dist = Math.sqrt((tx-cx)*(tx-cx)+(ty-cy)*(ty-cy));
-        const spd = 5;
+        const spd = DCFG.fireballSpeed;
         demonHazards.push({ type:'fireball', fx:cx, fy:cy, vx:(tx-cx)/dist*spd, vy:(ty-cy)/dist*spd, done:false });
       }
     }
@@ -4919,7 +5263,7 @@
       if(eat('KeyW')||eat('Space')) reset();
     } else if(window.WD_DEMON_MODE){
       update();
-      drawBG();
+      drawDemonBG();
       if(window._DEMON) window._drawDemonBoss();  // demon body behind platform
       if(window._DEMON) window._drawDemonPlatform(); // platform on top of demon
       drawDrops(); drawProjs();

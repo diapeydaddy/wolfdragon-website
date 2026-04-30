@@ -452,6 +452,10 @@
 
     #users-panel { display: none; }
 
+    .tab-btn.demon-tab { color: #aa66ff; border-color: #330055; }
+    .tab-btn.demon-tab.active { background: #0e0018; border-color: #660099; color: #cc88ff; border-bottom: 1px solid #0e0018; }
+    .tab-indicator.demon { color: #660099; }
+
     .users-toolbar {
       display: flex;
       gap: 12px;
@@ -597,6 +601,7 @@
     <button class="tab-btn baby-tab" data-tab="baby" id="baby-tab-btn" onclick="switchTab('baby')">&#127868; BABY CONFIG</button>
     <button class="tab-btn music-tab" data-tab="music" onclick="switchTab('music')">&#127925; MUSIC</button>
     <button class="tab-btn users-tab" data-tab="users" onclick="switchTab('users')">&#128101; USERS</button>
+    <button class="tab-btn demon-tab" data-tab="demon" onclick="switchTab('demon')">&#128065; DEMON BOSS</button>
   </div>
   <div class="tab-indicator" id="tab-indicator">Main Config — wolfdragon_config</div>
 
@@ -681,6 +686,90 @@
     <div id="users-list">
       <div class="users-empty">Loading users...</div>
     </div>
+  </div>
+
+  <!-- ── Demon Boss Panel ── -->
+  <div id="demon-panel" style="display:none;">
+    <div style="padding:18px 0 10px;color:#aa66ff;font-family:'Metal Mania',cursive;font-size:1.1rem;letter-spacing:0.15em;">
+      👁 GIANT TENTACLE DEMON — Boss Config
+    </div>
+    <p style="color:#666;font-size:0.8rem;margin-bottom:20px;">
+      Changes saved to <code>wolfdragon_demon_config</code> in localStorage.
+      Open <a href="/demon.html" target="_blank" style="color:#8833dd;">/demon.html</a> after saving.
+    </p>
+
+    <details open>
+      <summary>Boss Stats</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Total HP</label><input type="number" id="dcfg_demonHp" data-ddefault="2800" step="50" /></div>
+        <div class="field"><label>Phase 2 Threshold (%)</label><input type="number" id="dcfg_phase2Pct" data-ddefault="50" step="5" min="10" max="90" /></div>
+        <div class="field"><label>Body-Expose Duration (frames)</label><input type="number" id="dcfg_bodyExposeDur" data-ddefault="300" step="30" min="60" /></div>
+        <div class="field"><label>Idle Gap Between Attacks (frames)</label><input type="number" id="dcfg_idleGap" data-ddefault="60" step="5" min="10" /></div>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>Smash (Tentacle Fall)</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Warn Time (frames)</label><input type="number" id="dcfg_smashWarnT" data-ddefault="60" step="5" /></div>
+        <div class="field"><label>Active Duration (frames)</label><input type="number" id="dcfg_smashActiveT" data-ddefault="35" step="5" /></div>
+        <div class="field"><label>Impact Damage</label><input type="number" id="dcfg_smashDmg" data-ddefault="20" step="1" /></div>
+        <div class="field"><label>Shield Pips Consumed</label><input type="number" id="dcfg_smashShieldCost" data-ddefault="3" step="1" min="0" max="3" /></div>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>Laser Beam</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Warn Time (frames)</label><input type="number" id="dcfg_laserWarnT" data-ddefault="60" step="5" /></div>
+        <div class="field"><label>Active Duration (frames)</label><input type="number" id="dcfg_laserActiveT" data-ddefault="90" step="10" /></div>
+        <div class="field"><label>Damage per Tick</label><input type="number" id="dcfg_laserDmg" data-ddefault="8" step="1" /></div>
+        <div class="field"><label>Shield Pips Consumed</label><input type="number" id="dcfg_laserShieldCost" data-ddefault="2" step="1" min="0" max="3" /></div>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>Falling Rocks</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Warn Time (frames)</label><input type="number" id="dcfg_rockWarnT" data-ddefault="45" step="5" /></div>
+        <div class="field"><label>Fall Speed Min</label><input type="number" id="dcfg_rockSpeedMin" data-ddefault="4" step="0.5" /></div>
+        <div class="field"><label>Fall Speed Max</label><input type="number" id="dcfg_rockSpeedMax" data-ddefault="8" step="0.5" /></div>
+        <div class="field"><label>Landing Damage</label><input type="number" id="dcfg_rockDmg" data-ddefault="18" step="1" /></div>
+        <div class="field"><label>Shield Pips Consumed</label><input type="number" id="dcfg_rockShieldCost" data-ddefault="2" step="1" min="0" max="3" /></div>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>Fireball Volley</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Damage per Fireball</label><input type="number" id="dcfg_fireballDmg" data-ddefault="15" step="1" /></div>
+        <div class="field"><label>Shield Pips Consumed</label><input type="number" id="dcfg_fireballShieldCost" data-ddefault="2" step="1" min="0" max="3" /></div>
+        <div class="field"><label>Projectile Speed</label><input type="number" id="dcfg_fireballSpeed" data-ddefault="5" step="0.5" /></div>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>Phase 2 — Stomp Fireballs</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Damage per Hit</label><input type="number" id="dcfg_stompdemonDmg" data-ddefault="22" step="1" /></div>
+        <div class="field"><label>Shield Pips Consumed</label><input type="number" id="dcfg_stompdemonShieldCost" data-ddefault="3" step="1" min="0" max="3" /></div>
+        <div class="field"><label>Projectile Speed</label><input type="number" id="dcfg_stompdemonSpeed" data-ddefault="7" step="0.5" /></div>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>Phase 2 — Dual Laser</summary>
+      <div class="section-body"><div class="field-grid">
+        <div class="field"><label>Damage per Tick</label><input type="number" id="dcfg_duallasrDmg" data-ddefault="12" step="1" /></div>
+        <div class="field"><label>Shield Pips Consumed</label><input type="number" id="dcfg_duallasrShieldCost" data-ddefault="3" step="1" min="0" max="3" /></div>
+      </div></div>
+    </details>
+
+    <div style="display:flex;gap:12px;margin-top:22px;">
+      <button class="save-btn" onclick="saveDemonCfg()">💾 Save Demon Config</button>
+      <button class="save-btn" onclick="resetDemonCfg()" style="background:#220008;border-color:#440011;color:#ff6666;">↺ Reset to Defaults</button>
+    </div>
+    <div id="demon-save-msg" style="color:#66ff88;margin-top:10px;font-size:0.85rem;min-height:1.2em;"></div>
   </div>
 
   <!-- 1. Player -->
@@ -964,15 +1053,17 @@
     document.querySelectorAll('.tab-btn').forEach(function(b) {
       b.classList.toggle('active', b.dataset.tab === tab);
     });
-    var ind        = document.getElementById('tab-indicator');
-    var musicPanel = document.getElementById('music-panel');
-    var usersPanel = document.getElementById('users-panel');
-    var allDetails = document.querySelectorAll('details');
-    var actionsDiv = document.querySelector('.actions');
+    var ind         = document.getElementById('tab-indicator');
+    var musicPanel  = document.getElementById('music-panel');
+    var usersPanel  = document.getElementById('users-panel');
+    var demonPanel  = document.getElementById('demon-panel');
+    var allDetails  = document.querySelectorAll('details');
+    var actionsDiv  = document.querySelector('.actions');
 
     // Reset visibility
     musicPanel.style.display = 'none';
     usersPanel.style.display = 'none';
+    demonPanel.style.display = 'none';
     allDetails.forEach(function(d) { d.style.display = ''; });
     if (actionsDiv) actionsDiv.style.display = '';
 
@@ -990,6 +1081,13 @@
       ind.textContent = 'Users & Key Management';
       ind.className = 'tab-indicator users';
       loadUsersPanel();
+    } else if (tab === 'demon') {
+      allDetails.forEach(function(d) { d.style.display = 'none'; });
+      if (actionsDiv) actionsDiv.style.display = 'none';
+      demonPanel.style.display = 'block';
+      ind.textContent = '👁 Demon Boss Config — wolfdragon_demon_config';
+      ind.className = 'tab-indicator demon';
+      loadDemonCfg();
     } else {
       if (tab === 'baby') {
         ind.textContent = '🍼 Baby Config — wolfdragon_config_baby';
@@ -1586,6 +1684,47 @@
     return String(s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Demon Boss Config ─────────────────────────────────────────────────────
+  var DEMON_DEFAULTS_LOCAL = {
+    demonHp:2800, phase2Pct:50, bodyExposeDur:300, idleGap:60,
+    smashWarnT:60, smashActiveT:35, smashDmg:20, smashShieldCost:3,
+    laserWarnT:60, laserActiveT:90, laserDmg:8, laserShieldCost:2,
+    rockWarnT:45, rockSpeedMin:4, rockSpeedMax:8, rockDmg:18, rockShieldCost:2,
+    fireballDmg:15, fireballShieldCost:2, fireballSpeed:5,
+    stompdemonDmg:22, stompdemonShieldCost:3, stompdemonSpeed:7,
+    duallasrDmg:12, duallasrShieldCost:3,
+  };
+
+  function loadDemonCfg() {
+    var saved = JSON.parse(localStorage.getItem('wolfdragon_demon_config') || '{}');
+    var cfg = Object.assign({}, DEMON_DEFAULTS_LOCAL, saved);
+    Object.keys(DEMON_DEFAULTS_LOCAL).forEach(function(key) {
+      var el = document.getElementById('dcfg_' + key);
+      if (el) el.value = cfg[key] !== undefined ? cfg[key] : DEMON_DEFAULTS_LOCAL[key];
+    });
+  }
+
+  function saveDemonCfg() {
+    var cfg = {};
+    Object.keys(DEMON_DEFAULTS_LOCAL).forEach(function(key) {
+      var el = document.getElementById('dcfg_' + key);
+      if (el) cfg[key] = parseFloat(el.value);
+    });
+    localStorage.setItem('wolfdragon_demon_config', JSON.stringify(cfg));
+    var msg = document.getElementById('demon-save-msg');
+    msg.textContent = '✓ Saved! Reload /demon.html to apply.';
+    setTimeout(function() { msg.textContent = ''; }, 3000);
+  }
+
+  function resetDemonCfg() {
+    if (!confirm('Reset all demon config to defaults?')) return;
+    localStorage.removeItem('wolfdragon_demon_config');
+    loadDemonCfg();
+    var msg = document.getElementById('demon-save-msg');
+    msg.textContent = '↺ Reset to defaults.';
+    setTimeout(function() { msg.textContent = ''; }, 2000);
   }
 </script>
 </body>
