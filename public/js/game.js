@@ -4572,6 +4572,7 @@
     demonHp:          2800,  // total boss HP
     phase2Pct:        50,    // % HP at which phase 2 begins
     tentacleHp:       500,   // HP per tentacle (25 base dmg × 20 hits)
+    bellyHp:          400,   // belly HP (must destroy before boss vulnerable in phase 2)
     bodyExposeDur:    300,   // frames tentacle body stays exposed (5s @ 60fps)
     // Smash attack
     smashWarnT:       60,    // warning frames before tentacle lands
@@ -4646,6 +4647,9 @@
     bodyExposed: false,
     bodyExposeT: 0,
     risen: false,
+    bellyDestroyed: false,
+    bellyHp: DCFG.bellyHp,
+    bellyMaxHp: DCFG.bellyHp,
   };
   window._DEMON = DEMON;
 
@@ -4698,6 +4702,7 @@
       introT: 0, hitDealt: false,
       tentacles: [{alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}, {alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}],
       bodyExposed: false, bodyExposeT: 0, risen: false,
+      bellyDestroyed: false, bellyHp: DCFG.bellyHp, bellyMaxHp: DCFG.bellyHp,
     });
     demonHazards = []; demonSeqIdx = 0; demonCycleN = 0;
     demonP2Done = 0; demonIdleT = 0; demonShakeT = 0; demonRocksSent = 0;
@@ -4806,19 +4811,37 @@
       ctx.restore();
     }
 
-    // ── Belly hit zone when risen ──────────────────────────────────────────
-    if(DEMON.risen){
+    // ── Belly hit zone + HP bar when risen and not yet destroyed ──────────
+    if(DEMON.risen && !DEMON.bellyDestroyed){
       const pulse = Math.sin(nowD / 80) * 0.4 + 0.6;
+      const bx = DMN_DX + sx + 260, by = DEMON.y + sy + 240, bw = 280, bh = 110;
       ctx.save();
-      ctx.globalAlpha = pulse * 0.35;
+      // Zone glow overlay
+      ctx.globalAlpha = pulse * 0.30;
       ctx.fillStyle = '#ff0066';
-      ctx.fillRect(DMN_DX + sx + 260, DEMON.y + sy + 240, 280, 110);
+      ctx.fillRect(bx, by, bw, bh);
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = `rgba(255,0,100,${pulse * 0.7})`;
+      ctx.strokeStyle = `rgba(255,0,100,${pulse * 0.75})`;
       ctx.lineWidth = 2;
-      ctx.shadowColor = '#ff0066';
-      ctx.shadowBlur = 8;
-      ctx.strokeRect(DMN_DX + sx + 262, DEMON.y + sy + 242, 276, 106);
+      ctx.shadowColor = '#ff0066'; ctx.shadowBlur = 10;
+      ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+      // HP bar above the belly zone
+      const barW = bw, barH = 12;
+      const barX = bx, barY = by - 18;
+      const pct = Math.max(0, DEMON.bellyHp / DEMON.bellyMaxHp);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#220011'; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = pct > 0.5 ? '#ff3388' : (pct > 0.25 ? '#ff6600' : '#ff0000');
+      ctx.fillRect(barX, barY, barW * pct, barH);
+      ctx.strokeStyle = 'rgba(255,0,80,0.7)'; ctx.lineWidth = 1;
+      ctx.strokeRect(barX, barY, barW, barH);
+      // Label
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffaac8'; ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('BELLY', barX + barW / 2, barY - 2);
+      ctx.textAlign = 'left';
       ctx.restore();
     }
   };
@@ -5002,37 +5025,40 @@
         const eyeX = DMN_DX + DMN_DW * 0.5;  // ~400
         const eyeY = DEMON.y + 142;
         ctx.save();
-        if(h.t2 < 30){
-          // Phase 1: eye charges up — growing radial glow
-          const prog = h.t2 / 30;
-          const eg = ctx.createRadialGradient(eyeX, eyeY, 0, eyeX, eyeY, 20 + prog*55);
-          eg.addColorStop(0, `rgba(255,255,255,${prog})`);
-          eg.addColorStop(0.4, `rgba(220,0,255,${prog*0.9})`);
+        if(h.t2 < 20){
+          // Flash phase: both vertical beams snap on at center, alpha ramps in
+          const alpha = h.t2 / 20;
+          ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 50;
+          ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 28;
+          ctx.beginPath(); ctx.moveTo(eyeX, 0); ctx.lineTo(eyeX, H); ctx.stroke();
+          ctx.strokeStyle = `rgba(220,0,255,${alpha * 0.9})`; ctx.lineWidth = 16;
+          ctx.beginPath(); ctx.moveTo(eyeX, 0); ctx.lineTo(eyeX, H); ctx.stroke();
+          ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.8})`; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(eyeX, 0); ctx.lineTo(eyeX, H); ctx.stroke();
+          // Eye charge glow
+          const eg = ctx.createRadialGradient(eyeX, eyeY, 0, eyeX, eyeY, 35 + alpha*30);
+          eg.addColorStop(0, `rgba(255,255,255,${alpha})`);
+          eg.addColorStop(0.4, `rgba(220,0,255,${alpha*0.8})`);
           eg.addColorStop(1, 'rgba(100,0,200,0)');
           ctx.fillStyle = eg;
-          ctx.beginPath(); ctx.arc(eyeX, eyeY, 20+prog*55, 0, Math.PI*2); ctx.fill();
-        } else if(h.t2 < 70){
-          // Phase 2: thick vertical beam from eye to floor
-          ctx.shadowColor='#cc00ff'; ctx.shadowBlur=28;
-          ctx.strokeStyle='rgba(200,0,255,0.95)'; ctx.lineWidth=20;
-          ctx.beginPath(); ctx.moveTo(eyeX, eyeY); ctx.lineTo(eyeX, H); ctx.stroke();
-          ctx.strokeStyle='rgba(255,200,255,0.7)'; ctx.lineWidth=8;
-          ctx.beginPath(); ctx.moveTo(eyeX, eyeY); ctx.lineTo(eyeX, H); ctx.stroke();
-          ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=3;
-          ctx.beginPath(); ctx.moveTo(eyeX, eyeY); ctx.lineTo(eyeX, H); ctx.stroke();
+          ctx.beginPath(); ctx.arc(eyeX, eyeY, 35+alpha*30, 0, Math.PI*2); ctx.fill();
         } else {
-          // Phase 3: two horizontal beams sweeping left and right from eye x
-          const prog = Math.min(1, (h.t2 - 70) / 100);
-          const leftX  = eyeX - eyeX * prog;          // sweeps to x=0
-          const rightX = eyeX + (W - eyeX) * prog;    // sweeps to x=W
-          // Two rows to cover both player rows
-          [ROW_Y[0] + WD_H*0.5, ROW_Y[1] + WD_H*0.5].forEach(beamY => {
-            ctx.shadowColor='#cc00ff'; ctx.shadowBlur=20;
-            ctx.strokeStyle='rgba(220,0,255,0.9)'; ctx.lineWidth=10;
-            ctx.beginPath(); ctx.moveTo(leftX, beamY); ctx.lineTo(rightX, beamY); ctx.stroke();
-            ctx.strokeStyle='rgba(255,180,255,0.55)'; ctx.lineWidth=4;
-            ctx.beginPath(); ctx.moveTo(leftX, beamY); ctx.lineTo(rightX, beamY); ctx.stroke();
-          });
+          // Sweep phase: left beam sweeps eyeX→0, right beam sweeps eyeX→W
+          const prog = Math.min(1, (h.t2 - 20) / 130);
+          const leftX  = eyeX * (1 - prog);        // eyeX → 0
+          const rightX = eyeX + (W - eyeX) * prog; // eyeX → W
+
+          function drawVBeam(bx){
+            ctx.shadowColor = '#cc00ff'; ctx.shadowBlur = 24;
+            ctx.strokeStyle = 'rgba(200,0,255,0.95)'; ctx.lineWidth = 18;
+            ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, H); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,180,255,0.65)'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, H); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, H); ctx.stroke();
+          }
+          drawVBeam(leftX);
+          drawVBeam(rightX);
         }
         ctx.restore();
       }
@@ -5123,7 +5149,8 @@
       }
 
       // (B) Hit exposed body — any direction, just needs to be in melee range
-      if(!hitSomething && DEMON.bodyExposed){
+      //     In phase 2 this only deals damage once belly is destroyed
+      if(!hitSomething && DEMON.bodyExposed && (DEMON.phase === 1 || DEMON.bellyDestroyed)){
         const reach = Math.min(PL.atkRange, 110);
         const plLeft = PL.x - reach, plRight = PL.x + PL.w + reach;
         if(plRight > DMN_DX + 180 && plLeft < DMN_DX + DMN_DW - 180){
@@ -5134,17 +5161,23 @@
         }
       }
 
-      // (C) Hit belly when fully risen AND both tentacles destroyed (2× damage)
-      if(!hitSomething && DEMON.risen && DEMON.tentacles.every(tt => !tt.alive)){
+      // (C) Hit belly when risen and not yet destroyed — belly has its own HP bar
+      if(!hitSomething && DEMON.risen && !DEMON.bellyDestroyed){
         const bellyY = DEMON.y + 240;
         const reach = Math.min(PL.atkRange, 110);
         const inX = (PL.x + PL.w + reach) > DMN_DX + 260 && (PL.x - reach) < DMN_DX + DMN_DW - 260;
         const inY = ROW_Y[PL.row] < bellyY + 110 + 50 && ROW_Y[PL.row] + WD_H > bellyY - 50;
         if(inX && inY){
-          DEMON.hp = Math.max(0, DEMON.hp - PL.weapon.dmg * 2);
+          DEMON.bellyHp = Math.max(0, DEMON.bellyHp - PL.weapon.dmg * 2);
           DEMON.flashT = 6; demonShakeT = 5;
           burst(400, bellyY + 55, '#ff0066', 18, 8);
           SFX.enemyHit(); hitSomething = true;
+          if(DEMON.bellyHp <= 0){
+            DEMON.bellyDestroyed = true;
+            msg = '— BELLY DESTROYED! —'; msgT = 130;
+            burst(400, bellyY + 55, '#ff0099', 30, 10);
+            demonShakeT = 18;
+          }
         }
       }
 
@@ -5183,18 +5216,26 @@
         }
       }
       // Hit body when exposed — any x that reaches the demon sprite area
-      if(DEMON.bodyExposed && pcx > DMN_DX + 60 && pcx < DMN_DX + DMN_DW - 60){
+      // In phase 2 only deals damage once belly is destroyed
+      if(DEMON.bodyExposed && (DEMON.phase === 1 || DEMON.bellyDestroyed) &&
+         pcx > DMN_DX + 60 && pcx < DMN_DX + DMN_DW - 60){
         DEMON.hp = Math.max(0, DEMON.hp - p.dmg);
         DEMON.flashT = 5; burst(pcx, pcy, '#cc88ff', 10, 5); SFX.enemyHit();
         return false;
       }
-      // Hit belly when risen AND tentacles both destroyed — wide x range, loose y
-      if(DEMON.risen && DEMON.tentacles.every(tt => !tt.alive)){
+      // Hit belly when risen and not yet destroyed — belly has its own HP
+      if(DEMON.risen && !DEMON.bellyDestroyed){
         const bellyY = DEMON.y + 240;
         if(pcx > DMN_DX + 100 && pcx < DMN_DX + DMN_DW - 100 &&
            pcy > bellyY - 60 && pcy < bellyY + 160){
-          DEMON.hp = Math.max(0, DEMON.hp - p.dmg * 2);
+          DEMON.bellyHp = Math.max(0, DEMON.bellyHp - p.dmg * 2);
           DEMON.flashT = 6; burst(pcx, pcy, '#ff0066', 14, 7); SFX.enemyHit();
+          if(DEMON.bellyHp <= 0){
+            DEMON.bellyDestroyed = true;
+            msg = '— BELLY DESTROYED! —'; msgT = 130;
+            burst(400, bellyY + 55, '#ff0099', 30, 10);
+            demonShakeT = 18;
+          }
           return false;
         }
       }
@@ -5304,23 +5345,36 @@
     } else if(h.type === 'eyelaser'){
       h.t2 = (h.t2||0)+1;
       const eyeX = DMN_DX + DMN_DW * 0.5;
-      if(h.t2 >= 30 && h.t2 < 70){
-        // Vertical beam — hits player if near center x
-        if(h.t2 % 3 === 0 && Math.abs(PL.x + PL.w/2 - eyeX) < 55){
-          hurtPlayer(DCFG.duallasrDmg, true, DCFG.duallasrShieldCost, false);
+      const plCX = PL.x + PL.w / 2;
+
+      if(h.t2 < 20){
+        // Flash phase: both beams at center — double damage if player is near center
+        if(h.t2 % 4 === 0 && Math.abs(plCX - eyeX) < 35){
+          hurtPlayer(DCFG.duallasrDmg * 2, true, DCFG.duallasrShieldCost * 2, false);
         }
-      } else if(h.t2 >= 70){
-        // Horizontal sweep — hits both rows; damage when beam front passes over player
-        const prog = Math.min(1, (h.t2 - 70) / 100);
-        const leftX  = eyeX - eyeX * prog;
+      } else {
+        // Sweep phase: left beam sweeps eyeX→0, right beam sweeps eyeX→W
+        const prog = Math.min(1, (h.t2 - 20) / 130);
+        const leftX  = eyeX * (1 - prog);
         const rightX = eyeX + (W - eyeX) * prog;
-        const plCX = PL.x + PL.w/2;
-        const swept = plCX >= leftX && plCX <= rightX;
-        if(swept && h.t2 % 4 === 0){
+        if(!h.leftCd)  h.leftCd  = 0;
+        if(!h.rightCd) h.rightCd = 0;
+        h.leftCd  = Math.max(0, h.leftCd  - 1);
+        h.rightCd = Math.max(0, h.rightCd - 1);
+        const hitL = Math.abs(plCX - leftX)  < 28 && h.leftCd  === 0;
+        const hitR = Math.abs(plCX - rightX) < 28 && h.rightCd === 0;
+        if(hitL && hitR){
+          hurtPlayer(DCFG.duallasrDmg * 2, true, DCFG.duallasrShieldCost * 2, false);
+          h.leftCd = 10; h.rightCd = 10;
+        } else if(hitL){
           hurtPlayer(DCFG.duallasrDmg, true, DCFG.duallasrShieldCost, false);
+          h.leftCd = 10;
+        } else if(hitR){
+          hurtPlayer(DCFG.duallasrDmg, true, DCFG.duallasrShieldCost, false);
+          h.rightCd = 10;
         }
       }
-      if(h.t2 >= 175){ h.done=true; return false; }
+      if(h.t2 >= 155){ h.done=true; return false; }
       return true;
     }
     return false;

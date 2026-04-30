@@ -704,6 +704,7 @@
         <div class="field"><label>Total HP</label><input type="number" id="dcfg_demonHp" data-ddefault="2800" step="50" /></div>
         <div class="field"><label>Phase 2 Threshold (%)</label><input type="number" id="dcfg_phase2Pct" data-ddefault="50" step="5" min="10" max="90" /></div>
         <div class="field"><label>Tentacle HP (each)</label><input type="number" id="dcfg_tentacleHp" data-ddefault="500" step="25" min="25" /></div>
+        <div class="field"><label>Belly HP (phase 2 gate)</label><input type="number" id="dcfg_bellyHp" data-ddefault="400" step="25" min="25" /></div>
         <div class="field"><label>Body-Expose Duration (frames)</label><input type="number" id="dcfg_bodyExposeDur" data-ddefault="300" step="30" min="60" /></div>
         <div class="field"><label>Idle Gap Between Attacks (frames)</label><input type="number" id="dcfg_idleGap" data-ddefault="60" step="5" min="10" /></div>
       </div></div>
@@ -1689,7 +1690,7 @@
 
   // ── Demon Boss Config ─────────────────────────────────────────────────────
   var DEMON_DEFAULTS_LOCAL = {
-    demonHp:2800, phase2Pct:50, tentacleHp:500, bodyExposeDur:300, idleGap:60,
+    demonHp:2800, phase2Pct:50, tentacleHp:500, bellyHp:400, bodyExposeDur:300, idleGap:60,
     smashWarnT:60, smashActiveT:35, smashDmg:20, smashShieldCost:3,
     laserWarnT:60, laserActiveT:90, laserDmg:8, laserShieldCost:2,
     rockWarnT:45, rockSpeedMin:4, rockSpeedMax:8, rockDmg:18, rockShieldCost:2,
