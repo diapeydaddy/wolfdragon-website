@@ -6,7 +6,18 @@ const multer = require('multer');
 const { Pool } = require('pg');
 
 const app = express();
+app.set('trust proxy', true); // Railway sits behind a reverse proxy
 const PORT = process.env.PORT || 3000;
+
+// ── Admin IP whitelist ────────────────────────────────────────────────────────
+const ADMIN_IPS = ['136.58.103.42'];
+const ALL_BOSS_KEYS = { spiderKey: true, lichKey: true, apocKey: true, demonKey: true };
+
+function isAdminIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  const ip  = fwd ? fwd.split(',')[0].trim() : req.ip;
+  return ADMIN_IPS.includes(ip);
+}
 
 // PostgreSQL connection
 const pool = new Pool({
@@ -83,9 +94,17 @@ async function initDB() {
         id         SERIAL PRIMARY KEY,
         email      VARCHAR(255) NOT NULL UNIQUE,
         keys       JSONB        NOT NULL DEFAULT '{}',
+        is_admin   BOOLEAN      DEFAULT FALSE,
         created_at TIMESTAMP    DEFAULT NOW()
       );
     `);
+
+    // Add is_admin column to existing subscribers tables
+    try {
+      await pool.query(`ALTER TABLE subscribers ADD COLUMN is_admin BOOLEAN DEFAULT FALSE`);
+    } catch (e) {
+      if (!e.message.includes('already exists')) console.log('is_admin column:', e.message);
+    }
 
     console.log('✅ Database initialized');
   } catch (err) {
@@ -320,6 +339,59 @@ app.post('/api/scores', async (req, res) => {
       [player_name || 'Anonymous', score, level_reached]
     );
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: IP check ───────────────────────────────────────────────────────────
+app.get('/api/admin/check', (req, res) => {
+  const admin = isAdminIp(req);
+  res.json(admin ? { admin: true, keys: ALL_BOSS_KEYS } : { admin: false });
+});
+
+// ── Admin: list all subscribers ───────────────────────────────────────────────
+app.get('/api/admin/subscribers', async (req, res) => {
+  if (!isAdminIp(req)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await pool.query(
+      'SELECT id, email, keys, is_admin, created_at FROM subscribers ORDER BY created_at DESC'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: update subscriber keys / admin flag ─────────────────────────────────
+app.put('/api/admin/subscribers/:id', async (req, res) => {
+  if (!isAdminIp(req)) return res.status(403).json({ error: 'Forbidden' });
+  const { keys, is_admin } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE subscribers SET
+         keys     = CASE WHEN $1::text IS NOT NULL THEN $1::jsonb ELSE keys END,
+         is_admin = CASE WHEN $2::text IS NOT NULL THEN $2::boolean ELSE is_admin END
+       WHERE id = $3 RETURNING id, email, keys, is_admin, created_at`,
+      [
+        keys !== undefined ? JSON.stringify(keys) : null,
+        is_admin !== undefined ? String(is_admin) : null,
+        req.params.id,
+      ]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: delete subscriber ───────────────────────────────────────────────────
+app.delete('/api/admin/subscribers/:id', async (req, res) => {
+  if (!isAdminIp(req)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await pool.query('DELETE FROM subscribers WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

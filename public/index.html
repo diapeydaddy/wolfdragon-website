@@ -493,7 +493,14 @@
     }
 
     // ── Door gating ────────────────────────────────────────────────
+    // Called after keys may have been injected by admin check
     function gateAllDoors() {
+      // Clear any previous locked state so re-calls are clean
+      ['door-spider','door-lich','door-apoc','door-demon'].forEach(function(id) {
+        var c = document.getElementById(id);
+        if (c) c.classList.remove('door-key-locked');
+      });
+
       const k = loadLocalKeys();
 
       // Single-key gates: [cardId, requiredKey, lockedText, enterText]
@@ -507,11 +514,12 @@
         if (!card) return;
         var kl = card.querySelector('.door-key-line');
         if (k[key]) {
+          card.onclick = null;  // clear any prior lock
           if (kl) kl.textContent = enterTxt;
         } else {
           card.classList.add('door-key-locked');
           if (kl) kl.textContent = lockTxt;
-          card.addEventListener('click', function(e){ e.preventDefault(); }, true);
+          card.onclick = function(e){ e.preventDefault(); };
         }
       });
 
@@ -522,17 +530,31 @@
         var bossCount = [k.spiderKey, k.lichKey, k.apocKey].filter(Boolean).length;
         if (bossCount >= 3) {
           dCard.href = '/demon.html';
+          dCard.onclick = null;  // clear any prior lock
           if (klDemon) { klDemon.textContent = '⚠️ Enter the Void'; klDemon.style.color = '#8833dd'; }
         } else {
           dCard.classList.add('door-key-locked');
           if (klDemon) klDemon.textContent = '🔒 ' + bossCount + '/3 Boss Keys';
-          dCard.addEventListener('click', function(e){ e.preventDefault(); }, true);
+          dCard.onclick = function(e){ e.preventDefault(); };
         }
       }
     }
 
-    updateKeyCounter();
-    gateAllDoors();
+    // ── Admin IP check — inject boss keys before gating runs ──────
+    async function initKeys() {
+      try {
+        var r = await fetch('/api/admin/check');
+        var d = await r.json();
+        if (d.admin && d.keys) {
+          var local = loadLocalKeys();
+          Object.assign(local, d.keys);
+          saveLocalKeys(local);
+        }
+      } catch(e) {}
+      updateKeyCounter();
+      gateAllDoors();
+    }
+    initKeys();
 
     // ── Subscribe ──────────────────────────────────────────────────
     var subBtn  = document.getElementById('sub-btn');
