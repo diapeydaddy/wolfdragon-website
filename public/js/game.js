@@ -5221,11 +5221,6 @@
         if(h.t >= h.activeT){ h.done=true; return false; }
       }
       return true;
-    } else if(h.type === 'fireball_wait'){
-      // Placeholder that keeps the idle timer blocked while fireball volley fires
-      h.t++;
-      if(h.t >= h.total){ h.done=true; return false; }
-      return true;
     } else if(h.type === 'fireball'){
       h.fx += h.vx; h.fy += h.vy;
       h.vy += 0.12; // gravity
@@ -5316,8 +5311,7 @@
       const mouthX = DMN_DX + DMN_DW * 0.5;  // ~400
       const mouthY = () => DEMON.y + DMN_DW * (SHEETS.DMN ? SHEETS.DMN.height/SHEETS.DMN.width : 0.42) * 0.38;
       const spd = DCFG.fireballSpeed;
-      // Placeholder so the idle timer waits for this attack to finish
-      demonHazards.push({ type:'fireball_wait', t:0, total: atk.count * 14 + 30, done:false });
+      // No placeholder — lets other attacks start while fireballs are in flight
       for(let i=0; i<atk.count; i++){
         setTimeout(()=>{
           if(!DEMON.alive) return;
