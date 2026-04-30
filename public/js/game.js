@@ -4646,6 +4646,25 @@
   let demonShakeT  = 0;
   let demonRocksSent = 0;
 
+  // Ambient drifting orbs — purely visual, non-damaging
+  let demonOrbs = [];
+  function _spawnOrb(){
+    const fromLeft = Math.random() < 0.5;
+    const col = Math.random() < 0.55 ? '#9933ff' : (Math.random()<0.5 ? '#cc0066' : '#6600cc');
+    demonOrbs.push({
+      x: fromLeft ? -12 : W+12,
+      y: 40 + Math.random() * (PLAT_Y + 60),
+      vx: (fromLeft ? 1 : -1) * (0.5 + Math.random() * 1.4),
+      vy: (Math.random() - 0.5) * 0.6,
+      r:  3 + Math.random() * 5,
+      col,
+      alpha: 0.5 + Math.random() * 0.5,
+      life: 180 + Math.floor(Math.random() * 180),
+      maxLife: 0,
+    });
+    demonOrbs[demonOrbs.length-1].maxLife = demonOrbs[demonOrbs.length-1].life;
+  }
+
   // Attack sequence — always cycles
   const DEMON_SEQ = [
     { type:'smash',  zones:[0,2] },             // A+C active
@@ -4671,6 +4690,8 @@
     });
     demonHazards = []; demonSeqIdx = 0; demonCycleN = 0;
     demonP2Done = 0; demonIdleT = 0; demonShakeT = 0; demonRocksSent = 0;
+    demonOrbs = [];
+    for(let i=0;i<8;i++) _spawnOrb(); // seed initial ambient orbs
     enemies = []; projs = []; parts = []; drops = [];
     obstacles = []; effects = []; webZones = []; flameshields = [];
     gs.wave = 1; gs.level = 5;
@@ -4697,6 +4718,21 @@
   window._drawDemonBoss = function() {
     if(!SHEETS.DMN || !DEMON.alive) return;
     const nowD = Date.now();
+
+    // Ambient drifting orbs (drawn first, appear behind boss)
+    demonOrbs.forEach(o => {
+      const pulse = 0.6 + Math.sin(nowD/300 + o.x*0.02)*0.4;
+      ctx.save();
+      ctx.globalAlpha = (o.life / o.maxLife) * o.alpha * pulse;
+      const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * 2.2);
+      g.addColorStop(0, 'rgba(255,255,255,0.9)');
+      g.addColorStop(0.3, o.col);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 2.2, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+
     // Shake offset
     const sx = demonShakeT > 0 ? (Math.random()-0.5)*demonShakeT : 0;
     const sy = demonShakeT > 0 ? (Math.random()-0.5)*demonShakeT*0.5 : 0;
@@ -5122,6 +5158,16 @@
         _launchNextAttack();
       }
     }
+
+    // Tick ambient orbs — drift, age, respawn
+    demonOrbs = demonOrbs.filter(o => {
+      o.x += o.vx; o.y += o.vy;
+      o.vy += (Math.random()-0.5)*0.04; // gentle wobble
+      o.life--;
+      return o.life > 0 && o.x > -20 && o.x < W+20;
+    });
+    // Keep ~10 orbs alive at all times
+    while(demonOrbs.length < 10) _spawnOrb();
   };
 
   function _tickHazard(h) {
