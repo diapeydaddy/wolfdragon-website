@@ -1232,7 +1232,7 @@
         burst(PL.cx, PL.cy, PL.shHp > 0 ? SB : '#ff8844', 18, 6);
         SFX.block();
         blockMsg = 40;
-        if(PL.shHp <= 0) PL.shBroken = true;
+        if(PL.shHp <= 0){ PL.shBroken = true; PL.shRechargeT = window.WD_DEMON_MODE ? 90 : 0; }
         // Grace period: prevents the same volley dealing HP damage after shield breaks.
         PL.iframes = Math.max(PL.iframes, 30);
         if(PL.thornActive){ PL.thornActive=false; enemies.forEach(e=>hitEnemy(e,CFG.dmgThornwall)); burst(PL.cx,PL.cy,'#44ff44',20); }
@@ -1731,18 +1731,17 @@
     if(PL.itemCd    > 0) PL.itemCd--;
     if(PL.bloodlustT> 0) PL.bloodlustT--;
     if(PL.windwallT > 0) PL.windwallT--;
-    if(!K['KeyC']){
-      // In demon mode: broken shield uses a recharge cooldown — can't instantly refresh
-      if(window.WD_DEMON_MODE && PL.shHp < PL.shMaxHp){
-        PL.shBroken = true;
-        PL.shRechargeT = (PL.shRechargeT||0) > 0 ? PL.shRechargeT - 1 : 0;
-        if((PL.shRechargeT||0) <= 0){ PL.shBroken=false; PL.shHp=PL.shMaxHp; PL.shRechargeT=0; }
-      } else if(!window.WD_DEMON_MODE) {
-        PL.shBroken=false; PL.shHp=PL.shMaxHp;
+    if(window.WD_DEMON_MODE){
+      if(PL.shBroken){
+        // Recharge ticks regardless of whether C is held — shield auto-recovers
+        PL.shRechargeT = Math.max(0, (PL.shRechargeT||0) - 1);
+        if(PL.shRechargeT <= 0){ PL.shBroken=false; PL.shHp=PL.shMaxHp; }
+      } else if(!K['KeyC'] && PL.shHp < PL.shMaxHp){
+        // Released C with partial pips — restore quietly (no cooldown unless fully broken)
+        PL.shHp = PL.shMaxHp;
       }
-    } else {
-      // C is held — reset the recharge if shield is full (just held for blocking)
-      if(window.WD_DEMON_MODE && PL.shHp === PL.shMaxHp){ PL.shRechargeT = 90; }
+    } else if(!K['KeyC']){
+      PL.shBroken=false; PL.shHp=PL.shMaxHp;
     }
     } else { Object.keys(J).forEach(k=>{ J[k]=false; }); } // drain queued keys during cutscene
 
@@ -5119,20 +5118,24 @@
     }
     if(PL.atkTimer === 0) DEMON.hitDealt = false;
 
-    // ── Spell projectiles hit demon ───────────────────────────────────────
+    // ── Spell/player projectiles hit demon ───────────────────────────────
     projs = projs.filter(p => {
-      if(!p.friendly) return true; // enemy projectiles pass through
+      if(p.owner !== 'player') return true; // only player shots interact with demon
 
-      // Try tentacle hit spots
+      const pcx = p.x + (p.w||0)/2;
+      const pcy = p.y + (p.h||0)/2;
+
+      // Try tentacle hit spots — x overlap required, y very loose (shots fly at player level)
       for(let i = 0; i < 2; i++){
         const t = DEMON.tentacles[i];
         if(!t.alive) continue;
         const tx = DMN_DX + TSPOT[i].relX;
         const ty = DEMON.y + TSPOT[i].relY;
         const {w:tw, h:th} = TSPOT[i];
-        if(p.x + 20 > tx && p.x < tx + tw && p.y + 20 > ty && p.y < ty + th){
+        // x: projectile centre inside zone; y: within 120px of zone (very forgiving)
+        if(pcx > tx && pcx < tx + tw && pcy > ty - 60 && pcy < ty + th + 60){
           t.hp = Math.max(0, t.hp - p.dmg);
-          burst(p.x, p.y, '#ff8800', 8, 4); SFX.enemyHit();
+          burst(pcx, pcy, '#ff8800', 8, 4); SFX.enemyHit();
           if(t.hp <= 0){
             t.alive = false;
             burst(tx+tw/2, ty+th/2, '#ff4400', 18, 7);
@@ -5145,18 +5148,19 @@
           return false;
         }
       }
-      // Hit body when exposed
-      if(DEMON.bodyExposed && p.x > DMN_DX + 180){
+      // Hit body when exposed — any x that reaches the demon sprite area
+      if(DEMON.bodyExposed && pcx > DMN_DX + 60 && pcx < DMN_DX + DMN_DW - 60){
         DEMON.hp = Math.max(0, DEMON.hp - p.dmg);
-        DEMON.flashT = 5; burst(p.x, p.y, '#cc88ff', 10, 5); SFX.enemyHit();
+        DEMON.flashT = 5; burst(pcx, pcy, '#cc88ff', 10, 5); SFX.enemyHit();
         return false;
       }
-      // Hit belly when risen
-      if(DEMON.risen && p.x > DMN_DX + 260 && p.x < DMN_DX + 540){
+      // Hit belly when risen — wide x range, loose y
+      if(DEMON.risen){
         const bellyY = DEMON.y + 240;
-        if(p.y > bellyY - 20 && p.y < bellyY + 130){
+        if(pcx > DMN_DX + 100 && pcx < DMN_DX + DMN_DW - 100 &&
+           pcy > bellyY - 60 && pcy < bellyY + 160){
           DEMON.hp = Math.max(0, DEMON.hp - p.dmg * 2);
-          DEMON.flashT = 6; burst(p.x, p.y, '#ff0066', 14, 7); SFX.enemyHit();
+          DEMON.flashT = 6; burst(pcx, pcy, '#ff0066', 14, 7); SFX.enemyHit();
           return false;
         }
       }
