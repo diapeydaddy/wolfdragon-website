@@ -4572,7 +4572,7 @@
     demonHp:          2800,  // total boss HP
     phase2Pct:        50,    // % HP at which phase 2 begins
     tentacleHp:       500,   // HP per tentacle (25 base dmg × 20 hits)
-    bellyHp:          400,   // belly HP (must destroy before boss vulnerable in phase 2)
+    bellyHp:          1200,  // belly HP — resets each cycle (3× original 400)
     bodyExposeDur:    300,   // frames tentacle body stays exposed (5s @ 60fps)
     // Smash attack
     smashWarnT:       60,    // warning frames before tentacle lands
@@ -4650,6 +4650,9 @@
     bellyDestroyed: false,
     bellyHp: DCFG.bellyHp,
     bellyMaxHp: DCFG.bellyHp,
+    riseMode: false,         // true while demon is risen doing P2 attacks
+    pendingRespawn: false,   // true after belly destroyed, waiting for bodyExpose to end
+    riseDelay: 0,            // frames to wait before first P2 attack after rising
   };
   window._DEMON = DEMON;
 
@@ -4703,6 +4706,7 @@
       tentacles: [{alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}, {alive:true, hp:DCFG.tentacleHp, maxHp:DCFG.tentacleHp}],
       bodyExposed: false, bodyExposeT: 0, risen: false,
       bellyDestroyed: false, bellyHp: DCFG.bellyHp, bellyMaxHp: DCFG.bellyHp,
+      riseMode: false, pendingRespawn: false, riseDelay: 0,
     });
     demonHazards = []; demonSeqIdx = 0; demonCycleN = 0;
     demonP2Done = 0; demonIdleT = 0; demonShakeT = 0; demonRocksSent = 0;
@@ -4811,26 +4815,28 @@
       ctx.restore();
     }
 
-    // ── Belly hit zone + HP bar when risen and not yet destroyed ──────────
+    // ── Belly hit zone (square) + HP bar when risen and not yet destroyed ──
     if(DEMON.risen && !DEMON.bellyDestroyed){
       const pulse = Math.sin(nowD / 80) * 0.4 + 0.6;
-      const bx = DMN_DX + sx + 260, by = DEMON.y + sy + 240, bw = 280, bh = 110;
+      // Square zone centered on the demon's belly (~sprite x center, relY 240)
+      const BELLY_X = DMN_DX + sx + 330, BELLY_Y = DEMON.y + sy + 240;
+      const BELLY_W = 160, BELLY_H = 160;
       ctx.save();
       // Zone glow overlay
-      ctx.globalAlpha = pulse * 0.30;
+      ctx.globalAlpha = pulse * 0.32;
       ctx.fillStyle = '#ff0066';
-      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillRect(BELLY_X, BELLY_Y, BELLY_W, BELLY_H);
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = `rgba(255,0,100,${pulse * 0.75})`;
+      ctx.strokeStyle = `rgba(255,0,100,${pulse * 0.8})`;
       ctx.lineWidth = 2;
-      ctx.shadowColor = '#ff0066'; ctx.shadowBlur = 10;
-      ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+      ctx.shadowColor = '#ff0066'; ctx.shadowBlur = 12;
+      ctx.strokeRect(BELLY_X + 2, BELLY_Y + 2, BELLY_W - 4, BELLY_H - 4);
       // HP bar above the belly zone
-      const barW = bw, barH = 12;
-      const barX = bx, barY = by - 18;
+      const barW = BELLY_W, barH = 12;
+      const barX = BELLY_X, barY = BELLY_Y - 20;
       const pct = Math.max(0, DEMON.bellyHp / DEMON.bellyMaxHp);
       ctx.shadowBlur = 0;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.88;
       ctx.fillStyle = '#220011'; ctx.fillRect(barX, barY, barW, barH);
       ctx.fillStyle = pct > 0.5 ? '#ff3388' : (pct > 0.25 ? '#ff6600' : '#ff0000');
       ctx.fillRect(barX, barY, barW * pct, barH);
@@ -5101,13 +5107,23 @@
     // Risen state — true when fully up for P2 attacks
     DEMON.risen = Math.abs(DEMON.targetY - DMN_RISEN_Y) < 5 && Math.abs(DEMON.y - DMN_RISEN_Y) < 35;
 
-    // Body-expose countdown → tentacle respawn after 5 s
+    // Body-expose countdown
     if(DEMON.bodyExposed){
       DEMON.bodyExposeT = Math.max(0, DEMON.bodyExposeT - 1);
       if(DEMON.bodyExposeT <= 0){
         DEMON.bodyExposed = false;
-        DEMON.tentacles.forEach(t => { t.alive = true; t.hp = DCFG.tentacleHp; t.maxHp = DCFG.tentacleHp; });
-        msg = '— TENTACLES RESPAWN —'; msgT = 80;
+        if(DEMON.pendingRespawn){
+          // Belly-cycle complete: respawn tentacles, reset belly, back to P1 attacks
+          DEMON.pendingRespawn = false;
+          DEMON.bellyDestroyed = false;
+          DEMON.bellyHp        = DCFG.bellyHp;
+          DEMON.bellyMaxHp     = DCFG.bellyHp;
+          DEMON.riseDelay      = 0;
+          demonIdleT           = 0;
+          DEMON.tentacles.forEach(t => { t.alive = true; t.hp = DCFG.tentacleHp; t.maxHp = DCFG.tentacleHp; });
+          msg = '— TENTACLES REFORMED! —'; msgT = 110;
+          burst(W/2, DEMON.y + 200, '#440088', 20, 8);
+        }
       }
     }
 
@@ -5115,20 +5131,20 @@
     if(PL.atkTimer > 0 && !DEMON.hitDealt){
       let hitSomething = false;
 
-      // (A) Try to hit a tentacle spot — proximity only, facing direction irrelevant
-      if(!hitSomething){
+      // (A) Try to hit a tentacle spot — row 1 only, tighter reach
+      if(!hitSomething && PL.row === 1){
         for(let i = 0; i < 2; i++){
           const t = DEMON.tentacles[i];
           if(!t.alive) continue;
           const tx = DMN_DX + TSPOT[i].relX;
           const ty = DEMON.y + TSPOT[i].relY;
           const tw = TSPOT[i].w, th = TSPOT[i].h;
-          // Melee range: player hitbox overlaps or is close to tentacle zone
-          const atkReach = Math.min(PL.atkRange, 100);
+          // Tighter reach — must be relatively close to the zone
+          const atkReach = Math.min(PL.atkRange, 55);
           const plLeft  = PL.x - atkReach;
           const plRight = PL.x + PL.w + atkReach;
           const inX = plRight > tx && plLeft < tx + tw;
-          const inY = ROW_Y[PL.row] < ty + th + 50 && ROW_Y[PL.row] + WD_H > ty - 50;
+          const inY = ROW_Y[PL.row] < ty + th + 20 && ROW_Y[PL.row] + WD_H > ty - 20;
           if(inX && inY){
             t.hp = Math.max(0, t.hp - PL.weapon.dmg);
             burst(tx + tw/2, ty + th/2, '#ff8800', 8, 4);
@@ -5137,10 +5153,7 @@
               t.alive = false;
               burst(tx + tw/2, ty + th/2, '#ff4400', 18, 7);
               if(DEMON.tentacles.every(tt => !tt.alive)){
-                DEMON.bodyExposed = true;
-                DEMON.bodyExposeT = DCFG.bodyExposeDur;
-                msg = '— BODY EXPOSED! —'; msgT = 110;
-                burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+                _triggerDemonRise();
               }
             }
             hitSomething = true; break;
@@ -5148,9 +5161,8 @@
         }
       }
 
-      // (B) Hit exposed body — any direction, just needs to be in melee range
-      //     In phase 2 this only deals damage once belly is destroyed
-      if(!hitSomething && DEMON.bodyExposed && (DEMON.phase === 1 || DEMON.bellyDestroyed)){
+      // (B) Hit exposed body — row 1 only
+      if(!hitSomething && PL.row === 1 && DEMON.bodyExposed){
         const reach = Math.min(PL.atkRange, 110);
         const plLeft = PL.x - reach, plRight = PL.x + PL.w + reach;
         if(plRight > DMN_DX + 180 && plLeft < DMN_DX + DMN_DW - 180){
@@ -5161,23 +5173,19 @@
         }
       }
 
-      // (C) Hit belly when risen and not yet destroyed — belly has its own HP bar
-      if(!hitSomething && DEMON.risen && !DEMON.bellyDestroyed){
+      // (C) Hit belly when risen and not yet destroyed — row 1 only, square hit box
+      if(!hitSomething && PL.row === 1 && DEMON.risen && !DEMON.bellyDestroyed){
         const bellyY = DEMON.y + 240;
-        const reach = Math.min(PL.atkRange, 110);
-        const inX = (PL.x + PL.w + reach) > DMN_DX + 260 && (PL.x - reach) < DMN_DX + DMN_DW - 260;
-        const inY = ROW_Y[PL.row] < bellyY + 110 + 50 && ROW_Y[PL.row] + WD_H > bellyY - 50;
+        const reach = Math.min(PL.atkRange, 90);
+        const BELLY_X = DMN_DX + 330, BELLY_W = 160, BELLY_H = 160;
+        const inX = (PL.x + PL.w + reach) > BELLY_X && (PL.x - reach) < BELLY_X + BELLY_W;
+        const inY = ROW_Y[PL.row] < bellyY + BELLY_H + 20 && ROW_Y[PL.row] + WD_H > bellyY - 20;
         if(inX && inY){
           DEMON.bellyHp = Math.max(0, DEMON.bellyHp - PL.weapon.dmg * 2);
           DEMON.flashT = 6; demonShakeT = 5;
-          burst(400, bellyY + 55, '#ff0066', 18, 8);
+          burst(BELLY_X + BELLY_W/2, bellyY + BELLY_H/2, '#ff0066', 18, 8);
           SFX.enemyHit(); hitSomething = true;
-          if(DEMON.bellyHp <= 0){
-            DEMON.bellyDestroyed = true;
-            msg = '— BELLY DESTROYED! —'; msgT = 130;
-            burst(400, bellyY + 55, '#ff0099', 30, 10);
-            demonShakeT = 18;
-          }
+          if(DEMON.bellyHp <= 0){ _triggerBellyDestroyed(); }
         }
       }
 
@@ -5192,50 +5200,43 @@
       const pcx = p.x + (p.w||0)/2;
       const pcy = p.y + (p.h||0)/2;
 
-      // Try tentacle hit spots — x overlap required, y very loose (shots fly at player level)
+      // Try tentacle hit spots — tighter y range so only row-1 shots connect
       for(let i = 0; i < 2; i++){
         const t = DEMON.tentacles[i];
         if(!t.alive) continue;
         const tx = DMN_DX + TSPOT[i].relX;
         const ty = DEMON.y + TSPOT[i].relY;
         const {w:tw, h:th} = TSPOT[i];
-        // x: projectile centre inside zone; y: within 120px of zone (very forgiving)
-        if(pcx > tx && pcx < tx + tw && pcy > ty - 60 && pcy < ty + th + 60){
+        if(pcx > tx && pcx < tx + tw && pcy > ty - 15 && pcy < ty + th + 15){
           t.hp = Math.max(0, t.hp - p.dmg);
           burst(pcx, pcy, '#ff8800', 8, 4); SFX.enemyHit();
           if(t.hp <= 0){
             t.alive = false;
             burst(tx+tw/2, ty+th/2, '#ff4400', 18, 7);
             if(DEMON.tentacles.every(tt => !tt.alive)){
-              DEMON.bodyExposed = true; DEMON.bodyExposeT = DCFG.bodyExposeDur;
-              msg = '— BODY EXPOSED! —'; msgT = 110;
-              burst(400, DEMON.y + 160, '#cc44ff', 28, 9);
+              _triggerDemonRise();
             }
           }
           return false;
         }
       }
-      // Hit body when exposed — any x that reaches the demon sprite area
-      // In phase 2 only deals damage once belly is destroyed
-      if(DEMON.bodyExposed && (DEMON.phase === 1 || DEMON.bellyDestroyed) &&
-         pcx > DMN_DX + 60 && pcx < DMN_DX + DMN_DW - 60){
+      // Hit body when exposed — y-gated so only row-1 shots connect
+      if(DEMON.bodyExposed &&
+         pcx > DMN_DX + 60 && pcx < DMN_DX + DMN_DW - 60 &&
+         pcy > DEMON.y + 80 && pcy < DEMON.y + 260){
         DEMON.hp = Math.max(0, DEMON.hp - p.dmg);
         DEMON.flashT = 5; burst(pcx, pcy, '#cc88ff', 10, 5); SFX.enemyHit();
         return false;
       }
-      // Hit belly when risen and not yet destroyed — belly has its own HP
+      // Hit belly when risen and not yet destroyed — square hit box
       if(DEMON.risen && !DEMON.bellyDestroyed){
         const bellyY = DEMON.y + 240;
-        if(pcx > DMN_DX + 100 && pcx < DMN_DX + DMN_DW - 100 &&
-           pcy > bellyY - 60 && pcy < bellyY + 160){
+        const BELLY_X = DMN_DX + 330, BELLY_W = 160, BELLY_H = 160;
+        if(pcx > BELLY_X && pcx < BELLY_X + BELLY_W &&
+           pcy > bellyY - 15 && pcy < bellyY + BELLY_H + 15){
           DEMON.bellyHp = Math.max(0, DEMON.bellyHp - p.dmg * 2);
           DEMON.flashT = 6; burst(pcx, pcy, '#ff0066', 14, 7); SFX.enemyHit();
-          if(DEMON.bellyHp <= 0){
-            DEMON.bellyDestroyed = true;
-            msg = '— BELLY DESTROYED! —'; msgT = 130;
-            burst(400, bellyY + 55, '#ff0099', 30, 10);
-            demonShakeT = 18;
-          }
+          if(DEMON.bellyHp <= 0){ _triggerBellyDestroyed(); }
           return false;
         }
       }
@@ -5251,12 +5252,17 @@
     });
 
     // Idle timer — start next attack when no active hazards
+    // Suppressed while body is exposed (player attack window) or during rise delay
     const anyActive = demonHazards.some(h => !h.done);
-    if(!anyActive){
-      demonIdleT++;
-      if(demonIdleT >= DCFG.idleGap){
-        demonIdleT = 0;
-        _launchNextAttack();
+    if(!anyActive && !DEMON.bodyExposed){
+      if(DEMON.riseDelay > 0){
+        DEMON.riseDelay--;
+      } else {
+        demonIdleT++;
+        if(demonIdleT >= DCFG.idleGap){
+          demonIdleT = 0;
+          _launchNextAttack();
+        }
       }
     }
 
@@ -5380,9 +5386,40 @@
     return false;
   }
 
+  // ── Helper: both tentacles dead → demon rises, P2 attacks, belly exposed ─────
+  function _triggerDemonRise() {
+    DEMON.riseMode  = true;
+    DEMON.riseDelay = 110; // wait ~1.8s for demon to reach risen position before attacking
+    DEMON.targetY   = DMN_RISEN_Y;
+    demonIdleT      = 0;
+    // Keep rocks/fireballs in flight but clear smash/laser
+    demonHazards = demonHazards.filter(h => h.type === 'rock' || h.type === 'fireball' || h.type === 'stomdemon_fb');
+    msg = '— IT RISES! —'; msgT = 130;
+    burst(W/2, DEMON.y + 160, '#cc00ff', 28, 9);
+    demonShakeT = 14;
+  }
+
+  // ── Helper: belly HP depleted → demon sinks, body exposed, schedule reset ────
+  function _triggerBellyDestroyed() {
+    DEMON.bellyDestroyed = true;
+    DEMON.riseMode       = false;
+    DEMON.targetY        = DMN_REST_Y;
+    DEMON.pendingRespawn = true;
+    DEMON.riseDelay      = 0;
+    demonHazards = []; // clear all P2 hazards
+    demonIdleT   = 0;
+    // bodyExposed suppresses the idle timer; player can now damage DEMON.hp
+    DEMON.bodyExposed = true;
+    DEMON.bodyExposeT = DCFG.bodyExposeDur;
+    const bellyY = DEMON.y + 240;
+    burst(DMN_DX + 330 + 80, bellyY + 80, '#ff0099', 35, 10);
+    demonShakeT = 18;
+    msg = '— BELLY DESTROYED! STRIKE NOW! —'; msgT = 160;
+  }
+
   function _launchNextAttack() {
-    // Phase 2 (HP < 50%): ~1 in 5 attacks is a risen special attack
-    if(DEMON.phase === 2 && Math.random() < 0.20){
+    // riseMode: demon is up, only do P2 attacks (stomdemon, megasmash, eyelaser)
+    if(DEMON.riseMode){
       const p2types = ['stomdemon', 'megasmash', 'eyelaser'];
       _startP2Attack(p2types[Math.floor(Math.random() * p2types.length)]);
       return;
